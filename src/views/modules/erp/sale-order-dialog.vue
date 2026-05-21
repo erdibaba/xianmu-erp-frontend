@@ -528,8 +528,7 @@ export default {
         saleType: [{ required: true, message: '请选择销售类型', trigger: 'change' }],
         secondaryPartnerId: [{ required: true, message: '请选择二批商', trigger: 'change' }],
         warehouseId: [{ required: true, message: '请选择仓库', trigger: 'change' }],
-        contractSignDate: [{ required: true, message: '请选择签订日期', trigger: 'change' }],
-        sourcePresaleOrderId: [{ required: true, message: '请选择关联预销售单', trigger: 'change' }]
+        contractSignDate: [{ required: true, message: '请选择签订日期', trigger: 'change' }]
       }
     }
   },
@@ -991,7 +990,6 @@ export default {
       const itemList = this.dataForm.itemList || []
       if (!itemList.length) return '销售明细不能为空'
       const productIds = {}
-      if (this.isFuturesSale && !this.dataForm.sourcePresaleOrderId) return '请选择关联预销售单'
       for (let index = 0; index < itemList.length; index++) {
         const item = itemList[index]
         if (!item.productId) return `第${index + 1}行产品未选择`
