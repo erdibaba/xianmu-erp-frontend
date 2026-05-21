@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="buyer-sale-upload">
     <div class="buyer-sale-upload__inner" v-loading="loading">
       <div class="portal-header">
@@ -55,10 +55,10 @@
       <div class="step-grid">
         <el-card shadow="never" class="step-card">
           <div slot="header" class="step-card__header">
-            <span>绗竴姝ワ細鐩栫珷鍚堝悓</span>
+            <span>第一步：盖章合同</span>
             <el-tag size="small" :type="confirmedTagType(saleOrder.signedContractConfirmed)">{{ confirmedText(saleOrder.signedContractConfirmed) }}</el-tag>
           </div>
-          <p class="step-card__tip">涓嬭浇鍚堝悓鐩栫珷鍚庝笂浼狅紝纭鏃犺鍚庢墠鑳借繘鍏ヤ笅涓€姝ャ€?/p>
+          <p class="step-card__tip">下载合同盖章后上传，确认无误后才能进入下一步。</p>
           <div class="step-card__actions">
             <el-button
               v-if="!saleOrder.signedContractConfirmed"
@@ -67,7 +67,7 @@
               plain
               :loading="uploading && currentUploadType === 'SIGNED_CONTRACT'"
               @click="triggerUpload('SIGNED_CONTRACT')">
-              涓婁紶鐩栫珷鍚堝悓
+              上传盖章合同
             </el-button>
             <el-button
               v-if="canConfirmSigned"
@@ -75,21 +75,22 @@
               type="success"
               :loading="confirming && currentConfirmType === 'SIGNED_CONTRACT'"
               @click="confirmStep('SIGNED_CONTRACT')">
-              纭鍚堝悓娌￠棶棰?            </el-button>
+              确认合同无误
+            </el-button>
           </div>
           <el-table :data="signedContractFiles" border size="mini">
-            <el-table-column prop="fileName" label="鏂囦欢鍚嶇О" min-width="180" show-overflow-tooltip></el-table-column>
-            <el-table-column label="涓婁紶鏃堕棿" width="160" align="center">
+            <el-table-column prop="fileName" label="文件名称" min-width="180" show-overflow-tooltip></el-table-column>
+            <el-table-column label="上传时间" width="160" align="center">
               <template slot-scope="scope">{{ formatDateTime(scope.row.createTime) }}</template>
             </el-table-column>
-            <el-table-column label="涓嬭浇" width="80" align="center">
+            <el-table-column label="下载" width="80" align="center">
               <template slot-scope="scope">
-                <el-button type="text" size="small" @click="downloadPortalFile(scope.row)">涓嬭浇</el-button>
+                <el-button type="text" size="small" @click="downloadPortalFile(scope.row)">下载</el-button>
               </template>
             </el-table-column>
-            <el-table-column label="鍒犻櫎" width="80" align="center">
+            <el-table-column label="删除" width="80" align="center">
               <template slot-scope="scope">
-                <el-button v-if="canDeleteSigned" type="text" size="small" @click="deletePortalFile(scope.row)">鍒犻櫎</el-button>
+                <el-button v-if="canDeleteSigned" type="text" size="small" @click="deletePortalFile(scope.row)">删除</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -97,10 +98,10 @@
 
         <el-card shadow="never" class="step-card">
           <div slot="header" class="step-card__header">
-            <span>绗簩姝ワ細浜屾壒鎵撴鍑瘉</span>
+            <span>第二步：二批打款凭证</span>
             <el-tag size="small" :type="confirmedTagType(saleOrder.buyerPaymentConfirmed)">{{ confirmedText(saleOrder.buyerPaymentConfirmed) }}</el-tag>
           </div>
-          <p class="step-card__tip">鍚堝悓纭鍚庝笂浼犻摱琛屾墦娆惧嚟璇侊紝纭鏃犺鍚庝氦鐢卞唴閮ㄧ户缁鐞嗐€?/p>
+          <p class="step-card__tip">合同确认后上传银行打款凭证，确认无误后交由内部继续处理。</p>
           <div class="step-card__actions">
             <el-button
               v-if="canUploadBuyerPayment"
@@ -109,7 +110,7 @@
               plain
               :loading="uploading && currentUploadType === 'BUYER_PAYMENT_PROOF'"
               @click="triggerUpload('BUYER_PAYMENT_PROOF')">
-              涓婁紶浜屾壒鎵撴鍑瘉
+              上传二批打款凭证
             </el-button>
             <el-button
               v-if="canConfirmBuyerPayment"
@@ -117,22 +118,22 @@
               type="success"
               :loading="confirming && currentConfirmType === 'BUYER_PAYMENT_PROOF'"
               @click="confirmStep('BUYER_PAYMENT_PROOF')">
-              纭鎵撴鍑瘉
+              确认打款凭证
             </el-button>
           </div>
           <el-table :data="buyerPaymentFiles" border size="mini">
-            <el-table-column prop="fileName" label="鏂囦欢鍚嶇О" min-width="180" show-overflow-tooltip></el-table-column>
-            <el-table-column label="涓婁紶鏃堕棿" width="160" align="center">
+            <el-table-column prop="fileName" label="文件名称" min-width="180" show-overflow-tooltip></el-table-column>
+            <el-table-column label="上传时间" width="160" align="center">
               <template slot-scope="scope">{{ formatDateTime(scope.row.createTime) }}</template>
             </el-table-column>
-            <el-table-column label="涓嬭浇" width="80" align="center">
+            <el-table-column label="下载" width="80" align="center">
               <template slot-scope="scope">
-                <el-button type="text" size="small" @click="downloadPortalFile(scope.row)">涓嬭浇</el-button>
+                <el-button type="text" size="small" @click="downloadPortalFile(scope.row)">下载</el-button>
               </template>
             </el-table-column>
-            <el-table-column label="鍒犻櫎" width="80" align="center">
+            <el-table-column label="删除" width="80" align="center">
               <template slot-scope="scope">
-                <el-button v-if="canDeleteBuyerPayment" type="text" size="small" @click="deletePortalFile(scope.row)">鍒犻櫎</el-button>
+                <el-button v-if="canDeleteBuyerPayment" type="text" size="small" @click="deletePortalFile(scope.row)">删除</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -140,18 +141,18 @@
 
         <el-card shadow="never" class="step-card step-card--readonly">
           <div slot="header" class="step-card__header">
-            <span>绗笁姝ワ細鍐呴儴涓婁紶閾惰姘村崟</span>
+            <span>第三步：内部上传银行水单</span>
             <el-tag size="small" :type="confirmedTagType(saleOrder.buyerBankConfirmed)">{{ confirmedText(saleOrder.buyerBankConfirmed) }}</el-tag>
           </div>
-          <p class="step-card__tip">姝ゆ楠ょ敱鍐呴儴浜哄憳澶勭悊锛屼綘鍙互鍦ㄨ繖閲岀湅鍒拌繘搴︺€?/p>
+          <p class="step-card__tip">此步骤由内部人员处理，你可以在这里看到进度。</p>
         </el-card>
 
         <el-card shadow="never" class="step-card step-card--readonly">
           <div slot="header" class="step-card__header">
-            <span>绗洓姝ワ細鍐呴儴涓婁紶璧勬柟鎵撴鍑瘉</span>
+            <span>第四步：内部上传资方打款凭证</span>
             <el-tag size="small" :type="confirmedTagType(saleOrder.funderPaymentConfirmed)">{{ confirmedText(saleOrder.funderPaymentConfirmed) }}</el-tag>
           </div>
-          <p class="step-card__tip">姝ゆ楠ょ敱鍐呴儴浜哄憳澶勭悊锛屽畬鎴愬悗鏁存潯閿€鍞祦绋嬬粨鏉熴€?/p>
+          <p class="step-card__tip">此步骤由内部人员处理，完成后整条销售流程结束。</p>
         </el-card>
       </div>
 
@@ -186,17 +187,17 @@ export default {
         : (this.saleOrder.itemList || [])
     },
     saleTypeLabel () {
-      return this.saleOrder.saleType === 'SPOT' ? '\u73b0\u8d27\u5355' : '\u671f\u8d27\u5355'
+      return this.saleOrder.saleType === 'SPOT' ? '现货单' : '期货单'
     },
     statusLabel () {
       const map = {
-        1: '\u5f85\u786e\u8ba4\u76d6\u7ae0\u5408\u540c',
-        2: '\u5f85\u786e\u8ba4\u4e8c\u6279\u6253\u6b3e\u51ed\u8bc1',
-        3: '\u5f85\u5185\u90e8\u786e\u8ba4\u94f6\u884c\u6c34\u5355',
-        4: '\u5f85\u5185\u90e8\u786e\u8ba4\u8d44\u65b9\u6253\u6b3e\u51ed\u8bc1',
-        5: '\u6d41\u7a0b\u5b8c\u6210'
+        1: '待确认盖章合同',
+        2: '待确认二批打款凭证',
+        3: '待内部确认银行水单',
+        4: '待内部确认资方打款凭证',
+        5: '流程完成'
       }
-      return map[this.saleOrder.status] || '\u5f85\u5904\u7406'
+      return map[this.saleOrder.status] || '待处理'
     },
     stepActive () {
       const status = Number(this.saleOrder.status || 1)
@@ -251,7 +252,7 @@ export default {
         if (data && data.code === 0) {
           this.saleOrder = data.saleOrder || { itemList: [], allocationItemList: [], fileList: [] }
         } else {
-          this.$message.error((data && data.msg) || '鍔犺浇澶辫触')
+          this.$message.error((data && data.msg) || '加载失败')
         }
         this.loading = false
       }).catch(() => {
@@ -283,10 +284,10 @@ export default {
         headers: { 'Content-Type': 'multipart/form-data' }
       }).then(({ data }) => {
         if (data && data.code === 0) {
-          this.$message.success('涓婁紶鎴愬姛')
+          this.$message.success('上传成功')
           this.fetchDetail()
         } else {
-          this.$message.error((data && data.msg) || '涓婁紶澶辫触')
+          this.$message.error((data && data.msg) || '上传失败')
         }
         this.uploading = false
       }).catch(() => {
@@ -305,10 +306,10 @@ export default {
         })
       }).then(({ data }) => {
         if (data && data.code === 0) {
-          this.$message.success('纭鎴愬姛')
+          this.$message.success('确认成功')
           this.fetchDetail()
         } else {
-          this.$message.error((data && data.msg) || '纭澶辫触')
+          this.$message.error((data && data.msg) || '确认失败')
         }
         this.confirming = false
         this.currentConfirmType = ''
@@ -318,14 +319,14 @@ export default {
       })
     },
     confirmedText (value) {
-      return Number(value || 0) === 1 ? '\u5df2\u786e\u8ba4' : '\u5f85\u786e\u8ba4'
+      return Number(value || 0) === 1 ? '已确认' : '待确认'
     },
     confirmedTagType (value) {
       return Number(value || 0) === 1 ? 'success' : 'warning'
     },
     openContract () {
       if (!this.saleOrder.contractUrl) {
-        this.$message.error('\u5408\u540c\u94fe\u63a5\u4e0d\u5b58\u5728')
+        this.$message.error('合同链接不存在')
         return
       }
       window.open(this.saleOrder.contractUrl, '_blank')
@@ -349,16 +350,16 @@ export default {
         document.body.removeChild(link)
         window.URL.revokeObjectURL(url)
       }).catch(() => {
-        this.$message.error('涓嬭浇澶辫触')
+        this.$message.error('下载失败')
       })
     },
     deletePortalFile (row) {
       if (!row || !row.id) {
         return
       }
-      this.$confirm('\u786e\u8ba4\u5220\u9664\u8fd9\u6761\u4e0a\u4f20\u8bb0\u5f55\u5417\uff1f', '\u63d0\u793a', {
-        confirmButtonText: '\u786e\u5b9a',
-        cancelButtonText: '\u53d6\u6d88',
+      this.$confirm('确认删除这条上传记录吗？', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
         type: 'warning'
       }).then(() => {
         this.$http({
@@ -367,10 +368,10 @@ export default {
           data: this.$http.adornData({})
         }).then(({ data }) => {
           if (data && data.code === 0) {
-            this.$message.success('\u5220\u9664\u6210\u529f')
+            this.$message.success('删除成功')
             this.fetchDetail()
           } else {
-            this.$message.error((data && data.msg) || '\u5220\u9664\u5931\u8d25')
+            this.$message.error((data && data.msg) || '删除失败')
           }
         })
       }).catch(() => {})
@@ -531,4 +532,3 @@ export default {
   }
 }
 </style>
-
