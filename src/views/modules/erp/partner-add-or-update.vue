@@ -1,0 +1,176 @@
+<template>
+  <el-dialog
+    :title="dataForm.id ? '修改往来单位' : '新增往来单位'"
+    :close-on-click-modal="false"
+    :visible.sync="visible"
+    width="760px">
+    <el-form :model="dataForm" :rules="dataRule" ref="dataForm" label-width="110px">
+      <el-row :gutter="20">
+        <el-col :span="12">
+          <el-form-item label="单位编码" prop="partnerCode">
+            <el-input v-model="dataForm.partnerCode" placeholder="请输入单位编码"></el-input>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="单位名称" prop="partnerName">
+            <el-input v-model="dataForm.partnerName" placeholder="请输入单位名称"></el-input>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="状态">
+            <el-switch v-model="dataForm.status" :active-value="1" :inactive-value="0"></el-switch>
+          </el-form-item>
+        </el-col>
+        <el-col :span="24">
+          <el-form-item label="业务角色">
+            <el-checkbox-group v-model="dataForm.businessRoles">
+              <el-checkbox
+                v-for="item in bizRoleOptions"
+                :key="item.value"
+                :label="item.value">
+                {{ item.label }}
+              </el-checkbox>
+            </el-checkbox-group>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="税号">
+            <el-input v-model="dataForm.taxNo"></el-input>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="联系人">
+            <el-input v-model="dataForm.contactName"></el-input>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="联系电话">
+            <el-input v-model="dataForm.contactPhone"></el-input>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="联系邮箱">
+            <el-input v-model="dataForm.contactEmail"></el-input>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="开户行">
+            <el-input v-model="dataForm.bankName"></el-input>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="银行账号">
+            <el-input v-model="dataForm.bankAccount"></el-input>
+          </el-form-item>
+        </el-col>
+        <el-col :span="24">
+          <el-form-item label="地址">
+            <el-input v-model="dataForm.address"></el-input>
+          </el-form-item>
+        </el-col>
+        <el-col :span="24">
+          <el-form-item label="备注">
+            <el-input v-model="dataForm.remark" type="textarea" :rows="3"></el-input>
+          </el-form-item>
+        </el-col>
+      </el-row>
+    </el-form>
+    <span slot="footer" class="dialog-footer">
+      <el-button @click="visible = false">取消</el-button>
+      <el-button type="primary" @click="dataFormSubmit()">确定</el-button>
+    </span>
+  </el-dialog>
+</template>
+
+<script>
+import { PARTNER_BIZ_ROLE_OPTIONS } from './const'
+
+const defaultForm = () => ({
+  id: 0,
+  partnerCode: '',
+  partnerName: '',
+  businessRole: '',
+  businessRoles: [],
+  taxNo: '',
+  bankName: '',
+  bankAccount: '',
+  address: '',
+  contactName: '',
+  contactPhone: '',
+  contactEmail: '',
+  remark: '',
+  status: 1
+})
+
+export default {
+  data () {
+    return {
+      visible: false,
+      bizRoleOptions: PARTNER_BIZ_ROLE_OPTIONS,
+      dataForm: defaultForm(),
+      dataRule: {
+        partnerCode: [
+          { required: true, message: '单位编码不能为空', trigger: 'blur' }
+        ],
+        partnerName: [
+          { required: true, message: '单位名称不能为空', trigger: 'blur' }
+        ]
+      }
+    }
+  },
+  methods: {
+    init (id) {
+      this.visible = true
+      this.dataForm = defaultForm()
+      this.dataForm.id = id || 0
+      this.$nextTick(() => {
+        this.$refs.dataForm.resetFields()
+        if (this.dataForm.id) {
+          this.$http({
+            url: this.$http.adornUrl(`/erp/partner/info/${this.dataForm.id}`),
+            method: 'get',
+            params: this.$http.adornParams()
+          }).then(({ data }) => {
+            if (data && data.code === 0) {
+              this.dataForm = Object.assign(defaultForm(), data.partner || {})
+              this.dataForm.businessRoles = this.dataForm.businessRole ? this.dataForm.businessRole.split(',') : []
+            } else {
+              this.$message.error(data.msg || '获取往来单位失败')
+            }
+          })
+        }
+      })
+    },
+    dataFormSubmit () {
+      this.$refs.dataForm.validate((valid) => {
+        if (!valid) {
+          return
+        }
+        const payload = Object.assign({}, this.dataForm, {
+          businessRole: (this.dataForm.businessRoles || []).join(',')
+        })
+        delete payload.partnerType
+        this.$http({
+          url: this.$http.adornUrl(`/erp/partner/${!this.dataForm.id ? 'save' : 'update'}`),
+          method: 'post',
+          data: this.$http.adornData(payload)
+        }).then(({ data }) => {
+          if (data && data.code === 0) {
+            this.$message({
+              message: '操作成功',
+              type: 'success',
+              duration: 1500,
+              onClose: () => {
+                this.visible = false
+                this.$emit('refreshDataList')
+              }
+            })
+          } else {
+            this.$message.error(data.msg || '保存失败')
+          }
+        })
+      })
+    }
+  }
+}
+</script>

@@ -48,6 +48,13 @@
         label="手机号">
       </el-table-column>
       <el-table-column
+        prop="secondaryPartnerName"
+        header-align="center"
+        align="center"
+        min-width="180"
+        label="绑定二批主体">
+      </el-table-column>
+      <el-table-column
         prop="status"
         header-align="center"
         align="center"

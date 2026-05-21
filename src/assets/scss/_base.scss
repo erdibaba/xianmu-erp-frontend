@@ -163,21 +163,25 @@ img {
     overflow: hidden;
   }
   &__brand {
-    display: table-cell;
-    vertical-align: middle;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 230px;
     height: 50px;
     margin: 0;
-    line-height: 50px;
     font-size: 20px;
     text-align: center;
     text-transform: uppercase;
-    white-space: nowrap;
     color: #fff;
 
     &-lg,
     &-mini {
-      margin: 0 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      margin: 0;
       color: #fff;
       &:focus,
       &:hover {
@@ -188,6 +192,17 @@ img {
     &-mini {
       display: none;
     }
+  }
+  &__logo {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #fff;
+  }
+  &__logo--mini {
+    width: 100%;
+    height: 100%;
   }
   &__switch {
     font-size: 18px;

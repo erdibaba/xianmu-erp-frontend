@@ -18,7 +18,8 @@ const _import = require('./import-' + process.env.NODE_ENV)
 // 全局路由(无需嵌套上左右整体布局)
 const globalRoutes = [
   { path: '/404', component: _import('common/404'), name: '404', meta: { title: '404未找到' } },
-  { path: '/login', component: _import('common/login'), name: 'login', meta: { title: '登录' } }
+  { path: '/login', component: _import('common/login'), name: 'login', meta: { title: '登录' } },
+  { path: '/sale-upload/:token', component: _import('common/sale-upload'), name: 'sale-upload', meta: { title: '销售单上传' } }
 ]
 
 // 主入口路由(需嵌套上左右整体布局)
@@ -90,9 +91,22 @@ router.beforeEach((to, from, next) => {
  * @param {*} route 当前路由
  */
 function fnCurrentRouteType (route, globalRoutes = []) {
+  if (route && route.matched && route.matched.length) {
+    const isGlobalMatched = route.matched.some(record => {
+      return globalRoutes.some(globalRoute => {
+        return (record.name && globalRoute.name && record.name === globalRoute.name) ||
+          (record.path && globalRoute.path && record.path === globalRoute.path)
+      })
+    })
+    if (isGlobalMatched) {
+      return 'global'
+    }
+  }
   var temp = []
   for (var i = 0; i < globalRoutes.length; i++) {
-    if (route.path === globalRoutes[i].path) {
+    if (route.name && globalRoutes[i].name && route.name === globalRoutes[i].name) {
+      return 'global'
+    } else if (route.path === globalRoutes[i].path) {
       return 'global'
     } else if (globalRoutes[i].children && globalRoutes[i].children.length >= 1) {
       temp = temp.concat(globalRoutes[i].children)

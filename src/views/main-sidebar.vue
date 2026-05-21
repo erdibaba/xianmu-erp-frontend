@@ -10,22 +10,8 @@
           <icon-svg name="shouye" class="site-sidebar__menu-icon"></icon-svg>
           <span slot="title">首页</span>
         </el-menu-item>
-        <el-submenu index="demo">
-          <template slot="title">
-            <icon-svg name="shoucang" class="site-sidebar__menu-icon"></icon-svg>
-            <span>demo</span>
-          </template>
-          <el-menu-item index="demo-echarts" @click="$router.push({ name: 'demo-echarts' })">
-            <icon-svg name="tubiao" class="site-sidebar__menu-icon"></icon-svg>
-            <span slot="title">echarts</span>
-          </el-menu-item>
-          <el-menu-item index="demo-ueditor" @click="$router.push({ name: 'demo-ueditor' })">
-            <icon-svg name="editor" class="site-sidebar__menu-icon"></icon-svg>
-            <span slot="title">ueditor</span>
-          </el-menu-item>
-        </el-submenu>
         <sub-menu
-          v-for="menu in menuList"
+          v-for="menu in visibleMenuList"
           :key="menu.menuId"
           :menu="menu"
           :dynamicMenuRoutes="dynamicMenuRoutes">
@@ -58,6 +44,9 @@
         get () { return this.$store.state.common.menuList },
         set (val) { this.$store.commit('common/updateMenuList', val) }
       },
+      visibleMenuList () {
+        return this.filterHiddenMenus(this.menuList)
+      },
       menuActiveName: {
         get () { return this.$store.state.common.menuActiveName },
         set (val) { this.$store.commit('common/updateMenuActiveName', val) }
@@ -80,6 +69,24 @@
       this.routeHandle(this.$route)
     },
     methods: {
+      filterHiddenMenus (menuList) {
+        return (menuList || []).reduce((result, menu) => {
+          if (this.shouldHideMenu(menu)) {
+            return result
+          }
+          const currentMenu = Object.assign({}, menu)
+          if (currentMenu.list && currentMenu.list.length) {
+            currentMenu.list = this.filterHiddenMenus(currentMenu.list)
+          }
+          result.push(currentMenu)
+          return result
+        }, [])
+      },
+      shouldHideMenu (menu) {
+        const name = String((menu && menu.name) || '').trim()
+        const url = String((menu && menu.url) || '').trim().toLowerCase()
+        return name === '数据处理' || url === 'generator/dataimport' || url === 'page/data-import'
+      },
       // 路由操作
       routeHandle (route) {
         if (route.meta.isTab) {

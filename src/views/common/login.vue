@@ -81,7 +81,12 @@
             }).then(({data}) => {
               if (data && data.code === 0) {
                 this.$cookie.set('token', data.token)
-                this.$router.replace({ name: 'home' })
+                const redirect = this.$route.query.redirect
+                if (redirect) {
+                  this.$router.replace(decodeURIComponent(redirect))
+                } else {
+                  this.$router.replace({ name: 'home' })
+                }
               } else {
                 this.getCaptcha()
                 this.$message.error(data.msg)
