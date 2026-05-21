@@ -15,26 +15,26 @@
         @keyup.enter.native="dataFormSubmit()">
         <el-row :gutter="20">
           <el-col :span="6">
-            <el-form-item label="閿€鍞被鍨? prop="saleType">
+            <el-form-item label="销售类型" prop="saleType">
               <el-select
                 v-model="dataForm.saleType"
                 :disabled="contentReadonly"
                 style="width: 100%;"
                 @change="saleTypeChangeHandle">
-                <el-option label="鏈熻揣鍗? value="FUTURES"></el-option>
-                <el-option label="鐜拌揣鍗? value="SPOT"></el-option>
+                <el-option label="期货单" value="FUTURES"></el-option>
+                <el-option label="现货单" value="SPOT"></el-option>
               </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="6">
-            <el-form-item label="浜屾壒鍟? prop="secondaryPartnerId">
+            <el-form-item label="二批商" prop="secondaryPartnerId">
               <el-select
                 v-model="dataForm.secondaryPartnerId"
                 :disabled="contentReadonly"
                 filterable
                 clearable
                 style="width: 100%;"
-                placeholder="璇烽€夋嫨浜屾壒鍟?
+                placeholder="请选择二批商"
                 @change="secondaryPartnerChangeHandle">
                 <el-option
                   v-for="item in secondaryPartnerList"
@@ -46,14 +46,14 @@
             </el-form-item>
           </el-col>
           <el-col :span="6">
-            <el-form-item :prop="isSpotSale ? 'warehouseId' : ''" label="浠撳簱">
+            <el-form-item :prop="isSpotSale ? 'warehouseId' : ''" label="仓库">
               <el-select
                 v-model="dataForm.warehouseId"
                 :disabled="contentReadonly || !isSpotSale"
                 filterable
                 clearable
                 style="width: 100%;"
-                placeholder="璇烽€夋嫨浠撳簱"
+                placeholder="请选择仓库"
                 @change="warehouseChangeHandle">
                 <el-option
                   v-for="item in warehouseList"
@@ -65,7 +65,7 @@
             </el-form-item>
           </el-col>
           <el-col :span="6">
-            <el-form-item label="鍚堝悓鍙?>
+            <el-form-item label="合同号">
               <el-input v-model="dataForm.contractNo" :disabled="contentReadonly"></el-input>
             </el-form-item>
           </el-col>
@@ -73,7 +73,7 @@
 
         <el-row :gutter="20">
           <el-col :span="6">
-            <el-form-item label="绛捐鏃ユ湡" prop="contractSignDate">
+            <el-form-item label="签订日期" prop="contractSignDate">
               <el-date-picker
                 v-model="dataForm.contractSignDate"
                 :disabled="contentReadonly"
@@ -81,36 +81,36 @@
                 value-format="yyyy-MM-dd"
                 format="yyyy-MM-dd"
                 style="width: 100%;"
-                placeholder="璇烽€夋嫨绛捐鏃ユ湡">
+                placeholder="请选择签订日期">
               </el-date-picker>
             </el-form-item>
           </el-col>
           <el-col :span="6">
-            <el-form-item label="閿€鍞崟鍙?>
+            <el-form-item label="销售单号">
               <el-input v-model="dataForm.orderNo" disabled></el-input>
             </el-form-item>
           </el-col>
           <el-col :span="6">
-            <el-form-item label="娴佺▼鐘舵€?>
+            <el-form-item label="流程状态">
               <el-input :value="statusLabel" disabled></el-input>
             </el-form-item>
           </el-col>
           <el-col :span="6">
-            <el-form-item label="鍚堝悓椤甸潰">
+            <el-form-item label="合同页面">
               <div class="contract-link-wrap">
                 <el-button
                   v-if="dataForm.contractUrl"
                   type="text"
                   size="small"
                   @click="openContract()">
-                  鎵撳紑鍚堝悓椤甸潰
+                  打开合同页面
                 </el-button>
                 <el-button
                   v-if="dataForm.contractUrl"
                   type="text"
                   size="small"
                   @click="copyContractUrl()">
-                  &#x590D;&#x5236;&#x94FE;&#x63A5;
+                  复制链接
                 </el-button>
                 <span v-else>-</span>
               </div>
@@ -146,12 +146,12 @@
           </el-col>
         </el-row>
 
-        <el-form-item label="澶囨敞">
+        <el-form-item label="备注">
           <el-input v-model="dataForm.remark" :disabled="contentReadonly" type="textarea"></el-input>
         </el-form-item>
 
         <div class="sub-title">
-          <span>{{ isSpotSale ? 'By浜у搧褰曞崟鏄庣粏' : '鏈熻揣浜у搧鏄庣粏' }}</span>
+          <span>{{ isSpotSale ? 'By产品录单明细' : '期货产品明细' }}</span>
           <div class="sub-title-actions">
             <el-button
               v-if="showSpotPreviewButton"
@@ -160,7 +160,7 @@
               plain
               :loading="previewLoading"
               @click="previewSpotAllocation">
-              鐢熸垚鐜拌揣鍒嗛厤鏄庣粏
+              生成现货分配明细
             </el-button>
             <el-button
               v-if="!contentReadonly"
@@ -168,15 +168,15 @@
               type="primary"
               plain
               @click="addItemRow()">
-              鏂板鏄庣粏
+              新增明细
             </el-button>
           </div>
         </div>
 
         <el-table :data="dataForm.itemList" border size="mini" class="item-table">
-          <el-table-column type="index" label="搴忓彿" width="60" align="center"></el-table-column>
+          <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
 
-          <el-table-column label="浜у搧缂栫爜" min-width="220">
+          <el-table-column label="产品编码" min-width="220">
             <template slot-scope="scope">
               <el-select
                 v-model="scope.row.productId"
@@ -187,7 +187,7 @@
                 size="mini"
                 :disabled="contentReadonly"
                 :loading="scope.row._productLoading"
-                placeholder="杈撳叆浜у搧缂栫爜/涓枃/鑻辨枃鎼滅储"
+                placeholder="输入产品编码/中文/英文搜索"
                 style="width: 100%;"
                 @visible-change="visible => productSelectVisibleChange(scope.row, visible)"
                 :remote-method="keyword => remoteSearchProducts(scope.row, keyword)"
@@ -204,12 +204,12 @@
             </template>
           </el-table-column>
 
-          <el-table-column prop="productName" label="涓枃鍚嶇О" min-width="140" show-overflow-tooltip></el-table-column>
-          <el-table-column prop="productNameEn" label="鑻辨枃鍚嶇О" min-width="220" show-overflow-tooltip></el-table-column>
-          <el-table-column prop="productSpec" label="瑙勬牸" width="90"></el-table-column>
-          <el-table-column prop="unit" label="鍗曚綅" width="80"></el-table-column>
+          <el-table-column prop="productName" label="中文名称" min-width="140" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="productSpec" label="规格" width="90"></el-table-column>
+          <el-table-column prop="unit" label="单位" width="80"></el-table-column>
 
-          <el-table-column label="绠辨暟" width="100">
+          <el-table-column label="箱数" width="100">
             <template slot-scope="scope">
               <el-input-number
                 v-model="scope.row.boxes"
@@ -224,7 +224,7 @@
             </template>
           </el-table-column>
 
-          <el-table-column label="閿€鍞环锛堝厓/鍗冨厠锛? width="150">
+          <el-table-column label="销售价（元/千克）" width="150">
             <template slot-scope="scope">
               <el-input-number
                 v-model="scope.row.salePriceKg"
@@ -239,7 +239,7 @@
             </template>
           </el-table-column>
 
-          <el-table-column v-if="isFuturesSale" label="鏁伴噺/鍗冨厠" width="130">
+          <el-table-column v-if="isFuturesSale" label="数量/千克" width="130">
             <template slot-scope="scope">
               <el-input-number
                 v-model="scope.row.contractQuantityKg"
@@ -253,34 +253,34 @@
             </template>
           </el-table-column>
 
-          <el-table-column v-if="isFuturesSale" label="鍘傚彿" width="120">
+          <el-table-column v-if="isFuturesSale" label="厂号" width="120">
             <template slot-scope="scope">
               <el-input v-model="scope.row.contractFactoryNo" :disabled="contentReadonly" size="mini"></el-input>
             </template>
           </el-table-column>
 
-          <el-table-column v-if="isFuturesSale" label="娓彛/鍐峰簱" min-width="140">
+          <el-table-column v-if="isFuturesSale" label="港口/冷库" min-width="140">
             <template slot-scope="scope">
               <el-input v-model="scope.row.contractPortCold" :disabled="contentReadonly" size="mini"></el-input>
             </template>
           </el-table-column>
 
-          <el-table-column label="澶囨敞" min-width="160">
+          <el-table-column label="备注" min-width="160">
             <template slot-scope="scope">
               <el-input v-model="scope.row.remark" :disabled="contentReadonly" size="mini"></el-input>
             </template>
           </el-table-column>
 
-          <el-table-column v-if="!contentReadonly" label="鎿嶄綔" width="80" align="center">
+          <el-table-column v-if="!contentReadonly" label="操作" width="80" align="center">
             <template slot-scope="scope">
-              <el-button type="text" size="small" @click="removeItemRow(scope.$index)">鍒犻櫎</el-button>
+              <el-button type="text" size="small" @click="removeItemRow(scope.$index)">删除</el-button>
             </template>
           </el-table-column>
         </el-table>
 
         <div v-if="showSpotAllocation" class="sub-title">
-          <span>绯荤粺鑷姩鍒嗛厤缁撴灉</span>
-          <span class="sub-title-tip">鐜拌揣鍗曢渶鍦ㄦ瘡涓煖鍙疯褰曞叆鏁伴噺/鍗冨厠銆佸巶鍙枫€佹腐鍙?鍐峰簱</span>
+          <span>系统自动分配结果</span>
+          <span class="sub-title-tip">现货单需在每个柜号行录入数量/千克、厂号、港口/冷库</span>
         </div>
         <el-table
           v-if="showSpotAllocation"
@@ -288,13 +288,13 @@
           border
           size="mini"
           class="allocation-table">
-          <el-table-column type="index" label="搴忓彿" width="60" align="center"></el-table-column>
-          <el-table-column prop="productCode" label="浜у搧缂栫爜" min-width="120"></el-table-column>
-          <el-table-column prop="productName" label="涓枃鍚嶇О" min-width="140" show-overflow-tooltip></el-table-column>
-          <el-table-column prop="productNameEn" label="鑻辨枃鍚嶇О" min-width="220" show-overflow-tooltip></el-table-column>
-          <el-table-column prop="boxes" label="鍒嗛厤绠辨暟" width="90" align="center"></el-table-column>
-          <el-table-column prop="sourceContainerNo" label="鏌滃彿" min-width="120"></el-table-column>
-          <el-table-column label="閿€鍞环锛堝厓/鍗冨厠锛? width="150">
+          <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
+          <el-table-column prop="productCode" label="产品编码" min-width="120"></el-table-column>
+          <el-table-column prop="productName" label="中文名称" min-width="140" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="boxes" label="分配箱数" width="90" align="center"></el-table-column>
+          <el-table-column prop="sourceContainerNo" label="柜号" min-width="120"></el-table-column>
+          <el-table-column label="销售价（元/千克）" width="150">
             <template slot-scope="scope">
               <el-input-number
                 v-model="scope.row.salePriceKg"
@@ -306,7 +306,7 @@
               </el-input-number>
             </template>
           </el-table-column>
-          <el-table-column label="鏁伴噺/鍗冨厠" width="130">
+          <el-table-column label="数量/千克" width="130">
             <template slot-scope="scope">
               <el-input-number
                 v-model="scope.row.contractQuantityKg"
@@ -319,27 +319,27 @@
               </el-input-number>
             </template>
           </el-table-column>
-          <el-table-column label="鍘傚彿" width="120">
+          <el-table-column label="厂号" width="120">
             <template slot-scope="scope">
               <el-input v-model="scope.row.contractFactoryNo" :disabled="contentReadonly" size="mini"></el-input>
             </template>
           </el-table-column>
-          <el-table-column label="娓彛/鍐峰簱" min-width="140">
+          <el-table-column label="港口/冷库" min-width="140">
             <template slot-scope="scope">
               <el-input v-model="scope.row.contractPortCold" :disabled="contentReadonly" size="mini"></el-input>
             </template>
           </el-table-column>
-          <el-table-column label="鍏ュ簱鏃ユ湡" width="120" align="center">
+          <el-table-column label="入库日期" width="120" align="center">
             <template slot-scope="scope">{{ formatDateOnly(scope.row.inboundDate) }}</template>
           </el-table-column>
-          <el-table-column label="杩囨湡鏃ユ湡" width="120" align="center">
+          <el-table-column label="过期日期" width="120" align="center">
             <template slot-scope="scope">{{ formatDateOnly(scope.row.expiryDate) }}</template>
           </el-table-column>
         </el-table>
 
-        <div v-if="dataForm.id" class="sub-title">鍚堝悓涓庝粯娆鹃檮浠?/div>
+        <div v-if="dataForm.id" class="sub-title">合同与付款附件</div>
         <el-tabs v-if="dataForm.id" value="signedContract">
-          <el-tab-pane label="鐩栫珷鍚堝悓" name="signedContract">
+          <el-tab-pane label="盖章合同" name="signedContract">
             <div class="attachment-toolbar">
               <el-button
                 v-if="attachmentEditable && canUploadStep('SIGNED_CONTRACT')"
@@ -347,7 +347,7 @@
                 type="primary"
                 plain
                 @click="triggerUpload('SIGNED_CONTRACT')">
-                涓婁紶鐩栫珷鍚堝悓
+                上传盖章合同
               </el-button>
               <el-button
                 v-if="attachmentEditable && canConfirmStep('SIGNED_CONTRACT')"
@@ -355,27 +355,27 @@
                 type="success"
                 :loading="confirmLoading && currentConfirmType === 'SIGNED_CONTRACT'"
                 @click="confirmStep('SIGNED_CONTRACT')">
-                纭鍚堝悓娌￠棶棰?              </el-button>
+                确认合同无误</el-button>
             </div>
             <el-table :data="getFileListByType('SIGNED_CONTRACT')" border size="mini" class="attachment-table">
-              <el-table-column prop="fileName" label="鏂囦欢鍚嶇О" min-width="240" show-overflow-tooltip></el-table-column>
-              <el-table-column label="涓婁紶鏃堕棿" width="170" align="center">
+              <el-table-column prop="fileName" label="文件名称" min-width="240" show-overflow-tooltip></el-table-column>
+              <el-table-column label="上传时间" width="170" align="center">
                 <template slot-scope="scope">{{ formatDateTime(scope.row.createTime) }}</template>
               </el-table-column>
-              <el-table-column label="涓嬭浇" width="100" align="center">
+              <el-table-column label="下载" width="100" align="center">
                 <template slot-scope="scope">
-                  <el-button type="text" size="small" @click="downloadFile(scope.row)">涓嬭浇</el-button>
+                  <el-button type="text" size="small" @click="downloadFile(scope.row)">下载</el-button>
                 </template>
               </el-table-column>
-              <el-table-column label="鍒犻櫎" width="100" align="center">
+              <el-table-column label="删除" width="100" align="center">
                 <template slot-scope="scope">
-                  <el-button v-if="attachmentEditable && canDeleteStep('SIGNED_CONTRACT')" type="text" size="small" @click="deleteFile(scope.row)">鍒犻櫎</el-button>
+                  <el-button v-if="attachmentEditable && canDeleteStep('SIGNED_CONTRACT')" type="text" size="small" @click="deleteFile(scope.row)">删除</el-button>
                 </template>
               </el-table-column>
             </el-table>
           </el-tab-pane>
 
-          <el-tab-pane label="浜屾壒鎵撴鍑瘉" name="buyerPayment">
+          <el-tab-pane label="二批打款凭证" name="buyerPayment">
             <div class="attachment-toolbar">
               <el-button
                 v-if="attachmentEditable && canUploadStep('BUYER_PAYMENT_PROOF')"
@@ -383,7 +383,7 @@
                 type="primary"
                 plain
                 @click="triggerUpload('BUYER_PAYMENT_PROOF')">
-                涓婁紶浜屾壒鎵撴鍑瘉
+                上传二批打款凭证
               </el-button>
               <el-button
                 v-if="attachmentEditable && canConfirmStep('BUYER_PAYMENT_PROOF')"
@@ -391,28 +391,28 @@
                 type="success"
                 :loading="confirmLoading && currentConfirmType === 'BUYER_PAYMENT_PROOF'"
                 @click="confirmStep('BUYER_PAYMENT_PROOF')">
-                纭浜屾壒鎵撴鍑瘉
+                确认二批打款凭证
               </el-button>
             </div>
             <el-table :data="getFileListByType('BUYER_PAYMENT_PROOF')" border size="mini" class="attachment-table">
-              <el-table-column prop="fileName" label="鏂囦欢鍚嶇О" min-width="240" show-overflow-tooltip></el-table-column>
-              <el-table-column label="涓婁紶鏃堕棿" width="170" align="center">
+              <el-table-column prop="fileName" label="文件名称" min-width="240" show-overflow-tooltip></el-table-column>
+              <el-table-column label="上传时间" width="170" align="center">
                 <template slot-scope="scope">{{ formatDateTime(scope.row.createTime) }}</template>
               </el-table-column>
-              <el-table-column label="涓嬭浇" width="100" align="center">
+              <el-table-column label="下载" width="100" align="center">
                 <template slot-scope="scope">
-                  <el-button type="text" size="small" @click="downloadFile(scope.row)">涓嬭浇</el-button>
+                  <el-button type="text" size="small" @click="downloadFile(scope.row)">下载</el-button>
                 </template>
               </el-table-column>
-              <el-table-column label="鍒犻櫎" width="100" align="center">
+              <el-table-column label="删除" width="100" align="center">
                 <template slot-scope="scope">
-                  <el-button v-if="attachmentEditable && canDeleteStep('BUYER_PAYMENT_PROOF')" type="text" size="small" @click="deleteFile(scope.row)">鍒犻櫎</el-button>
+                  <el-button v-if="attachmentEditable && canDeleteStep('BUYER_PAYMENT_PROOF')" type="text" size="small" @click="deleteFile(scope.row)">删除</el-button>
                 </template>
               </el-table-column>
             </el-table>
           </el-tab-pane>
 
-          <el-tab-pane label="浜屾壒鏉ユ姘村崟" name="buyerBank">
+          <el-tab-pane label="二批来款水单" name="buyerBank">
             <div class="attachment-toolbar">
               <el-button
                 v-if="attachmentEditable && canUploadStep('BUYER_BANK_SLIP')"
@@ -420,7 +420,7 @@
                 type="primary"
                 plain
                 @click="triggerUpload('BUYER_BANK_SLIP')">
-                涓婁紶浜屾壒鏉ユ姘村崟
+                上传二批来款水单
               </el-button>
               <el-button
                 v-if="attachmentEditable && canConfirmStep('BUYER_BANK_SLIP')"
@@ -428,28 +428,28 @@
                 type="success"
                 :loading="confirmLoading && currentConfirmType === 'BUYER_BANK_SLIP'"
                 @click="confirmStep('BUYER_BANK_SLIP')">
-                纭浜屾壒鏉ユ姘村崟
+                确认二批来款水单
               </el-button>
             </div>
             <el-table :data="getFileListByType('BUYER_BANK_SLIP')" border size="mini" class="attachment-table">
-              <el-table-column prop="fileName" label="鏂囦欢鍚嶇О" min-width="240" show-overflow-tooltip></el-table-column>
-              <el-table-column label="涓婁紶鏃堕棿" width="170" align="center">
+              <el-table-column prop="fileName" label="文件名称" min-width="240" show-overflow-tooltip></el-table-column>
+              <el-table-column label="上传时间" width="170" align="center">
                 <template slot-scope="scope">{{ formatDateTime(scope.row.createTime) }}</template>
               </el-table-column>
-              <el-table-column label="涓嬭浇" width="100" align="center">
+              <el-table-column label="下载" width="100" align="center">
                 <template slot-scope="scope">
-                  <el-button type="text" size="small" @click="downloadFile(scope.row)">涓嬭浇</el-button>
+                  <el-button type="text" size="small" @click="downloadFile(scope.row)">下载</el-button>
                 </template>
               </el-table-column>
-              <el-table-column label="鍒犻櫎" width="100" align="center">
+              <el-table-column label="删除" width="100" align="center">
                 <template slot-scope="scope">
-                  <el-button v-if="attachmentEditable && canDeleteStep('BUYER_BANK_SLIP')" type="text" size="small" @click="deleteFile(scope.row)">鍒犻櫎</el-button>
+                  <el-button v-if="attachmentEditable && canDeleteStep('BUYER_BANK_SLIP')" type="text" size="small" @click="deleteFile(scope.row)">删除</el-button>
                 </template>
               </el-table-column>
             </el-table>
           </el-tab-pane>
 
-          <el-tab-pane label="璧勬柟鎵撴鍑瘉" name="funderPayment">
+          <el-tab-pane label="资方打款凭证" name="funderPayment">
             <div class="attachment-toolbar">
               <el-button
                 v-if="attachmentEditable && canUploadStep('FUNDER_PAYMENT_PROOF')"
@@ -457,7 +457,7 @@
                 type="primary"
                 plain
                 @click="triggerUpload('FUNDER_PAYMENT_PROOF')">
-                涓婁紶璧勬柟鎵撴鍑瘉
+                上传资方打款凭证
               </el-button>
               <el-button
                 v-if="attachmentEditable && canConfirmStep('FUNDER_PAYMENT_PROOF')"
@@ -465,22 +465,22 @@
                 type="success"
                 :loading="confirmLoading && currentConfirmType === 'FUNDER_PAYMENT_PROOF'"
                 @click="confirmStep('FUNDER_PAYMENT_PROOF')">
-                纭璧勬柟鎵撴鍑瘉
+                确认资方打款凭证
               </el-button>
             </div>
             <el-table :data="getFileListByType('FUNDER_PAYMENT_PROOF')" border size="mini" class="attachment-table">
-              <el-table-column prop="fileName" label="鏂囦欢鍚嶇О" min-width="240" show-overflow-tooltip></el-table-column>
-              <el-table-column label="涓婁紶鏃堕棿" width="170" align="center">
+              <el-table-column prop="fileName" label="文件名称" min-width="240" show-overflow-tooltip></el-table-column>
+              <el-table-column label="上传时间" width="170" align="center">
                 <template slot-scope="scope">{{ formatDateTime(scope.row.createTime) }}</template>
               </el-table-column>
-              <el-table-column label="涓嬭浇" width="100" align="center">
+              <el-table-column label="下载" width="100" align="center">
                 <template slot-scope="scope">
-                  <el-button type="text" size="small" @click="downloadFile(scope.row)">涓嬭浇</el-button>
+                  <el-button type="text" size="small" @click="downloadFile(scope.row)">下载</el-button>
                 </template>
               </el-table-column>
-              <el-table-column label="鍒犻櫎" width="100" align="center">
+              <el-table-column label="删除" width="100" align="center">
                 <template slot-scope="scope">
-                  <el-button v-if="attachmentEditable && canDeleteStep('FUNDER_PAYMENT_PROOF')" type="text" size="small" @click="deleteFile(scope.row)">鍒犻櫎</el-button>
+                  <el-button v-if="attachmentEditable && canDeleteStep('FUNDER_PAYMENT_PROOF')" type="text" size="small" @click="deleteFile(scope.row)">删除</el-button>
                 </template>
               </el-table-column>
             </el-table>
@@ -492,13 +492,13 @@
     </div>
 
     <span slot="footer" class="dialog-footer">
-      <el-button @click="visible = false">鍙栨秷</el-button>
+      <el-button @click="visible = false">取消</el-button>
       <el-button
         v-if="!contentReadonly"
         type="primary"
         :loading="saveLoading"
         @click="dataFormSubmit()">
-        淇濆瓨
+        保存
       </el-button>
     </span>
   </el-dialog>
@@ -550,7 +550,7 @@ export default {
         2: '待确认二批打款凭证',
         3: '待内部确认二批来款水单',
         4: '待内部确认资方打款凭证',
-        5: '娴佺▼瀹屾垚'
+        5: '流程完成'
       }
       return map[this.dataForm.status] || '待处理'
     },
@@ -707,7 +707,7 @@ export default {
         if (data && data.code === 0) {
           this.dataForm = this.normalizeForm(data.saleOrder || {})
         } else {
-          this.$message.error((data && data.msg) || '鍔犺浇澶辫触')
+          this.$message.error((data && data.msg) || '加载失败')
         }
       })
     },
@@ -940,7 +940,7 @@ export default {
         if (data && data.code === 0) {
           this.dataForm.allocationItemList = (data.list || []).map(item => Object.assign(this.defaultAllocationRow(), item))
         } else {
-          this.$message.error((data && data.msg) || '鐢熸垚鐜拌揣鍒嗛厤鏄庣粏澶辫触')
+          this.$message.error((data && data.msg) || '生成现货分配明细失败')
         }
         this.previewLoading = false
       }).catch(() => {
@@ -948,17 +948,17 @@ export default {
       })
     },
     validateSpotPreview () {
-      if (!this.dataForm.warehouseId) return '璇峰厛閫夋嫨浠撳簱'
-      if (!this.dataForm.itemList.length) return '璇峰厛褰曞叆鐜拌揣浜у搧鏄庣粏'
+      if (!this.dataForm.warehouseId) return '请先选择仓库'
+      if (!this.dataForm.itemList.length) return '请先录入现货产品明细'
       const productIds = {}
       for (let index = 0; index < this.dataForm.itemList.length; index++) {
         const item = this.dataForm.itemList[index]
-        if (!item.productId) return `鐜拌揣鍗曠${index + 1}琛屼骇鍝佹湭閫夋嫨`
-        if (!item.boxes || Number(item.boxes) <= 0) return `鐜拌揣鍗曠${index + 1}琛岀鏁板繀椤诲ぇ浜?`
+        if (!item.productId) return `现货单第${index + 1}行产品未选择`
+        if (!item.boxes || Number(item.boxes) <= 0) return `现货单第${index + 1}行箱数必须大于0`
         if (item.salePriceKg === null || item.salePriceKg === '' || Number(item.salePriceKg) <= 0) {
-          return `鐜拌揣鍗曠${index + 1}琛岄攢鍞环锛堝厓/鍗冨厠锛夊繀椤诲ぇ浜?`
+          return `现货单第${index + 1}行销售价（元/千克）必须大于0`
         }
-        if (productIds[item.productId]) return '鐜拌揣鍗曚笉鏀寔閲嶅褰曞叆鍚屼竴浜у搧锛岃鍚堝苟绠辨暟鍚庡啀鐢熸垚鍒嗛厤鏄庣粏'
+        if (productIds[item.productId]) return '现货单不支持重复录入同一产品，请合并箱数后再生成分配明细'
         productIds[item.productId] = true
       }
       return ''
@@ -1092,11 +1092,11 @@ export default {
           data: this.$http.adornData(this.buildSubmitData())
         }).then(({ data }) => {
           if (data && data.code === 0) {
-            this.$message.success('淇濆瓨鎴愬姛')
+            this.$message.success('保存成功')
             this.visible = false
             this.$emit('refreshDataList')
           } else {
-            this.$message.error((data && data.msg) || '淇濆瓨澶辫触')
+            this.$message.error((data && data.msg) || '保存失败')
           }
           this.saveLoading = false
         }).catch(() => {
@@ -1148,11 +1148,11 @@ export default {
         })
       }).then(({ data }) => {
         if (data && data.code === 0) {
-          this.$message.success('纭鎴愬姛')
+          this.$message.success('确认成功')
           this.refreshDetail()
           this.$emit('refreshDataList')
         } else {
-          this.$message.error((data && data.msg) || '纭澶辫触')
+          this.$message.error((data && data.msg) || '确认失败')
         }
         this.confirmLoading = false
         this.currentConfirmType = ''
@@ -1170,7 +1170,7 @@ export default {
     },
     copyContractUrl () {
       if (!this.dataForm.contractUrl) {
-        this.$message.error('\u5408\u540c\u94fe\u63a5\u4e0d\u5b58\u5728')
+        this.$message.error('合同链接不存在')
         return
       }
       const text = String(this.dataForm.contractUrl)
@@ -1185,8 +1185,8 @@ export default {
         document.execCommand('copy')
         document.body.removeChild(input)
       }
-      const success = () => this.$message.success('\u94fe\u63a5\u5df2\u590d\u5236')
-      const failure = () => this.$message.error('\u590d\u5236\u5931\u8d25\uff0c\u8bf7\u624b\u52a8\u590d\u5236')
+      const success = () => this.$message.success('链接已复制')
+      const failure = () => this.$message.error('复制失败，请手动复制')
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text).then(success).catch(() => {
           try {
@@ -1220,11 +1220,11 @@ export default {
         headers: { 'Content-Type': 'multipart/form-data' }
       }).then(({ data }) => {
         if (data && data.code === 0) {
-          this.$message.success('涓婁紶鎴愬姛')
+          this.$message.success('上传成功')
           this.refreshDetail()
           this.$emit('refreshDataList')
         } else {
-          this.$message.error((data && data.msg) || '涓婁紶澶辫触')
+          this.$message.error((data && data.msg) || '上传失败')
         }
         this.uploadLoading = false
       }).catch(() => {
@@ -1240,16 +1240,16 @@ export default {
     },
     downloadFile (row) {
       if (!row.id) {
-        this.$message.error('????ID')
+        this.$message.error('缺少文件ID')
         return
       }
       window.open(this.$http.adornUrl(`/erp/saleorder/download/file/${row.id}`), '_blank')
     },
     deleteFile (row) {
       if (!row || !row.id) return
-      this.$confirm('???????????', '??', {
-        confirmButtonText: '??',
-        cancelButtonText: '??',
+      this.$confirm('确认删除这条上传记录？', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
         type: 'warning'
       }).then(() => {
         this.$http({
@@ -1258,11 +1258,11 @@ export default {
           data: this.$http.adornData({})
         }).then(({ data }) => {
           if (data && data.code === 0) {
-            this.$message.success('????')
+            this.$message.success('删除成功')
             this.refreshDetail()
             this.$emit('refreshDataList')
           } else {
-            this.$message.error((data && data.msg) || '????')
+            this.$message.error((data && data.msg) || '删除失败')
           }
         })
       }).catch(() => {})
