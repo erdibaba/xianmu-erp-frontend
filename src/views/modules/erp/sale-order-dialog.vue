@@ -1024,6 +1024,8 @@ export default {
     },
     buildSubmitData () {
       return Object.assign({}, this.dataForm, {
+        sourcePresaleOrderId: this.dataForm.sourcePresaleOrderId || null,
+        sourcePresaleOrderNo: this.dataForm.sourcePresaleOrderNo || null,
         itemList: (this.dataForm.itemList || []).map((item, index) => ({
           id: item.id,
           lineNo: index + 1,
@@ -1039,9 +1041,9 @@ export default {
           contractQuantityKg: item.contractQuantityKg,
           contractFactoryNo: item.contractFactoryNo,
           contractPortCold: item.contractPortCold,
-          sourcePresaleOrderId: this.dataForm.sourcePresaleOrderId,
-          sourcePresaleOrderNo: this.dataForm.sourcePresaleOrderNo,
-          sourcePresaleOrderItemId: item.sourcePresaleOrderItemId,
+          sourcePresaleOrderId: this.dataForm.sourcePresaleOrderId || null,
+          sourcePresaleOrderNo: this.dataForm.sourcePresaleOrderNo || null,
+          sourcePresaleOrderItemId: item.sourcePresaleOrderItemId || null,
           remark: item.remark
         })),
         allocationItemList: (this.dataForm.allocationItemList || []).map((item, index) => ({
