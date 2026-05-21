@@ -1127,13 +1127,29 @@ export default {
       return !this.isStepConfirmed(fileType)
     },
     canUploadStep (fileType) {
-      return !this.isStepConfirmed(fileType)
+      if (this.isStepConfirmed(fileType)) return false
+      if (fileType === 'SIGNED_CONTRACT') return true
+      if (fileType === 'BUYER_PAYMENT_PROOF') return this.isStepConfirmed('SIGNED_CONTRACT')
+      if (fileType === 'BUYER_BANK_SLIP') return this.isStepConfirmed('BUYER_PAYMENT_PROOF')
+      if (fileType === 'FUNDER_PAYMENT_PROOF') return this.isStepConfirmed('BUYER_BANK_SLIP')
+      return false
     },
     triggerUpload (fileType) {
       if (!this.attachmentEditable) return
+      if (!this.canUploadStep(fileType)) {
+        this.$message.error(this.getUploadStepMessage(fileType))
+        return
+      }
       this.currentUploadType = fileType
       this.$refs.uploadInput.value = ''
       this.$refs.uploadInput.click()
+    },
+    getUploadStepMessage (fileType) {
+      if (this.isStepConfirmed(fileType)) return '该节点已确认，不能重复上传'
+      if (fileType === 'BUYER_PAYMENT_PROOF') return '请先上传并确认盖章合同'
+      if (fileType === 'BUYER_BANK_SLIP') return '请先上传并确认二批打款凭证'
+      if (fileType === 'FUNDER_PAYMENT_PROOF') return '请先上传并确认二批来款水单'
+      return '当前节点暂不可上传'
     },
     confirmStep (fileType) {
       if (!this.dataForm.id) return
