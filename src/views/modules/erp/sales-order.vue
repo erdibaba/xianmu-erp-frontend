@@ -50,6 +50,17 @@
       <el-table-column prop="secondaryPartnerName" label="二批商" min-width="180"></el-table-column>
       <el-table-column prop="warehouseName" label="仓库" min-width="160"></el-table-column>
       <el-table-column prop="contractNo" label="合同号" min-width="160"></el-table-column>
+      <el-table-column label="关联预销售单" min-width="170">
+        <template slot-scope="scope">{{ scope.row.sourcePresaleOrderNo || '-' }}</template>
+      </el-table-column>
+      <el-table-column label="预售关联状态" width="120" align="center">
+        <template slot-scope="scope">
+          <el-tag v-if="scope.row.saleType === 'FUTURES'" size="small" :type="Number(scope.row.presaleLinkConfirmed || 0) === 1 ? 'success' : 'warning'">
+            {{ Number(scope.row.presaleLinkConfirmed || 0) === 1 ? '已确认' : '未确认' }}
+          </el-tag>
+          <span v-else>-</span>
+        </template>
+      </el-table-column>
       <el-table-column label="流程状态" min-width="180" align="center">
         <template slot-scope="scope">
           <el-tag size="small" :type="getStatusType(scope.row.status)">{{ getStatusLabel(scope.row.status) }}</el-tag>
@@ -78,6 +89,13 @@
         <template slot-scope="scope">
           <div class="action-wrap">
             <el-button type="text" size="small" @click="viewHandle(scope.row.id)">详情</el-button>
+            <el-button
+              v-if="isAuth('erp:tradeorder:update') && scope.row.saleType === 'FUTURES'"
+              type="text"
+              size="small"
+              @click="openPresaleLinkDialog(scope.row)">
+              预售关联
+            </el-button>
             <el-button
               v-if="isAuth('erp:tradeorder:update')"
               type="text"
@@ -112,6 +130,63 @@
       ref="dialog"
       @refreshDataList="getDataList">
     </sale-order-dialog>
+
+    <el-dialog
+      title="期货单关联预销售单"
+      :visible.sync="presaleLinkVisible"
+      :close-on-click-modal="false"
+      width="560px">
+      <el-form label-width="120px">
+        <el-form-item label="销售单号">
+          <el-input v-model="presaleLinkForm.orderNo" disabled></el-input>
+        </el-form-item>
+        <el-form-item label="当前状态">
+          <el-tag :type="presaleLinkForm.confirmed ? 'success' : 'warning'">
+            {{ presaleLinkForm.confirmed ? '已确认，不能修改' : '未确认，可修改' }}
+          </el-tag>
+        </el-form-item>
+        <el-form-item label="关联预销售单">
+          <el-select
+            v-model="presaleLinkForm.presaleOrderId"
+            :disabled="presaleLinkForm.confirmed"
+            filterable
+            remote
+            reserve-keyword
+            style="width: 100%;"
+            placeholder="输入预售合同号搜索"
+            :loading="presaleOrderLoading"
+            :remote-method="remoteSearchPresaleOrders"
+            @visible-change="presaleOrderVisibleChange"
+            @change="presaleOrderChangeHandle">
+            <el-option
+              v-for="item in presaleOrderOptions"
+              :key="item.presaleOrderId"
+              :label="item.sellerContractNo || item.presaleOrderNo"
+              :value="item.presaleOrderId">
+              <div class="product-option-code">{{ item.sellerContractNo || item.presaleOrderNo }}</div>
+              <div class="product-option-name">{{ item.customerReference || '-' }} / {{ item.brandName || '-' }}</div>
+            </el-option>
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="presaleLinkVisible = false">关闭</el-button>
+        <el-button
+          v-if="!presaleLinkForm.confirmed"
+          type="primary"
+          :loading="presaleLinkSaving"
+          @click="savePresaleLink()">
+          保存关联
+        </el-button>
+        <el-button
+          v-if="!presaleLinkForm.confirmed"
+          type="success"
+          :loading="presaleLinkConfirming"
+          @click="confirmPresaleLink()">
+          确认关联
+        </el-button>
+      </span>
+    </el-dialog>
   </div>
 </template>
 
@@ -145,7 +220,20 @@ export default {
       pageSize: 10,
       totalPage: 0,
       dataListLoading: false,
-      dialogVisible: false
+      dialogVisible: false,
+      presaleLinkVisible: false,
+      presaleLinkSaving: false,
+      presaleLinkConfirming: false,
+      presaleOrderLoading: false,
+      presaleOrderOptions: [],
+      presaleLinkForm: {
+        saleOrderId: '',
+        orderNo: '',
+        presaleOrderId: '',
+        originalPresaleOrderId: '',
+        sourcePresaleOrderNo: '',
+        confirmed: false
+      }
     }
   },
   activated () {
@@ -246,6 +334,127 @@ export default {
         Number(row.buyerBankSlipUploaded || 0) > 0 ||
         Number(row.funderPaymentUploaded || 0) > 0
     },
+    openPresaleLinkDialog (row) {
+      if (row.saleType !== 'FUTURES') {
+        this.$message.error('只有期货单需要关联预销售单')
+        return
+      }
+      this.presaleLinkForm = {
+        saleOrderId: row.id,
+        orderNo: row.orderNo,
+        presaleOrderId: row.sourcePresaleOrderId || '',
+        originalPresaleOrderId: row.sourcePresaleOrderId || '',
+        sourcePresaleOrderNo: row.sourcePresaleOrderNo || '',
+        confirmed: Number(row.presaleLinkConfirmed || 0) === 1
+      }
+      this.presaleOrderOptions = row.sourcePresaleOrderId ? [{
+        presaleOrderId: row.sourcePresaleOrderId,
+        sellerContractNo: row.sourcePresaleOrderNo,
+        presaleOrderNo: row.sourcePresaleOrderNo,
+        customerReference: '',
+        brandName: ''
+      }] : []
+      this.presaleLinkVisible = true
+      if (!this.presaleOrderOptions.length) {
+        this.remoteSearchPresaleOrders('')
+      }
+    },
+    presaleOrderVisibleChange (visible) {
+      if (visible && !this.presaleOrderOptions.length) {
+        this.remoteSearchPresaleOrders('')
+      }
+    },
+    remoteSearchPresaleOrders (keyword) {
+      this.presaleOrderLoading = true
+      this.$http({
+        url: this.$http.adornUrl('/erp/saleorder/presale-orders'),
+        method: 'get',
+        params: this.$http.adornParams({ keyword: keyword || '' })
+      }).then(({ data }) => {
+        if (data && data.code === 0) {
+          this.presaleOrderOptions = data.list || []
+        } else {
+          this.presaleOrderOptions = []
+        }
+        this.presaleOrderLoading = false
+      }).catch(() => {
+        this.presaleOrderOptions = []
+        this.presaleOrderLoading = false
+      })
+    },
+    presaleOrderChangeHandle (value) {
+      const target = this.presaleOrderOptions.find(item => item.presaleOrderId === value)
+      this.presaleLinkForm.sourcePresaleOrderNo = target ? (target.sellerContractNo || target.presaleOrderNo || '') : ''
+    },
+    doSavePresaleLink () {
+      return this.$http({
+        url: this.$http.adornUrl('/erp/saleorder/presale-link/update'),
+        method: 'post',
+        data: this.$http.adornData({
+          saleOrderId: this.presaleLinkForm.saleOrderId,
+          presaleOrderId: this.presaleLinkForm.presaleOrderId
+        })
+      })
+    },
+    savePresaleLink () {
+      if (!this.presaleLinkForm.presaleOrderId) {
+        this.$message.error('请选择关联预销售单')
+        return
+      }
+      this.presaleLinkSaving = true
+      this.doSavePresaleLink().then(({ data }) => {
+        if (data && data.code === 0) {
+          this.$message.success('关联预销售单已保存')
+          this.presaleLinkForm.originalPresaleOrderId = this.presaleLinkForm.presaleOrderId
+          this.getDataList()
+        } else {
+          this.$message.error((data && data.msg) || '保存失败')
+        }
+        this.presaleLinkSaving = false
+      }).catch(() => {
+        this.presaleLinkSaving = false
+      })
+    },
+    confirmPresaleLink () {
+      if (!this.presaleLinkForm.presaleOrderId) {
+        this.$message.error('请选择关联预销售单')
+        return
+      }
+      this.$confirm('确认后该销售单的关联预销售单将不能再修改，是否继续？', '确认关联', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        this.presaleLinkConfirming = true
+        const changed = String(this.presaleLinkForm.presaleOrderId || '') !== String(this.presaleLinkForm.originalPresaleOrderId || '')
+        const savePromise = changed ? this.doSavePresaleLink() : Promise.resolve({ data: { code: 0 } })
+        savePromise.then(({ data }) => {
+          if (!data || data.code !== 0) {
+            this.$message.error((data && data.msg) || '保存关联失败')
+            this.presaleLinkConfirming = false
+            return
+          }
+          this.$http({
+            url: this.$http.adornUrl('/erp/saleorder/presale-link/confirm'),
+            method: 'post',
+            data: this.$http.adornData({ saleOrderId: this.presaleLinkForm.saleOrderId })
+          }).then(({ data }) => {
+            if (data && data.code === 0) {
+              this.$message.success('关联预销售单已确认')
+              this.presaleLinkVisible = false
+              this.getDataList()
+            } else {
+              this.$message.error((data && data.msg) || '确认失败')
+            }
+            this.presaleLinkConfirming = false
+          }).catch(() => {
+            this.presaleLinkConfirming = false
+          })
+        }).catch(() => {
+          this.presaleLinkConfirming = false
+        })
+      }).catch(() => {})
+    },
     sizeChangeHandle (val) {
       this.pageSize = val
       this.pageIndex = 1
@@ -309,5 +518,16 @@ export default {
 .action-wrap .el-button {
   margin-left: 0;
   margin-right: 10px;
+}
+
+.product-option-code {
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.product-option-name {
+  color: #8492a6;
+  font-size: 12px;
+  line-height: 18px;
 }
 </style>
