@@ -213,7 +213,8 @@ export default {
         { value: '2', label: '待确认二批打款凭证' },
         { value: '3', label: '待内部确认二批来款水单' },
         { value: '4', label: '待内部确认资方打款凭证' },
-        { value: '5', label: '流程完成' }
+        { value: '5', label: '待确认出库回单' },
+        { value: '6', label: '流程完成' }
       ],
       dataList: [],
       pageIndex: 1,
@@ -280,7 +281,8 @@ export default {
         2: 'warning',
         3: 'warning',
         4: 'warning',
-        5: 'success'
+        5: 'warning',
+        6: 'success'
       }
       return map[value] || 'info'
     },

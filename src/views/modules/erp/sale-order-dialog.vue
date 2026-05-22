@@ -490,6 +490,173 @@
               </el-table-column>
             </el-table>
           </el-tab-pane>
+
+          <el-tab-pane label="出库回单" name="outboundReceipt">
+            <div class="attachment-toolbar">
+              <el-button
+                v-if="attachmentEditable && canUploadStep('OUTBOUND_RECEIPT')"
+                size="mini"
+                type="primary"
+                plain
+                :loading="uploadLoading && currentUploadType === 'OUTBOUND_RECEIPT'"
+                @click="triggerUpload('OUTBOUND_RECEIPT')">
+                上传出库回单识别
+              </el-button>
+              <el-button
+                v-if="attachmentEditable && dataForm.outboundReceipt"
+                size="mini"
+                type="primary"
+                plain
+                :loading="outboundSaveLoading"
+                :disabled="isStepConfirmed('OUTBOUND_RECEIPT')"
+                @click="saveOutboundReceipt()">
+                保存识别结果
+              </el-button>
+              <el-button
+                v-if="attachmentEditable && canConfirmStep('OUTBOUND_RECEIPT')"
+                size="mini"
+                type="success"
+                :loading="confirmLoading && currentConfirmType === 'OUTBOUND_RECEIPT'"
+                @click="confirmStep('OUTBOUND_RECEIPT')">
+                确认出库完成
+              </el-button>
+              <el-tag v-if="dataForm.outboundReceipt" size="small" :type="outboundReceiptMatched ? 'success' : 'danger'">
+                {{ outboundReceiptMatched ? '箱数一致' : '待核对' }}
+              </el-tag>
+              <span v-if="dataForm.outboundReceipt" class="sub-title-tip">{{ dataForm.outboundReceipt.matchMessage || '-' }}</span>
+            </div>
+            <el-row v-if="dataForm.outboundReceipt" :gutter="20">
+              <el-col :span="6">
+                <el-form-item label="WMS单号">
+                  <el-input v-model="dataForm.outboundReceipt.wmsOrderNo" :disabled="!outboundReceiptEditable"></el-input>
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="订单编号">
+                  <el-input v-model="dataForm.outboundReceipt.outboundOrderNo" :disabled="!outboundReceiptEditable"></el-input>
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="客户编码">
+                  <el-input v-model="dataForm.outboundReceipt.customerCode" :disabled="!outboundReceiptEditable"></el-input>
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="客户名称">
+                  <el-input v-model="dataForm.outboundReceipt.customerName" :disabled="!outboundReceiptEditable"></el-input>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row v-if="dataForm.outboundReceipt" :gutter="20">
+              <el-col :span="6">
+                <el-form-item label="销售单箱数">
+                  <el-input :value="dataForm.outboundReceipt.saleTotalBoxes || 0" disabled></el-input>
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="发货总箱数">
+                  <el-input :value="outboundShippedTotalBoxes" disabled></el-input>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-table
+              v-if="dataForm.outboundReceipt"
+              :data="dataForm.outboundReceipt.itemList"
+              border
+              size="mini"
+              class="attachment-table outbound-receipt-table">
+              <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
+              <el-table-column prop="recognizedProductCode" label="识别编码" width="100"></el-table-column>
+              <el-table-column prop="productCode" label="系统编码" width="100"></el-table-column>
+              <el-table-column prop="productName" label="产品名称" min-width="150" show-overflow-tooltip></el-table-column>
+              <el-table-column label="规格" width="95">
+                <template slot-scope="scope">
+                  <el-input v-model="scope.row.productSpec" :disabled="!outboundReceiptEditable" size="mini"></el-input>
+                </template>
+              </el-table-column>
+              <el-table-column label="单位" width="80">
+                <template slot-scope="scope">
+                  <el-input v-model="scope.row.unit" :disabled="!outboundReceiptEditable" size="mini"></el-input>
+                </template>
+              </el-table-column>
+              <el-table-column label="订单数" width="95">
+                <template slot-scope="scope">
+                  <el-input-number v-model="scope.row.orderQty" :disabled="!outboundReceiptEditable" :controls="false" :precision="0" size="mini" style="width: 100%;"></el-input-number>
+                </template>
+              </el-table-column>
+              <el-table-column label="发货数" width="95">
+                <template slot-scope="scope">
+                  <el-input-number v-model="scope.row.shippedQty" :disabled="!outboundReceiptEditable" :controls="false" :precision="0" size="mini" style="width: 100%;"></el-input-number>
+                </template>
+              </el-table-column>
+              <el-table-column label="柜号" width="130">
+                <template slot-scope="scope">
+                  <el-input v-model="scope.row.containerNo" :disabled="!outboundReceiptEditable" size="mini"></el-input>
+                </template>
+              </el-table-column>
+              <el-table-column label="厂号" width="100">
+                <template slot-scope="scope">
+                  <el-input v-model="scope.row.factoryNo" :disabled="!outboundReceiptEditable" size="mini"></el-input>
+                </template>
+              </el-table-column>
+              <el-table-column label="均重" width="100">
+                <template slot-scope="scope">
+                  <el-input-number v-model="scope.row.avgWeight" :disabled="!outboundReceiptEditable" :controls="false" :precision="4" size="mini" style="width: 100%;"></el-input-number>
+                </template>
+              </el-table-column>
+              <el-table-column label="合计" width="110">
+                <template slot-scope="scope">
+                  <el-input-number v-model="scope.row.totalWeight" :disabled="!outboundReceiptEditable" :controls="false" :precision="3" size="mini" style="width: 100%;"></el-input-number>
+                </template>
+              </el-table-column>
+            </el-table>
+            <el-table :data="getFileListByType('OUTBOUND_RECEIPT')" border size="mini" class="attachment-table">
+              <el-table-column prop="fileName" label="归档原件" min-width="240" show-overflow-tooltip></el-table-column>
+              <el-table-column label="上传时间" width="170" align="center">
+                <template slot-scope="scope">{{ formatDateTime(scope.row.createTime) }}</template>
+              </el-table-column>
+              <el-table-column label="下载" width="100" align="center">
+                <template slot-scope="scope">
+                  <el-button type="text" size="small" @click="downloadFile(scope.row)">下载</el-button>
+                </template>
+              </el-table-column>
+              <el-table-column label="删除" width="100" align="center">
+                <template slot-scope="scope">
+                  <el-button v-if="attachmentEditable && canDeleteStep('OUTBOUND_RECEIPT')" type="text" size="small" @click="deleteFile(scope.row)">删除</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-tab-pane>
+
+          <el-tab-pane label="出库附件" name="outboundAttachment">
+            <div class="attachment-toolbar">
+              <el-button
+                v-if="attachmentEditable && canUploadStep('OUTBOUND_ATTACHMENT')"
+                size="mini"
+                type="primary"
+                plain
+                @click="triggerUpload('OUTBOUND_ATTACHMENT')">
+                上传出库附件
+              </el-button>
+              <span class="sub-title-tip">用于存档司机驾驶证、身份证等出库相关附件，不做OCR识别。</span>
+            </div>
+            <el-table :data="getFileListByType('OUTBOUND_ATTACHMENT')" border size="mini" class="attachment-table">
+              <el-table-column prop="fileName" label="文件名称" min-width="240" show-overflow-tooltip></el-table-column>
+              <el-table-column label="上传时间" width="170" align="center">
+                <template slot-scope="scope">{{ formatDateTime(scope.row.createTime) }}</template>
+              </el-table-column>
+              <el-table-column label="下载" width="100" align="center">
+                <template slot-scope="scope">
+                  <el-button type="text" size="small" @click="downloadFile(scope.row)">下载</el-button>
+                </template>
+              </el-table-column>
+              <el-table-column label="删除" width="100" align="center">
+                <template slot-scope="scope">
+                  <el-button v-if="attachmentEditable && canDeleteStep('OUTBOUND_ATTACHMENT')" type="text" size="small" @click="deleteFile(scope.row)">删除</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-tab-pane>
         </el-tabs>
 
         <input ref="uploadInput" type="file" multiple style="display:none;" @change="uploadFileChangeHandle">
@@ -520,6 +687,7 @@ export default {
       saveLoading: false,
       uploadLoading: false,
       confirmLoading: false,
+      outboundSaveLoading: false,
       currentUploadType: '',
       currentConfirmType: '',
       secondaryPartnerList: [],
@@ -554,7 +722,8 @@ export default {
         2: '待确认二批打款凭证',
         3: '待内部确认二批来款水单',
         4: '待内部确认资方打款凭证',
-        5: '流程完成'
+        5: '待确认出库回单',
+        6: '流程完成'
       }
       return map[this.dataForm.status] || '待处理'
     },
@@ -573,6 +742,17 @@ export default {
     coldStorageFreeDaysText () {
       const days = this.dataForm.secondaryPartnerColdStorageFreeDays
       return days ? `${days}天` : '-'
+    },
+    outboundReceiptEditable () {
+      return this.attachmentEditable && !this.isStepConfirmed('OUTBOUND_RECEIPT')
+    },
+    outboundReceiptMatched () {
+      return Number((this.dataForm.outboundReceipt && this.dataForm.outboundReceipt.matched) || 0) === 1
+    },
+    outboundShippedTotalBoxes () {
+      const receipt = this.dataForm.outboundReceipt
+      if (!receipt || !receipt.itemList) return 0
+      return receipt.itemList.reduce((total, item) => total + Number(item.shippedQty || 0), 0)
     }
   },
   methods: {
@@ -598,10 +778,12 @@ export default {
         buyerPaymentConfirmed: 0,
         buyerBankConfirmed: 0,
         funderPaymentConfirmed: 0,
+        outboundReceiptConfirmed: 0,
         remark: '',
         itemList: [],
         allocationItemList: [],
-        fileList: []
+        fileList: [],
+        outboundReceipt: null
       }
     },
     defaultItemRow () {
@@ -728,6 +910,7 @@ export default {
       const result = Object.assign(this.defaultForm(), source)
       result.contractSignDate = this.normalizeDateValue(source.contractSignDate)
       result.fileList = source.fileList || []
+      result.outboundReceipt = source.outboundReceipt || null
       result.itemList = (source.itemList || []).map(item => {
         const row = Object.assign(this.defaultItemRow(), item)
         row._productOptions = row.productId ? [{
@@ -1131,6 +1314,7 @@ export default {
       if (fileType === 'BUYER_PAYMENT_PROOF') return Number(this.dataForm.buyerPaymentConfirmed || 0) === 1
       if (fileType === 'BUYER_BANK_SLIP') return Number(this.dataForm.buyerBankConfirmed || 0) === 1
       if (fileType === 'FUNDER_PAYMENT_PROOF') return Number(this.dataForm.funderPaymentConfirmed || 0) === 1
+      if (fileType === 'OUTBOUND_RECEIPT') return Number(this.dataForm.outboundReceiptConfirmed || 0) === 1
       return false
     },
     canConfirmStep (fileType) {
@@ -1140,6 +1324,7 @@ export default {
       if (fileType === 'BUYER_PAYMENT_PROOF') return this.isStepConfirmed('SIGNED_CONTRACT')
       if (fileType === 'BUYER_BANK_SLIP') return this.isStepConfirmed('BUYER_PAYMENT_PROOF')
       if (fileType === 'FUNDER_PAYMENT_PROOF') return this.isStepConfirmed('BUYER_BANK_SLIP')
+      if (fileType === 'OUTBOUND_RECEIPT') return this.outboundReceiptMatched
       return false
     },
     canDeleteStep (fileType) {
@@ -1151,6 +1336,8 @@ export default {
       if (fileType === 'BUYER_PAYMENT_PROOF') return this.isStepConfirmed('SIGNED_CONTRACT')
       if (fileType === 'BUYER_BANK_SLIP') return this.isStepConfirmed('BUYER_PAYMENT_PROOF')
       if (fileType === 'FUNDER_PAYMENT_PROOF') return this.isStepConfirmed('BUYER_BANK_SLIP')
+      if (fileType === 'OUTBOUND_RECEIPT') return true
+      if (fileType === 'OUTBOUND_ATTACHMENT') return true
       return false
     },
     triggerUpload (fileType) {
@@ -1168,6 +1355,7 @@ export default {
       if (fileType === 'BUYER_PAYMENT_PROOF') return '请先上传并确认盖章合同'
       if (fileType === 'BUYER_BANK_SLIP') return '请先上传并确认二批打款凭证'
       if (fileType === 'FUNDER_PAYMENT_PROOF') return '请先上传并确认二批来款水单'
+      if (fileType === 'OUTBOUND_RECEIPT') return '出库回单已确认，不能重复上传'
       return '当前节点暂不可上传'
     },
     confirmStep (fileType) {
@@ -1245,16 +1433,22 @@ export default {
       if (!files.length || !this.currentUploadType || !this.dataForm.id) return
       const formData = new FormData()
       formData.append('saleOrderId', this.dataForm.id)
-      formData.append('fileType', this.currentUploadType)
+      if (this.currentUploadType !== 'OUTBOUND_RECEIPT') {
+        formData.append('fileType', this.currentUploadType)
+      }
       files.forEach(file => formData.append('files', file))
       this.uploadLoading = true
+      const url = this.currentUploadType === 'OUTBOUND_RECEIPT' ? '/erp/saleorder/outbound/receipt/recognize' : '/erp/saleorder/upload'
       this.$http({
-        url: this.$http.adornUrl('/erp/saleorder/upload'),
+        url: this.$http.adornUrl(url),
         method: 'post',
         data: formData,
         headers: { 'Content-Type': 'multipart/form-data' }
       }).then(({ data }) => {
         if (data && data.code === 0) {
+          if (this.currentUploadType === 'OUTBOUND_RECEIPT') {
+            this.dataForm.outboundReceipt = data.receipt || this.dataForm.outboundReceipt
+          }
           this.$message.success('上传成功')
           this.refreshDetail()
           this.$emit('refreshDataList')
@@ -1264,6 +1458,33 @@ export default {
         this.uploadLoading = false
       }).catch(() => {
         this.uploadLoading = false
+      })
+    },
+    saveOutboundReceipt () {
+      if (!this.dataForm.id || !this.dataForm.outboundReceipt) return
+      const receipt = Object.assign({}, this.dataForm.outboundReceipt, {
+        saleOrderId: this.dataForm.id,
+        itemList: (this.dataForm.outboundReceipt.itemList || []).map((item, index) => Object.assign({}, item, {
+          lineNo: index + 1
+        }))
+      })
+      this.outboundSaveLoading = true
+      this.$http({
+        url: this.$http.adornUrl('/erp/saleorder/outbound/receipt/save'),
+        method: 'post',
+        data: this.$http.adornData(receipt)
+      }).then(({ data }) => {
+        if (data && data.code === 0) {
+          this.dataForm.outboundReceipt = data.receipt
+          this.$message.success('保存成功')
+          this.refreshDetail()
+          this.$emit('refreshDataList')
+        } else {
+          this.$message.error((data && data.msg) || '保存失败')
+        }
+        this.outboundSaveLoading = false
+      }).catch(() => {
+        this.outboundSaveLoading = false
       })
     },
     refreshDetail () {
