@@ -46,6 +46,11 @@
             </el-form-item>
           </el-col>
           <el-col :span="6">
+            <el-form-item label="冷库减免时间">
+              <el-input :value="coldStorageFreeDaysText" disabled></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="6">
             <el-form-item :prop="isSpotSale ? 'warehouseId' : ''" label="仓库">
               <el-select
                 v-model="dataForm.warehouseId"
@@ -64,14 +69,14 @@
               </el-select>
             </el-form-item>
           </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
           <el-col :span="6">
             <el-form-item label="合同号">
               <el-input v-model="dataForm.contractNo" :disabled="contentReadonly"></el-input>
             </el-form-item>
           </el-col>
-        </el-row>
-
-        <el-row :gutter="20">
           <el-col :span="6">
             <el-form-item label="签订日期" prop="contractSignDate">
               <el-date-picker
@@ -564,6 +569,10 @@ export default {
     },
     showSpotAllocation () {
       return this.isSpotSale && this.dataForm.allocationItemList && this.dataForm.allocationItemList.length > 0
+    },
+    coldStorageFreeDaysText () {
+      const days = this.dataForm.secondaryPartnerColdStorageFreeDays
+      return days ? `${days}天` : '-'
     }
   },
   methods: {
@@ -574,6 +583,7 @@ export default {
         saleType: 'FUTURES',
         secondaryPartnerId: '',
         secondaryPartnerName: '',
+        secondaryPartnerColdStorageFreeDays: '',
         warehouseId: '',
         warehouseName: '',
         sourcePresaleOrderId: '',
@@ -673,6 +683,9 @@ export default {
         params: this.$http.adornParams({ businessRole: 'SECONDARY' })
       }).then(({ data }) => {
         this.secondaryPartnerList = (data && data.list) || []
+        if (this.dataForm.secondaryPartnerId) {
+          this.dataForm.secondaryPartnerColdStorageFreeDays = this.findSecondaryPartnerColdStorageFreeDays(this.dataForm.secondaryPartnerId)
+        }
       })
     },
     loadWarehouses () {
@@ -728,6 +741,7 @@ export default {
         return row
       })
       result.allocationItemList = (source.allocationItemList || []).map(item => Object.assign(this.defaultAllocationRow(), item))
+      result.secondaryPartnerColdStorageFreeDays = this.findSecondaryPartnerColdStorageFreeDays(result.secondaryPartnerId)
       if (result.saleType === 'FUTURES' && result.itemList.length) {
         result.sourcePresaleOrderId = result.itemList[0].sourcePresaleOrderId || ''
         result.sourcePresaleOrderNo = result.itemList[0].sourcePresaleOrderNo || ''
@@ -752,6 +766,11 @@ export default {
     secondaryPartnerChangeHandle (value) {
       const partner = this.secondaryPartnerList.find(item => String(item.id) === String(value))
       this.dataForm.secondaryPartnerName = partner ? partner.partnerName : ''
+      this.dataForm.secondaryPartnerColdStorageFreeDays = partner ? (partner.coldStorageFreeDays || 7) : ''
+    },
+    findSecondaryPartnerColdStorageFreeDays (partnerId) {
+      const partner = this.secondaryPartnerList.find(item => String(item.id) === String(partnerId))
+      return partner ? (partner.coldStorageFreeDays || 7) : ''
     },
     warehouseChangeHandle (value) {
       const warehouse = this.warehouseList.find(item => String(item.id) === String(value))
