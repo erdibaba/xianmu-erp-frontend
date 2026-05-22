@@ -28,6 +28,9 @@
       <el-table-column label="业务角色" min-width="170" show-overflow-tooltip>
         <template slot-scope="scope">{{ bizRoleLabel(scope.row.businessRole) }}</template>
       </el-table-column>
+      <el-table-column label="冷库减免天数" width="120" align="center" header-align="center">
+        <template slot-scope="scope">{{ scope.row.coldStorageFreeDays || 7 }}天</template>
+      </el-table-column>
       <el-table-column prop="taxNo" label="税号" min-width="170" show-overflow-tooltip></el-table-column>
       <el-table-column prop="contactName" label="联系人" width="100" align="center" header-align="center"></el-table-column>
       <el-table-column prop="contactPhone" label="联系电话" width="130" align="center" header-align="center"></el-table-column>

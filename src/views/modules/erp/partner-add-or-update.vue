@@ -34,6 +34,16 @@
           </el-form-item>
         </el-col>
         <el-col :span="12">
+          <el-form-item label="冷库减免天数">
+            <el-input-number
+              v-model="dataForm.coldStorageFreeDays"
+              :min="1"
+              :precision="0"
+              :controls="false"
+              style="width: 100%;"></el-input-number>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
           <el-form-item label="税号">
             <el-input v-model="dataForm.taxNo"></el-input>
           </el-form-item>
@@ -91,6 +101,7 @@ const defaultForm = () => ({
   partnerName: '',
   businessRole: '',
   businessRoles: [],
+  coldStorageFreeDays: 7,
   taxNo: '',
   bankName: '',
   bankAccount: '',
@@ -134,6 +145,7 @@ export default {
             if (data && data.code === 0) {
               this.dataForm = Object.assign(defaultForm(), data.partner || {})
               this.dataForm.businessRoles = this.dataForm.businessRole ? this.dataForm.businessRole.split(',') : []
+              this.dataForm.coldStorageFreeDays = this.dataForm.coldStorageFreeDays || 7
             } else {
               this.$message.error(data.msg || '获取往来单位失败')
             }
@@ -147,7 +159,8 @@ export default {
           return
         }
         const payload = Object.assign({}, this.dataForm, {
-          businessRole: (this.dataForm.businessRoles || []).join(',')
+          businessRole: (this.dataForm.businessRoles || []).join(','),
+          coldStorageFreeDays: this.dataForm.coldStorageFreeDays || 7
         })
         delete payload.partnerType
         this.$http({
