@@ -135,7 +135,14 @@
           <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
           <el-table-column label="报损" width="90" align="center">
             <template slot-scope="scope">
-              <el-button type="text" size="small" @click="openDamageDialog(scope.row)">入库报损</el-button>
+              <el-button
+                v-if="!readonly"
+                type="text"
+                size="small"
+                @click="openDamageDialog(scope.row)">
+                入库报损
+              </el-button>
+              <span v-else>-</span>
             </template>
           </el-table-column>
 
@@ -637,6 +644,10 @@ export default {
       return isNaN(parsed) ? '-' : parsed.toFixed(2)
     },
     openDamageDialog (row) {
+      if (this.readonly) {
+        this.$message.error('详情页仅支持查看，请在修改页进行入库报损')
+        return
+      }
       this.currentDamageRow = row
       this.damageForm = {
         itemId: row.id || '',
@@ -654,6 +665,10 @@ export default {
       })
     },
     saveDamage () {
+      if (this.readonly) {
+        this.$message.error('详情页仅支持查看，请在修改页进行入库报损')
+        return
+      }
       this.$refs.damageForm.validate((valid) => {
         if (!valid) return false
         if (!this.currentDamageRow) return false
