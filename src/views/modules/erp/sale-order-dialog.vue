@@ -523,7 +523,7 @@
               <el-tag v-if="dataForm.outboundReceipt" size="small" :type="outboundReceiptMatched ? 'success' : 'danger'">
                 {{ outboundReceiptMatched ? '箱数一致' : '待核对' }}
               </el-tag>
-              <span v-if="dataForm.outboundReceipt" class="sub-title-tip">{{ dataForm.outboundReceipt.matchMessage || '-' }}</span>
+              <span v-if="dataForm.outboundReceipt" class="sub-title-tip">{{ outboundReceiptMatchMessage }}</span>
             </div>
             <el-row v-if="dataForm.outboundReceipt" :gutter="20">
               <el-col :span="6">
@@ -558,6 +558,16 @@
                   <el-input :value="outboundShippedTotalBoxes" disabled></el-input>
                 </el-form-item>
               </el-col>
+              <el-col :span="12" class="outbound-receipt-actions">
+                <el-button
+                  v-if="outboundReceiptEditable"
+                  size="mini"
+                  type="primary"
+                  plain
+                  @click="addOutboundReceiptItemRow">
+                  新增明细
+                </el-button>
+              </el-col>
             </el-row>
             <el-table
               v-if="dataForm.outboundReceipt"
@@ -567,7 +577,33 @@
               class="attachment-table outbound-receipt-table">
               <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
               <el-table-column prop="recognizedProductCode" label="识别编码" width="100"></el-table-column>
-              <el-table-column prop="productCode" label="系统编码" width="100"></el-table-column>
+              <el-table-column label="系统编码" min-width="220">
+                <template slot-scope="scope">
+                  <el-select
+                    v-model="scope.row.productId"
+                    filterable
+                    clearable
+                    remote
+                    reserve-keyword
+                    size="mini"
+                    :disabled="!outboundReceiptEditable"
+                    :loading="scope.row._productLoading"
+                    placeholder="输入产品编码/中文/英文搜索"
+                    style="width: 100%;"
+                    @visible-change="visible => outboundReceiptProductVisibleChange(scope.row, visible)"
+                    :remote-method="keyword => remoteSearchOutboundReceiptProducts(scope.row, keyword)"
+                    @change="value => outboundReceiptProductChange(scope.row, value)">
+                    <el-option
+                      v-for="item in scope.row._productOptions"
+                      :key="item.id"
+                      :label="item.productCode"
+                      :value="item.id">
+                      <div class="product-option-code">{{ item.productCode }}</div>
+                      <div class="product-option-name">{{ item.productName || '-' }} / {{ item.productNameEn || '-' }}</div>
+                    </el-option>
+                  </el-select>
+                </template>
+              </el-table-column>
               <el-table-column prop="productName" label="产品名称" min-width="150" show-overflow-tooltip></el-table-column>
               <el-table-column label="规格" width="95">
                 <template slot-scope="scope">
@@ -607,6 +643,11 @@
               <el-table-column label="合计" width="110">
                 <template slot-scope="scope">
                   <el-input-number v-model="scope.row.totalWeight" :disabled="!outboundReceiptEditable" :controls="false" :precision="3" size="mini" style="width: 100%;"></el-input-number>
+                </template>
+              </el-table-column>
+              <el-table-column v-if="outboundReceiptEditable" label="操作" width="80" align="center" fixed="right">
+                <template slot-scope="scope">
+                  <el-button type="text" size="small" @click="removeOutboundReceiptItemRow(scope.$index)">删除</el-button>
                 </template>
               </el-table-column>
             </el-table>
@@ -747,12 +788,24 @@ export default {
       return this.attachmentEditable && !this.isStepConfirmed('OUTBOUND_RECEIPT')
     },
     outboundReceiptMatched () {
-      return Number((this.dataForm.outboundReceipt && this.dataForm.outboundReceipt.matched) || 0) === 1
+      const receipt = this.dataForm.outboundReceipt
+      if (!receipt) return false
+      return Number(receipt.saleTotalBoxes || 0) === Number(this.outboundShippedTotalBoxes || 0)
     },
     outboundShippedTotalBoxes () {
       const receipt = this.dataForm.outboundReceipt
       if (!receipt || !receipt.itemList) return 0
       return receipt.itemList.reduce((total, item) => total + Number(item.shippedQty || 0), 0)
+    },
+    outboundReceiptMatchMessage () {
+      const receipt = this.dataForm.outboundReceipt
+      if (!receipt) return '-'
+      const saleBoxes = Number(receipt.saleTotalBoxes || 0)
+      const shippedBoxes = Number(this.outboundShippedTotalBoxes || 0)
+      if (saleBoxes === shippedBoxes) {
+        return '销售单箱数与出库回单发货数一致'
+      }
+      return `销售单箱数${saleBoxes}箱，出库回单发货数${shippedBoxes}箱，请核对`
     }
   },
   methods: {
@@ -844,6 +897,29 @@ export default {
         remark: ''
       }
     },
+    defaultOutboundReceiptItemRow () {
+      return {
+        id: 0,
+        lineNo: 0,
+        productId: '',
+        productCode: '',
+        recognizedProductCode: '',
+        productName: '',
+        productNameEn: '',
+        productSpec: '',
+        unit: '',
+        orderQty: null,
+        shippedQty: null,
+        containerNo: '',
+        factoryNo: '',
+        avgWeight: null,
+        totalWeight: null,
+        _productKeyword: '',
+        _productPageSize: 15,
+        _productLoading: false,
+        _productOptions: []
+      }
+    },
     init (id, readonly) {
       this.visible = true
       this.readonly = readonly
@@ -910,7 +986,7 @@ export default {
       const result = Object.assign(this.defaultForm(), source)
       result.contractSignDate = this.normalizeDateValue(source.contractSignDate)
       result.fileList = source.fileList || []
-      result.outboundReceipt = source.outboundReceipt || null
+      result.outboundReceipt = this.normalizeOutboundReceipt(source.outboundReceipt)
       result.itemList = (source.itemList || []).map(item => {
         const row = Object.assign(this.defaultItemRow(), item)
         row._productOptions = row.productId ? [{
@@ -932,6 +1008,23 @@ export default {
       if (!result.itemList.length) {
         result.itemList = [this.defaultItemRow()]
       }
+      return result
+    },
+    normalizeOutboundReceipt (receipt) {
+      if (!receipt) return null
+      const result = Object.assign({}, receipt)
+      result.itemList = (receipt.itemList || []).map(item => {
+        const row = Object.assign(this.defaultOutboundReceiptItemRow(), item)
+        row._productOptions = row.productId ? [{
+          id: row.productId,
+          productCode: row.productCode,
+          productName: row.productName,
+          productNameEn: row.productNameEn,
+          productSpec: row.productSpec,
+          unit: row.unit
+        }] : []
+        return row
+      })
       return result
     },
     saleTypeChangeHandle (value) {
@@ -1048,6 +1141,74 @@ export default {
       if (!row._productOptions.find(item => String(item.id) === String(product.id))) {
         row._productOptions = [product].concat(row._productOptions)
       }
+    },
+    addOutboundReceiptItemRow () {
+      if (!this.dataForm.outboundReceipt) return
+      if (!this.dataForm.outboundReceipt.itemList) {
+        this.$set(this.dataForm.outboundReceipt, 'itemList', [])
+      }
+      this.dataForm.outboundReceipt.itemList.push(this.defaultOutboundReceiptItemRow())
+    },
+    removeOutboundReceiptItemRow (index) {
+      if (!this.dataForm.outboundReceipt || !this.dataForm.outboundReceipt.itemList) return
+      this.dataForm.outboundReceipt.itemList.splice(index, 1)
+    },
+    outboundReceiptProductVisibleChange (row, visible) {
+      if (!visible || !this.outboundReceiptEditable) return
+      this.ensureOutboundReceiptProductState(row)
+      if (row._productOptions.length > 0) return
+      row._productKeyword = row.productCode || row.recognizedProductCode || ''
+      this.fetchOutboundReceiptProductOptions(row)
+    },
+    remoteSearchOutboundReceiptProducts (row, keyword) {
+      this.ensureOutboundReceiptProductState(row)
+      row._productKeyword = keyword
+      this.fetchOutboundReceiptProductOptions(row)
+    },
+    fetchOutboundReceiptProductOptions (row) {
+      this.ensureOutboundReceiptProductState(row)
+      row._productLoading = true
+      this.$http({
+        url: this.$http.adornUrl('/erp/product/selectPage'),
+        method: 'get',
+        params: this.$http.adornParams({
+          page: 1,
+          limit: row._productPageSize,
+          keyword: row._productKeyword
+        })
+      }).then(({ data }) => {
+        row._productOptions = data && data.code === 0 ? (data.page.list || []) : []
+        row._productLoading = false
+      }).catch(() => {
+        row._productOptions = []
+        row._productLoading = false
+      })
+    },
+    outboundReceiptProductChange (row, value) {
+      this.ensureOutboundReceiptProductState(row)
+      const product = row._productOptions.find(item => String(item.id) === String(value)) ||
+        this.productList.find(item => String(item.id) === String(value))
+      if (!product) {
+        row.productId = ''
+        row.productCode = ''
+        row.productNameEn = ''
+        return
+      }
+      row.productId = product.id
+      row.productCode = product.productCode
+      row.productName = product.productName || ''
+      row.productNameEn = product.productNameEn || ''
+      row.productSpec = product.productSpec || row.productSpec || ''
+      row.unit = product.unit || row.unit || ''
+      if (!row._productOptions.find(item => String(item.id) === String(product.id))) {
+        row._productOptions = [product].concat(row._productOptions)
+      }
+    },
+    ensureOutboundReceiptProductState (row) {
+      if (!row._productOptions) this.$set(row, '_productOptions', [])
+      if (row._productPageSize === undefined) this.$set(row, '_productPageSize', 15)
+      if (row._productKeyword === undefined) this.$set(row, '_productKeyword', '')
+      if (row._productLoading === undefined) this.$set(row, '_productLoading', false)
     },
     presaleOrderVisibleChange (visible) {
       if (!visible || this.contentReadonly || !this.isFuturesSale) return
@@ -1447,7 +1608,7 @@ export default {
       }).then(({ data }) => {
         if (data && data.code === 0) {
           if (this.currentUploadType === 'OUTBOUND_RECEIPT') {
-            this.dataForm.outboundReceipt = data.receipt || this.dataForm.outboundReceipt
+            this.dataForm.outboundReceipt = this.normalizeOutboundReceipt(data.receipt || this.dataForm.outboundReceipt)
           }
           this.$message.success('上传成功')
           this.refreshDetail()
@@ -1464,8 +1625,22 @@ export default {
       if (!this.dataForm.id || !this.dataForm.outboundReceipt) return
       const receipt = Object.assign({}, this.dataForm.outboundReceipt, {
         saleOrderId: this.dataForm.id,
-        itemList: (this.dataForm.outboundReceipt.itemList || []).map((item, index) => Object.assign({}, item, {
-          lineNo: index + 1
+        itemList: (this.dataForm.outboundReceipt.itemList || []).map((item, index) => ({
+          id: item.id,
+          lineNo: index + 1,
+          productId: item.productId || null,
+          productCode: item.productCode,
+          recognizedProductCode: item.recognizedProductCode,
+          productName: item.productName,
+          productNameEn: item.productNameEn,
+          productSpec: item.productSpec,
+          unit: item.unit,
+          orderQty: item.orderQty,
+          shippedQty: item.shippedQty,
+          containerNo: item.containerNo,
+          factoryNo: item.factoryNo,
+          avgWeight: item.avgWeight,
+          totalWeight: item.totalWeight
         }))
       })
       this.outboundSaveLoading = true
@@ -1475,7 +1650,7 @@ export default {
         data: this.$http.adornData(receipt)
       }).then(({ data }) => {
         if (data && data.code === 0) {
-          this.dataForm.outboundReceipt = data.receipt
+          this.dataForm.outboundReceipt = this.normalizeOutboundReceipt(data.receipt)
           this.$message.success('保存成功')
           this.refreshDetail()
           this.$emit('refreshDataList')
@@ -1585,6 +1760,11 @@ export default {
 
 .attachment-toolbar {
   margin-bottom: 8px;
+}
+
+.outbound-receipt-actions {
+  text-align: right;
+  line-height: 36px;
 }
 
 .contract-link-wrap {
