@@ -132,7 +132,12 @@
 
         <div class="sub-title">SKU明细</div>
         <el-table :data="dataForm.itemList" border size="mini" class="item-table">
-          <el-table-column type="index" label="序号" width="60" align="center" fixed="left"></el-table-column>
+          <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
+          <el-table-column label="报损" width="90" align="center">
+            <template slot-scope="scope">
+              <el-button type="text" size="small" @click="openDamageDialog(scope.row)">入库报损</el-button>
+            </template>
+          </el-table-column>
 
           <el-table-column label="SKU" min-width="180">
             <template slot-scope="scope">
@@ -221,6 +226,9 @@
           </el-table-column>
 
           <el-table-column prop="packingBoxes" label="装箱单箱数" width="100"></el-table-column>
+          <el-table-column label="报损重量(KG)" width="120" align="right">
+            <template slot-scope="scope">{{ formatDamageWeight(scope.row.damageWeightKg) }}</template>
+          </el-table-column>
 
           <el-table-column label="温区" width="90">
             <template slot-scope="scope">
@@ -295,6 +303,54 @@
         <el-button @click="archiveDialogVisible = false">关闭</el-button>
       </span>
     </el-dialog>
+
+    <el-dialog
+      title="入库报损"
+      append-to-body
+      :visible.sync="damageDialogVisible"
+      width="520px"
+      top="12vh">
+      <el-form
+        ref="damageForm"
+        :model="damageForm"
+        :rules="damageRule"
+        label-width="110px">
+        <el-form-item label="产品编码">
+          <el-input v-model="damageForm.productCode" disabled></el-input>
+        </el-form-item>
+        <el-form-item label="中文名称">
+          <el-input v-model="damageForm.productName" disabled></el-input>
+        </el-form-item>
+        <el-form-item label="英文名称">
+          <el-input v-model="damageForm.productNameEn" disabled></el-input>
+        </el-form-item>
+        <el-form-item label="报损重量" prop="damageWeightKg">
+          <el-input-number
+            v-model="damageForm.damageWeightKg"
+            :controls="false"
+            :precision="2"
+            :min="0"
+            size="small"
+            style="width: 180px;">
+          </el-input-number>
+          <span class="damage-unit">KG</span>
+        </el-form-item>
+        <el-form-item label="报损原因" prop="damageReason">
+          <el-input
+            v-model="damageForm.damageReason"
+            type="textarea"
+            :rows="4"
+            maxlength="200"
+            show-word-limit
+            placeholder="请输入报损原因，最多200字">
+          </el-input>
+        </el-form-item>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="damageDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="damageSaving" @click="saveDamage()">保存</el-button>
+      </span>
+    </el-dialog>
   </el-dialog>
 </template>
 
@@ -305,14 +361,29 @@ export default {
       visible: false,
       readonly: false,
       archiveDialogVisible: false,
+      damageDialogVisible: false,
       detailLoading: false,
       saveLoading: false,
+      damageSaving: false,
       productList: [],
       warehouseList: [],
+      currentDamageRow: null,
+      damageForm: {
+        itemId: '',
+        productCode: '',
+        productName: '',
+        productNameEn: '',
+        damageWeightKg: null,
+        damageReason: ''
+      },
       dataForm: this.defaultForm(),
       dataRule: {
         contractNo: [{ required: true, message: '合同号不能为空', trigger: 'blur' }],
         warehouseId: [{ required: true, message: '请选择仓库', trigger: 'change' }]
+      },
+      damageRule: {
+        damageWeightKg: [{ required: true, message: '请输入报损重量', trigger: 'change' }],
+        damageReason: [{ max: 200, message: '报损原因最多200字', trigger: 'blur' }]
       }
     }
   },
@@ -346,6 +417,7 @@ export default {
       this.visible = true
       this.readonly = readonly
       this.archiveDialogVisible = false
+      this.damageDialogVisible = false
       this.dataForm = this.defaultForm()
       this.detailLoading = true
       Promise.all([this.loadProductList(), this.loadWarehouseList(), this.fetchDetail(presaleOrderId)]).finally(() => {
@@ -356,6 +428,7 @@ export default {
       this.visible = true
       this.readonly = false
       this.archiveDialogVisible = false
+      this.damageDialogVisible = false
       this.dataForm = this.defaultForm()
       this.detailLoading = true
       Promise.all([this.loadProductList(), this.loadWarehouseList()]).then(() => {
@@ -418,6 +491,8 @@ export default {
         expectedQty: 0,
         actualQty: 0,
         packingBoxes: 0,
+        damageWeightKg: null,
+        damageReason: '',
         temperatureZone: '',
         productionDate: '',
         expiryDate: '',
@@ -554,6 +629,68 @@ export default {
     isEmptyNumber (value) {
       return value === '' || value === null || value === undefined
     },
+    formatDamageWeight (value) {
+      if (value === '' || value === null || value === undefined) {
+        return '-'
+      }
+      const parsed = Number(value)
+      return isNaN(parsed) ? '-' : parsed.toFixed(2)
+    },
+    openDamageDialog (row) {
+      this.currentDamageRow = row
+      this.damageForm = {
+        itemId: row.id || '',
+        productCode: row.productCode || '',
+        productName: row.productName || '',
+        productNameEn: row.productNameEn || '',
+        damageWeightKg: row.damageWeightKg === '' || row.damageWeightKg === null || row.damageWeightKg === undefined ? null : Number(row.damageWeightKg),
+        damageReason: row.damageReason || ''
+      }
+      this.damageDialogVisible = true
+      this.$nextTick(() => {
+        if (this.$refs.damageForm) {
+          this.$refs.damageForm.clearValidate()
+        }
+      })
+    },
+    saveDamage () {
+      this.$refs.damageForm.validate((valid) => {
+        if (!valid) return false
+        if (!this.currentDamageRow) return false
+        const damageWeight = this.damageForm.damageWeightKg === '' || this.damageForm.damageWeightKg === null || this.damageForm.damageWeightKg === undefined
+          ? null
+          : Number(this.damageForm.damageWeightKg).toFixed(2)
+        const applyLocal = () => {
+          this.currentDamageRow.damageWeightKg = damageWeight
+          this.currentDamageRow.damageReason = this.damageForm.damageReason || ''
+          this.damageDialogVisible = false
+          this.$message.success('报损信息已保存')
+        }
+        if (!this.damageForm.itemId) {
+          applyLocal()
+          return
+        }
+        this.damageSaving = true
+        this.$http({
+          url: this.$http.adornUrl('/erp/inbound/item/damage'),
+          method: 'post',
+          data: this.$http.adornData({
+            itemId: this.damageForm.itemId,
+            damageWeightKg: damageWeight,
+            damageReason: this.damageForm.damageReason || ''
+          })
+        }).then(({ data }) => {
+          if (data && data.code === 0) {
+            applyLocal()
+          } else {
+            this.$message.error((data && data.msg) || '报损保存失败')
+          }
+          this.damageSaving = false
+        }).catch(() => {
+          this.damageSaving = false
+        })
+      })
+    },
     downloadFile (row) {
       if (!row.id) {
         this.$message.error('缺少归档文件ID')
@@ -634,6 +771,8 @@ export default {
           expectedQty: item.expectedQty,
           actualQty: item.actualQty,
           packingBoxes: item.packingBoxes,
+          damageWeightKg: item.damageWeightKg,
+          damageReason: item.damageReason,
           temperatureZone: item.temperatureZone,
           productionDate: item.productionDate,
           expiryDate: item.expiryDate,
@@ -700,6 +839,11 @@ export default {
   height: 150px;
   max-height: 150px;
   overflow-y: auto;
+}
+
+.damage-unit {
+  margin-left: 8px;
+  color: #606266;
 }
 
 .product-option-code {
