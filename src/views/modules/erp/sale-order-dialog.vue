@@ -1199,7 +1199,6 @@ export default {
       row.productName = product.productName || ''
       row.productNameEn = product.productNameEn || ''
       row.productSpec = product.productSpec || row.productSpec || ''
-      row.unit = product.unit || row.unit || ''
       if (!row._productOptions.find(item => String(item.id) === String(product.id))) {
         row._productOptions = [product].concat(row._productOptions)
       }
