@@ -355,10 +355,6 @@
         const text = String(value)
         if (text.length >= 10) return text.substring(0, 10)
         return text
-      },
-      getTransferTagType (status) {
-        if (status === '已转现货') return 'success'
-        return 'info'
       }
     }
   }
