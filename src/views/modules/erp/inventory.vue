@@ -78,7 +78,7 @@
 
         <el-table :data="futuresList" border stripe v-loading="futuresLoading" height="620">
           <el-table-column type="index" label="序号" width="60" align="center" header-align="center"></el-table-column>
-          <el-table-column prop="transferStatus" label="转现货状态" width="100" align="center" header-align="center">
+          <el-table-column prop="transferStatus" label="转现货状态" width="110" align="center" header-align="center">
             <template slot-scope="scope">
               <el-tag :type="getTransferTagType(scope.row.transferStatus)" size="small">{{ scope.row.transferStatus }}</el-tag>
             </template>
@@ -92,8 +92,8 @@
           <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
           <el-table-column prop="futuresBoxes" label="期货总箱数" width="110" align="right" header-align="center"></el-table-column>
           <el-table-column prop="futuresSoldBoxes" label="期货已销售" width="110" align="right" header-align="center"></el-table-column>
-          <el-table-column prop="transferredSpotBoxes" label="已转现货" width="100" align="right" header-align="center"></el-table-column>
-          <el-table-column prop="notInboundBoxes" label="未入库箱数" width="110" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="transferredSpotBoxes" label="完整转现货箱数" width="130" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="notInboundBoxes" label="未转现货箱数" width="120" align="right" header-align="center"></el-table-column>
           <el-table-column prop="futuresAvailableBoxes" label="期货可售" width="100" align="right" header-align="center">
             <template slot-scope="scope">
               <span :class="{ 'inventory-danger': Number(scope.row.futuresAvailableBoxes) < 0 }">{{ scope.row.futuresAvailableBoxes }}</span>
@@ -219,7 +219,6 @@
       },
       getTransferTagType (status) {
         if (status === '已转现货') return 'success'
-        if (status === '部分入库') return 'warning'
         return 'info'
       }
     }
