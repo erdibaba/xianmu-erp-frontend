@@ -41,16 +41,15 @@
           <el-table-column prop="damageWeightKg" label="报损重量(KG)" width="120" align="right" header-align="center"></el-table-column>
           <el-table-column prop="specWeight" label="规格/KG" width="100" align="right" header-align="center"></el-table-column>
           <el-table-column prop="availableWeightKg" label="可用重量(KG)" width="120" align="right" header-align="center"></el-table-column>
-          <el-table-column prop="productionDate" label="生产日期" width="115" align="center" header-align="center">
-            <template slot-scope="scope">{{ formatDate(scope.row.productionDate) }}</template>
-          </el-table-column>
-          <el-table-column prop="expiryDate" label="过期日期" width="115" align="center" header-align="center">
-            <template slot-scope="scope">{{ formatDate(scope.row.expiryDate) }}</template>
-          </el-table-column>
           <el-table-column prop="temperatureZone" label="温区" width="90" align="center" header-align="center"></el-table-column>
           <el-table-column label="预警" width="90" align="center" header-align="center">
             <template slot-scope="scope">
               <el-tag v-if="scope.row.freshnessWarning" size="small" type="warning">保鲜</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="90" align="center" header-align="center" fixed="right">
+            <template slot-scope="scope">
+              <el-button type="text" size="small" @click="openBatchDialog('spot', scope.row)">详情</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -103,20 +102,49 @@
           <el-table-column prop="expectedArrivalDate" label="预计到港" width="115" align="center" header-align="center">
             <template slot-scope="scope">{{ formatDate(scope.row.expectedArrivalDate) }}</template>
           </el-table-column>
-          <el-table-column prop="productionDate" label="最早生产日期" width="120" align="center" header-align="center">
-            <template slot-scope="scope">{{ formatDate(scope.row.productionDate) }}</template>
-          </el-table-column>
-          <el-table-column prop="expiryDate" label="最近过期日期" width="120" align="center" header-align="center">
-            <template slot-scope="scope">{{ formatDate(scope.row.expiryDate) }}</template>
-          </el-table-column>
           <el-table-column label="预警" width="90" align="center" header-align="center">
             <template slot-scope="scope">
               <el-tag v-if="scope.row.freshnessWarning" size="small" type="warning">保鲜</el-tag>
             </template>
           </el-table-column>
+          <el-table-column label="操作" width="90" align="center" header-align="center" fixed="right">
+            <template slot-scope="scope">
+              <el-button type="text" size="small" @click="openBatchDialog('futures', scope.row)">详情</el-button>
+            </template>
+          </el-table-column>
         </el-table>
       </el-tab-pane>
     </el-tabs>
+
+    <el-dialog
+      :title="batchDialogTitle"
+      :visible.sync="batchDialogVisible"
+      width="760px"
+      append-to-body>
+      <div v-if="currentInventoryRow" class="batch-summary">
+        <span>合同号：{{ currentInventoryRow.contractNo || '-' }}</span>
+        <span>柜号：{{ currentInventoryRow.containerNo || '-' }}</span>
+        <span>产品编码：{{ currentInventoryRow.productCode || '-' }}</span>
+        <span>产品名称：{{ currentInventoryRow.productName || '-' }}</span>
+      </div>
+      <el-table :data="batchList" border stripe v-loading="batchLoading" height="360">
+        <el-table-column type="index" label="序号" width="60" align="center" header-align="center"></el-table-column>
+        <el-table-column prop="productionDate" label="生产日期" width="130" align="center" header-align="center">
+          <template slot-scope="scope">{{ formatDate(scope.row.productionDate) }}</template>
+        </el-table-column>
+        <el-table-column prop="expiryDate" label="过期日期" width="130" align="center" header-align="center">
+          <template slot-scope="scope">{{ formatDate(scope.row.expiryDate) }}</template>
+        </el-table-column>
+        <el-table-column prop="boxes" label="箱数" width="100" align="right" header-align="center"></el-table-column>
+        <el-table-column prop="weightKg" label="重量(KG)" width="120" align="right" header-align="center"></el-table-column>
+        <el-table-column prop="shelfLifeDays" label="保质期天数" width="110" align="right" header-align="center"></el-table-column>
+        <el-table-column label="预警" min-width="100" align="center" header-align="center">
+          <template slot-scope="scope">
+            <el-tag v-if="scope.row.freshnessWarning" size="small" type="warning">保鲜</el-tag>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
   </div>
 </template>
 
@@ -139,8 +167,13 @@
         },
         spotList: [],
         futuresList: [],
+        batchList: [],
         spotLoading: false,
-        futuresLoading: false
+        futuresLoading: false,
+        batchLoading: false,
+        batchDialogVisible: false,
+        batchDialogTitle: '库存批次详情',
+        currentInventoryRow: null
       }
     },
     activated () {
@@ -193,6 +226,32 @@
           this.futuresLoading = false
         })
       },
+      openBatchDialog (type, row) {
+        this.currentInventoryRow = row
+        this.batchList = []
+        this.batchDialogTitle = type === 'futures' ? '期货库存批次详情' : '现货库存批次详情'
+        this.batchDialogVisible = true
+        this.batchLoading = true
+        const url = type === 'futures' ? '/erp/inventory/futures/batches' : '/erp/inventory/spot/batches'
+        const params = type === 'futures'
+          ? { packingItemId: row.packingItemId }
+          : { presaleOrderId: row.presaleOrderId, productId: row.productId }
+        this.$http({
+          url: this.$http.adornUrl(url),
+          method: 'get',
+          params: this.$http.adornParams(params)
+        }).then(({data}) => {
+          if (data && data.code === 0) {
+            this.batchList = data.list || []
+          } else {
+            this.batchList = []
+            this.$message.error((data && data.msg) || '获取库存批次失败')
+          }
+          this.batchLoading = false
+        }).catch(() => {
+          this.batchLoading = false
+        })
+      },
       resetSpotQuery () {
         this.spotQuery = {
           keyword: '',
@@ -233,5 +292,17 @@
   .inventory-danger {
     color: #f56c6c;
     font-weight: 600;
+  }
+
+  .batch-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 24px;
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    background: #f6f8fa;
+    border: 1px solid #ebeef5;
+    border-radius: 4px;
+    color: #303133;
   }
 </style>
