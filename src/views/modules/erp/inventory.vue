@@ -74,11 +74,6 @@
 
         <el-table :data="futuresList" border stripe v-loading="futuresLoading" height="620">
           <el-table-column type="index" label="序号" width="60" align="center" header-align="center"></el-table-column>
-          <el-table-column prop="transferStatus" label="转现货状态" width="110" align="center" header-align="center">
-            <template slot-scope="scope">
-              <el-tag :type="getTransferTagType(scope.row.transferStatus)" size="small">{{ scope.row.transferStatus }}</el-tag>
-            </template>
-          </el-table-column>
           <el-table-column prop="contractNo" label="合同号" min-width="140" show-overflow-tooltip></el-table-column>
           <el-table-column prop="customerReference" label="采购方" min-width="160" show-overflow-tooltip></el-table-column>
           <el-table-column prop="brandName" label="品牌方" min-width="160" show-overflow-tooltip></el-table-column>
