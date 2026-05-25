@@ -13,7 +13,7 @@
             <el-input v-model="spotQuery.containerNo" placeholder="柜号" clearable @keyup.enter.native="getSpotList()"></el-input>
           </el-form-item>
           <el-form-item>
-            <el-checkbox v-model="spotQuery.onlyAvailable" true-label="1" false-label="0">只看可用库存</el-checkbox>
+            <el-checkbox v-model="spotQuery.onlyAvailable" true-label="1" false-label="0">只看可售库存</el-checkbox>
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="getSpotList()">查询</el-button>
@@ -29,15 +29,12 @@
           <el-table-column prop="productCode" label="产品编码" min-width="110" align="center" header-align="center"></el-table-column>
           <el-table-column prop="productName" label="中文名称" min-width="170" show-overflow-tooltip></el-table-column>
           <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
-          <el-table-column prop="inboundBoxes" label="入库箱数" width="100" align="right" header-align="center"></el-table-column>
-          <el-table-column prop="allocatedBoxes" label="已分配箱数" width="110" align="right" header-align="center"></el-table-column>
-          <el-table-column prop="outboundBoxes" label="已出库箱数" width="110" align="right" header-align="center"></el-table-column>
-          <el-table-column prop="availableBoxes" label="可用箱数" width="100" align="right" header-align="center">
+          <el-table-column prop="availableBoxes" label="可售箱数" width="100" align="right" header-align="center">
             <template slot-scope="scope">
               <span :class="{ 'inventory-danger': Number(scope.row.availableBoxes) < 0 }">{{ scope.row.availableBoxes }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="packingBoxes" label="装箱单箱数" width="110" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="allocatedBoxes" label="已占用箱数" width="110" align="right" header-align="center"></el-table-column>
           <el-table-column prop="damageWeightKg" label="报损重量(KG)" width="120" align="right" header-align="center"></el-table-column>
           <el-table-column prop="specWeight" label="规格/KG" width="100" align="right" header-align="center"></el-table-column>
           <el-table-column prop="availableWeightKg" label="可用重量(KG)" width="120" align="right" header-align="center"></el-table-column>
@@ -90,9 +87,7 @@
           <el-table-column prop="productName" label="中文名称" min-width="170" show-overflow-tooltip></el-table-column>
           <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
           <el-table-column prop="futuresBoxes" label="期货总箱数" width="110" align="right" header-align="center"></el-table-column>
-          <el-table-column prop="futuresSoldBoxes" label="期货已销售" width="110" align="right" header-align="center"></el-table-column>
-          <el-table-column prop="transferredSpotBoxes" label="完整转现货箱数" width="130" align="right" header-align="center"></el-table-column>
-          <el-table-column prop="notInboundBoxes" label="未转现货箱数" width="120" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="futuresSoldBoxes" label="已占用箱数" width="110" align="right" header-align="center"></el-table-column>
           <el-table-column prop="futuresAvailableBoxes" label="期货可售" width="100" align="right" header-align="center">
             <template slot-scope="scope">
               <span :class="{ 'inventory-danger': Number(scope.row.futuresAvailableBoxes) < 0 }">{{ scope.row.futuresAvailableBoxes }}</span>
@@ -112,6 +107,57 @@
               <el-button type="text" size="small" @click="openBatchDialog('futures', scope.row)">详情</el-button>
             </template>
           </el-table-column>
+        </el-table>
+      </el-tab-pane>
+
+      <el-tab-pane label="出入库记录" name="records">
+        <el-form :inline="true" :model="recordQuery" size="small">
+          <el-form-item>
+            <el-input v-model="recordQuery.keyword" placeholder="产品/单号/客户" clearable @keyup.enter.native="getRecordList()"></el-input>
+          </el-form-item>
+          <el-form-item>
+            <el-select v-model="recordQuery.recordType" clearable placeholder="记录类型" style="width: 120px;">
+              <el-option label="入库" value="INBOUND"></el-option>
+              <el-option label="出库" value="OUTBOUND"></el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-input v-model="recordQuery.contractNo" placeholder="合同号" clearable @keyup.enter.native="getRecordList()"></el-input>
+          </el-form-item>
+          <el-form-item>
+            <el-input v-model="recordQuery.warehouseName" placeholder="仓库" clearable @keyup.enter.native="getRecordList()"></el-input>
+          </el-form-item>
+          <el-form-item>
+            <el-input v-model="recordQuery.containerNo" placeholder="柜号" clearable @keyup.enter.native="getRecordList()"></el-input>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="getRecordList()">查询</el-button>
+            <el-button @click="resetRecordQuery()">重置</el-button>
+          </el-form-item>
+        </el-form>
+
+        <el-table :data="recordList" border stripe v-loading="recordLoading" height="620">
+          <el-table-column type="index" label="序号" width="60" align="center" header-align="center"></el-table-column>
+          <el-table-column label="类型" width="90" align="center" header-align="center">
+            <template slot-scope="scope">
+              <el-tag :type="scope.row.recordType === 'INBOUND' ? 'success' : 'warning'" size="small">{{ scope.row.recordTypeName }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="bizDate" label="日期" width="115" align="center" header-align="center">
+            <template slot-scope="scope">{{ formatDate(scope.row.bizDate) }}</template>
+          </el-table-column>
+          <el-table-column prop="orderNo" label="单号" min-width="150" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="contractNo" label="合同号" min-width="140" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="customerName" label="客户" min-width="160" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="warehouseName" label="仓库" min-width="140" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="containerNo" label="柜号" min-width="130" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="productCode" label="产品编码" width="110" align="center" header-align="center"></el-table-column>
+          <el-table-column prop="productName" label="中文名称" min-width="170" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="boxes" label="箱数" width="90" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="weightKg" label="重量(KG)" width="120" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="unit" label="单位" width="80" align="center" header-align="center"></el-table-column>
+          <el-table-column prop="sourceRemark" label="来源" width="100" align="center" header-align="center"></el-table-column>
         </el-table>
       </el-tab-pane>
     </el-tabs>
@@ -165,11 +211,20 @@
           containerNo: '',
           onlyAvailable: '0'
         },
+        recordQuery: {
+          keyword: '',
+          recordType: '',
+          contractNo: '',
+          warehouseName: '',
+          containerNo: ''
+        },
         spotList: [],
         futuresList: [],
+        recordList: [],
         batchList: [],
         spotLoading: false,
         futuresLoading: false,
+        recordLoading: false,
         batchLoading: false,
         batchDialogVisible: false,
         batchDialogTitle: '库存批次详情',
@@ -186,6 +241,8 @@
       getDataList () {
         if (this.activeTab === 'futures') {
           this.getFuturesList()
+        } else if (this.activeTab === 'records') {
+          this.getRecordList()
         } else {
           this.getSpotList()
         }
@@ -224,6 +281,24 @@
           this.futuresLoading = false
         }).catch(() => {
           this.futuresLoading = false
+        })
+      },
+      getRecordList () {
+        this.recordLoading = true
+        this.$http({
+          url: this.$http.adornUrl('/erp/inventory/records'),
+          method: 'get',
+          params: this.$http.adornParams(this.recordQuery)
+        }).then(({data}) => {
+          if (data && data.code === 0) {
+            this.recordList = data.list || []
+          } else {
+            this.recordList = []
+            this.$message.error((data && data.msg) || '获取出入库记录失败')
+          }
+          this.recordLoading = false
+        }).catch(() => {
+          this.recordLoading = false
         })
       },
       openBatchDialog (type, row) {
@@ -269,6 +344,16 @@
           onlyAvailable: '0'
         }
         this.getFuturesList()
+      },
+      resetRecordQuery () {
+        this.recordQuery = {
+          keyword: '',
+          recordType: '',
+          contractNo: '',
+          warehouseName: '',
+          containerNo: ''
+        }
+        this.getRecordList()
       },
       formatDate (value) {
         if (!value) return ''
