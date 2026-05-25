@@ -1521,26 +1521,102 @@ export default {
       if (!this.dataForm.id) return
       this.confirmLoading = true
       this.currentConfirmType = fileType
-      this.$http({
-        url: this.$http.adornUrl('/erp/saleorder/confirm'),
-        method: 'post',
-        data: this.$http.adornData({
-          saleOrderId: this.dataForm.id,
-          fileType
-        })
-      }).then(({ data }) => {
-        if (data && data.code === 0) {
-          this.$message.success('确认成功')
-          this.refreshDetail()
-          this.$emit('refreshDataList')
-        } else {
-          this.$message.error((data && data.msg) || '确认失败')
+      const beforeConfirm = fileType === 'OUTBOUND_RECEIPT' && this.dataForm.outboundReceipt
+        ? this.saveOutboundReceipt({ silent: true, skipRefresh: true })
+        : Promise.resolve(true)
+      beforeConfirm.then(saved => {
+        if (saved === false) {
+          this.confirmLoading = false
+          this.currentConfirmType = ''
+          return
         }
-        this.confirmLoading = false
-        this.currentConfirmType = ''
+        this.$http({
+          url: this.$http.adornUrl('/erp/saleorder/confirm'),
+          method: 'post',
+          data: this.$http.adornData({
+            saleOrderId: this.dataForm.id,
+            fileType
+          })
+        }).then(({ data }) => {
+          if (data && data.code === 0) {
+            this.$message.success('确认成功')
+            this.refreshDetail()
+            this.$emit('refreshDataList')
+          } else {
+            this.$message.error((data && data.msg) || '确认失败')
+          }
+          this.confirmLoading = false
+          this.currentConfirmType = ''
+        }).catch(() => {
+          this.confirmLoading = false
+          this.currentConfirmType = ''
+        })
       }).catch(() => {
         this.confirmLoading = false
         this.currentConfirmType = ''
+      })
+    },
+    buildOutboundReceiptPayload () {
+      if (!this.dataForm.id || !this.dataForm.outboundReceipt) return null
+      return Object.assign({}, this.dataForm.outboundReceipt, {
+        saleOrderId: this.dataForm.id,
+        itemList: (this.dataForm.outboundReceipt.itemList || []).map((item, index) => ({
+          id: item.id,
+          lineNo: index + 1,
+          productId: item.productId || null,
+          productCode: item.productCode,
+          recognizedProductCode: item.recognizedProductCode,
+          productName: item.productName,
+          productNameEn: item.productNameEn,
+          productSpec: item.productSpec,
+          unit: item.unit,
+          orderQty: item.orderQty,
+          shippedQty: item.shippedQty,
+          containerNo: item.containerNo,
+          factoryNo: item.factoryNo,
+          avgWeight: item.avgWeight,
+          totalWeight: item.totalWeight
+        }))
+      })
+    },
+    saveOutboundReceipt (options) {
+      const opts = Object.assign({ silent: false, skipRefresh: false }, options || {})
+      const receipt = this.buildOutboundReceiptPayload()
+      if (!receipt) return Promise.resolve(false)
+      if (!opts.silent) {
+        this.outboundSaveLoading = true
+      }
+      return this.$http({
+        url: this.$http.adornUrl('/erp/saleorder/outbound/receipt/save'),
+        method: 'post',
+        data: this.$http.adornData(receipt)
+      }).then(({ data }) => {
+        if (data && data.code === 0) {
+          this.dataForm.outboundReceipt = this.normalizeOutboundReceipt(data.receipt)
+          if (!opts.silent) {
+            this.$message.success('保存成功')
+          }
+          if (!opts.skipRefresh) {
+            this.refreshDetail()
+          }
+          this.$emit('refreshDataList')
+          return true
+        } else {
+          this.$message.error((data && data.msg) || '保存失败')
+          return false
+        }
+      }).catch(() => {
+        return false
+      }).then(result => {
+        if (!opts.silent) {
+          this.outboundSaveLoading = false
+        }
+        return result
+      }).catch(() => {
+        if (!opts.silent) {
+          this.outboundSaveLoading = false
+        }
+        return false
       })
     },
     openContract () {
@@ -1617,47 +1693,6 @@ export default {
         this.uploadLoading = false
       }).catch(() => {
         this.uploadLoading = false
-      })
-    },
-    saveOutboundReceipt () {
-      if (!this.dataForm.id || !this.dataForm.outboundReceipt) return
-      const receipt = Object.assign({}, this.dataForm.outboundReceipt, {
-        saleOrderId: this.dataForm.id,
-        itemList: (this.dataForm.outboundReceipt.itemList || []).map((item, index) => ({
-          id: item.id,
-          lineNo: index + 1,
-          productId: item.productId || null,
-          productCode: item.productCode,
-          recognizedProductCode: item.recognizedProductCode,
-          productName: item.productName,
-          productNameEn: item.productNameEn,
-          productSpec: item.productSpec,
-          unit: item.unit,
-          orderQty: item.orderQty,
-          shippedQty: item.shippedQty,
-          containerNo: item.containerNo,
-          factoryNo: item.factoryNo,
-          avgWeight: item.avgWeight,
-          totalWeight: item.totalWeight
-        }))
-      })
-      this.outboundSaveLoading = true
-      this.$http({
-        url: this.$http.adornUrl('/erp/saleorder/outbound/receipt/save'),
-        method: 'post',
-        data: this.$http.adornData(receipt)
-      }).then(({ data }) => {
-        if (data && data.code === 0) {
-          this.dataForm.outboundReceipt = this.normalizeOutboundReceipt(data.receipt)
-          this.$message.success('保存成功')
-          this.refreshDetail()
-          this.$emit('refreshDataList')
-        } else {
-          this.$message.error((data && data.msg) || '保存失败')
-        }
-        this.outboundSaveLoading = false
-      }).catch(() => {
-        this.outboundSaveLoading = false
       })
     },
     refreshDetail () {
