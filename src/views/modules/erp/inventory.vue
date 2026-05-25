@@ -23,22 +23,21 @@
 
         <el-table :data="spotList" border stripe v-loading="spotLoading" height="620">
           <el-table-column type="index" label="序号" width="60" align="center" header-align="center"></el-table-column>
-          <el-table-column prop="warehouseName" label="仓库" min-width="140" show-overflow-tooltip></el-table-column>
-          <el-table-column prop="containerNo" label="柜号" min-width="130" show-overflow-tooltip></el-table-column>
-          <el-table-column prop="contractNo" label="合同号" min-width="130" show-overflow-tooltip></el-table-column>
           <el-table-column prop="productCode" label="产品编码" min-width="110" align="center" header-align="center"></el-table-column>
           <el-table-column prop="productName" label="中文名称" min-width="170" show-overflow-tooltip></el-table-column>
           <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="packingBoxes" label="装箱单箱数" width="110" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="inboundBoxes" label="入库箱数" width="100" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="allocatedBoxes" label="已占用箱数" width="110" align="right" header-align="center"></el-table-column>
           <el-table-column prop="availableBoxes" label="可售箱数" width="100" align="right" header-align="center">
             <template slot-scope="scope">
               <span :class="{ 'inventory-danger': Number(scope.row.availableBoxes) < 0 }">{{ scope.row.availableBoxes }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="allocatedBoxes" label="已占用箱数" width="110" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="inboundWeightKg" label="入库总重量(KG)" width="135" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="allocatedWeightKg" label="已占用重量(KG)" width="135" align="right" header-align="center"></el-table-column>
           <el-table-column prop="damageWeightKg" label="报损重量(KG)" width="120" align="right" header-align="center"></el-table-column>
-          <el-table-column prop="specWeight" label="规格/KG" width="100" align="right" header-align="center"></el-table-column>
-          <el-table-column prop="availableWeightKg" label="可用重量(KG)" width="120" align="right" header-align="center"></el-table-column>
-          <el-table-column prop="temperatureZone" label="温区" width="90" align="center" header-align="center"></el-table-column>
+          <el-table-column prop="availableWeightKg" label="可售重量(KG)" width="120" align="right" header-align="center"></el-table-column>
           <el-table-column label="预警" width="90" align="center" header-align="center">
             <template slot-scope="scope">
               <el-tag v-if="scope.row.freshnessWarning" size="small" type="warning">保鲜</el-tag>
@@ -74,24 +73,19 @@
 
         <el-table :data="futuresList" border stripe v-loading="futuresLoading" height="620">
           <el-table-column type="index" label="序号" width="60" align="center" header-align="center"></el-table-column>
-          <el-table-column prop="contractNo" label="合同号" min-width="140" show-overflow-tooltip></el-table-column>
-          <el-table-column prop="customerReference" label="采购方" min-width="160" show-overflow-tooltip></el-table-column>
-          <el-table-column prop="brandName" label="品牌方" min-width="160" show-overflow-tooltip></el-table-column>
-          <el-table-column prop="containerNo" label="柜号" min-width="130" show-overflow-tooltip></el-table-column>
           <el-table-column prop="productCode" label="产品编码" min-width="110" align="center" header-align="center"></el-table-column>
           <el-table-column prop="productName" label="中文名称" min-width="170" show-overflow-tooltip></el-table-column>
           <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
           <el-table-column prop="futuresBoxes" label="期货总箱数" width="110" align="right" header-align="center"></el-table-column>
           <el-table-column prop="futuresSoldBoxes" label="已占用箱数" width="110" align="right" header-align="center"></el-table-column>
-          <el-table-column prop="futuresAvailableBoxes" label="期货可售" width="100" align="right" header-align="center">
+          <el-table-column prop="futuresAvailableBoxes" label="期货可售箱数" width="120" align="right" header-align="center">
             <template slot-scope="scope">
               <span :class="{ 'inventory-danger': Number(scope.row.futuresAvailableBoxes) < 0 }">{{ scope.row.futuresAvailableBoxes }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="totalWeightKg" label="装箱重量(KG)" width="120" align="right" header-align="center"></el-table-column>
-          <el-table-column prop="expectedArrivalDate" label="预计到港" width="115" align="center" header-align="center">
-            <template slot-scope="scope">{{ formatDate(scope.row.expectedArrivalDate) }}</template>
-          </el-table-column>
+          <el-table-column prop="totalWeightKg" label="期货总重量(KG)" width="135" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="soldWeightKg" label="已销售重量(KG)" width="135" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="availableWeightKg" label="期货可售重量(KG)" width="145" align="right" header-align="center"></el-table-column>
           <el-table-column label="预警" width="90" align="center" header-align="center">
             <template slot-scope="scope">
               <el-tag v-if="scope.row.freshnessWarning" size="small" type="warning">保鲜</el-tag>
@@ -163,22 +157,53 @@
       width="760px"
       append-to-body>
       <div v-if="currentInventoryRow" class="batch-summary">
-        <span>合同号：{{ currentInventoryRow.contractNo || '-' }}</span>
-        <span>柜号：{{ currentInventoryRow.containerNo || '-' }}</span>
         <span>产品编码：{{ currentInventoryRow.productCode || '-' }}</span>
         <span>产品名称：{{ currentInventoryRow.productName || '-' }}</span>
       </div>
-      <el-table :data="batchList" border stripe v-loading="batchLoading" height="360">
+      <el-table :data="batchList" border stripe v-loading="batchLoading" height="430">
         <el-table-column type="index" label="序号" width="60" align="center" header-align="center"></el-table-column>
-        <el-table-column prop="productionDate" label="生产日期" width="130" align="center" header-align="center">
+        <template v-if="currentBatchType === 'spot'">
+          <el-table-column prop="warehouseName" label="仓库" min-width="140" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="containerNo" label="柜号" min-width="130" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="contractNo" label="合同号" min-width="140" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="customerName" label="客户" min-width="160" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="temperatureZone" label="温区" width="90" align="center" header-align="center"></el-table-column>
+          <el-table-column prop="skuCode" label="SKU" min-width="170" show-overflow-tooltip></el-table-column>
+        </template>
+        <template v-else>
+          <el-table-column prop="presaleOrderNo" label="预销售单" min-width="150" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="contractNo" label="合同号" min-width="140" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="containerNo" label="柜号" min-width="130" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="customerReference" label="采购方" min-width="160" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="brandName" label="品牌方" min-width="160" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="expectedArrivalDate" label="预计到港" width="115" align="center" header-align="center">
+            <template slot-scope="scope">{{ formatDate(scope.row.expectedArrivalDate) }}</template>
+          </el-table-column>
+        </template>
+        <el-table-column prop="productionDate" label="生产日期" width="115" align="center" header-align="center">
           <template slot-scope="scope">{{ formatDate(scope.row.productionDate) }}</template>
         </el-table-column>
-        <el-table-column prop="expiryDate" label="过期日期" width="130" align="center" header-align="center">
+        <el-table-column prop="expiryDate" label="过期日期" width="115" align="center" header-align="center">
           <template slot-scope="scope">{{ formatDate(scope.row.expiryDate) }}</template>
         </el-table-column>
-        <el-table-column prop="boxes" label="箱数" width="100" align="right" header-align="center"></el-table-column>
-        <el-table-column prop="weightKg" label="重量(KG)" width="120" align="right" header-align="center"></el-table-column>
-        <el-table-column prop="shelfLifeDays" label="保质期天数" width="110" align="right" header-align="center"></el-table-column>
+        <template v-if="currentBatchType === 'spot'">
+          <el-table-column prop="packingBoxes" label="装箱单箱数" width="110" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="inboundBoxes" label="入库箱数" width="100" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="allocatedBoxes" label="已占用箱数" width="110" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="availableBoxes" label="可售箱数" width="100" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="inboundWeightKg" label="入库重量(KG)" width="120" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="allocatedWeightKg" label="已占用重量(KG)" width="135" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="damageWeightKg" label="报损重量(KG)" width="120" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="availableWeightKg" label="可售重量(KG)" width="120" align="right" header-align="center"></el-table-column>
+        </template>
+        <template v-else>
+          <el-table-column prop="futuresBoxes" label="期货箱数" width="100" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="futuresSoldBoxes" label="已占用箱数" width="110" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="futuresAvailableBoxes" label="期货可售箱数" width="120" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="totalWeightKg" label="期货重量(KG)" width="120" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="soldWeightKg" label="已销售重量(KG)" width="135" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="availableWeightKg" label="期货可售重量(KG)" width="145" align="right" header-align="center"></el-table-column>
+        </template>
         <el-table-column label="预警" min-width="100" align="center" header-align="center">
           <template slot-scope="scope">
             <el-tag v-if="scope.row.freshnessWarning" size="small" type="warning">保鲜</el-tag>
@@ -223,6 +248,7 @@
         batchLoading: false,
         batchDialogVisible: false,
         batchDialogTitle: '库存批次详情',
+        currentBatchType: 'spot',
         currentInventoryRow: null
       }
     },
@@ -298,14 +324,25 @@
       },
       openBatchDialog (type, row) {
         this.currentInventoryRow = row
+        this.currentBatchType = type
         this.batchList = []
-        this.batchDialogTitle = type === 'futures' ? '期货库存批次详情' : '现货库存批次详情'
+        this.batchDialogTitle = type === 'futures' ? '期货库存来源详情' : '现货库存来源详情'
         this.batchDialogVisible = true
         this.batchLoading = true
         const url = type === 'futures' ? '/erp/inventory/futures/batches' : '/erp/inventory/spot/batches'
         const params = type === 'futures'
-          ? { packingItemId: row.packingItemId }
-          : { presaleOrderId: row.presaleOrderId, productId: row.productId }
+          ? {
+            productId: row.productId,
+            contractNo: this.futuresQuery.contractNo,
+            containerNo: this.futuresQuery.containerNo,
+            onlyAvailable: this.futuresQuery.onlyAvailable
+          }
+          : {
+            productId: row.productId,
+            warehouseName: this.spotQuery.warehouseName,
+            containerNo: this.spotQuery.containerNo,
+            onlyAvailable: this.spotQuery.onlyAvailable
+          }
         this.$http({
           url: this.$http.adornUrl(url),
           method: 'get',
