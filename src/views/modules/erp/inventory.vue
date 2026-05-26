@@ -154,7 +154,8 @@
     <el-dialog
       :title="batchDialogTitle"
       :visible.sync="batchDialogVisible"
-      width="760px"
+      width="92vw"
+      custom-class="inventory-batch-dialog"
       append-to-body>
       <div v-if="currentInventoryRow" class="batch-summary">
         <span>产品编码：{{ currentInventoryRow.productCode || '-' }}</span>
@@ -417,5 +418,9 @@
     border: 1px solid #ebeef5;
     border-radius: 4px;
     color: #303133;
+  }
+
+  /deep/ .inventory-batch-dialog {
+    max-width: 1480px;
   }
 </style>
