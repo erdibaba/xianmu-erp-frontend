@@ -85,6 +85,13 @@
       shouldHideMenu (menu) {
         const name = String((menu && menu.name) || '').trim()
         const url = String((menu && menu.url) || '').trim().toLowerCase()
+        if ([
+          'erp/product-price',
+          'erp/purchase-order',
+          'erp/inbound-manage'
+        ].indexOf(url) !== -1) {
+          return true
+        }
         return name === '数据处理' || url === 'generator/dataimport' || url === 'page/data-import'
       },
       // 路由操作
