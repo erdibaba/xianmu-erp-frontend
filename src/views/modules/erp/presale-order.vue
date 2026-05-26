@@ -11,7 +11,7 @@
       <el-form-item>
         <el-input
           v-model="queryForm.keyword"
-          placeholder="预销售单号 / 合同号 / Customer Reference"
+          placeholder="预销售单号 / 合同号 / 采购方"
           clearable
           @keyup.enter.native="getDataList()">
         </el-input>
@@ -28,7 +28,7 @@
     <el-table :data="dataList" border stripe v-loading="dataListLoading" style="margin-top: 15px;">
       <el-table-column prop="orderNo" label="预销售单号" min-width="150" align="center"></el-table-column>
       <el-table-column prop="sellerContractNo" label="合同号" min-width="160"></el-table-column>
-      <el-table-column prop="customerReference" label="Customer Reference" min-width="200"></el-table-column>
+      <el-table-column prop="customerReference" label="采购方" min-width="200"></el-table-column>
       <el-table-column prop="brandName" label="品牌方" min-width="180"></el-table-column>
       <el-table-column prop="currency" label="币种" width="90" align="center"></el-table-column>
       <el-table-column label="下单日期" min-width="120" align="center">
