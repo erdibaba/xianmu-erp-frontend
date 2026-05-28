@@ -59,6 +59,32 @@
           </el-form-item>
         </el-col>
         <el-col :span="12">
+          <el-form-item label="企微客户群">
+            <el-select
+              v-model="dataForm.wecomChatId"
+              filterable
+              clearable
+              placeholder="请选择企微客户群"
+              style="width: 100%;"
+              @visible-change="loadWecomGroups"
+              @change="wecomGroupChange">
+              <el-option
+                v-for="item in wecomGroupList"
+                :key="item.chatId"
+                :label="item.groupName || item.chatId"
+                :value="item.chatId">
+                <div>{{ item.groupName || '未命名客户群' }}</div>
+                <div style="font-size: 12px; color: #909399;">{{ item.owner || '-' }} / {{ item.chatId }}</div>
+              </el-option>
+            </el-select>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="企微群主">
+            <el-input v-model="dataForm.wecomChatOwner" disabled></el-input>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
           <el-form-item label="联系邮箱">
             <el-input v-model="dataForm.contactEmail"></el-input>
           </el-form-item>
@@ -109,6 +135,9 @@ const defaultForm = () => ({
   contactName: '',
   contactPhone: '',
   contactEmail: '',
+  wecomChatId: '',
+  wecomChatName: '',
+  wecomChatOwner: '',
   remark: '',
   status: 1
 })
@@ -118,6 +147,7 @@ export default {
     return {
       visible: false,
       bizRoleOptions: PARTNER_BIZ_ROLE_OPTIONS,
+      wecomGroupList: [],
       dataForm: defaultForm(),
       dataRule: {
         partnerCode: [
@@ -134,6 +164,7 @@ export default {
       this.visible = true
       this.dataForm = defaultForm()
       this.dataForm.id = id || 0
+      this.loadWecomGroups()
       this.$nextTick(() => {
         this.$refs.dataForm.resetFields()
         if (this.dataForm.id) {
@@ -152,6 +183,20 @@ export default {
           })
         }
       })
+    },
+    loadWecomGroups () {
+      this.$http({
+        url: this.$http.adornUrl('/erp/wecom/groups/select'),
+        method: 'get',
+        params: this.$http.adornParams()
+      }).then(({ data }) => {
+        this.wecomGroupList = (data && data.list) || []
+      })
+    },
+    wecomGroupChange (chatId) {
+      const group = this.wecomGroupList.find(item => item.chatId === chatId)
+      this.dataForm.wecomChatName = group ? group.groupName : ''
+      this.dataForm.wecomChatOwner = group ? group.owner : ''
     },
     dataFormSubmit () {
       this.$refs.dataForm.validate((valid) => {

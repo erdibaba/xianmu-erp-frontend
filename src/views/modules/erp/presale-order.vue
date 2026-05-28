@@ -65,7 +65,7 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column fixed="right" label="操作" width="260" align="center">
+      <el-table-column fixed="right" label="操作" width="300" align="center">
         <template slot-scope="scope">
           <div class="action-wrap">
           <el-button type="text" size="small" @click="viewHandle(scope.row.id)">详情</el-button>
@@ -94,6 +94,11 @@
             type="text"
             size="small"
             @click="uploadQuarantineHandle(scope.row)">上传检疫证明</el-button>
+          <el-button
+            v-if="isAuth('erp:tradeorder:update') && scope.row.confirmUploaded"
+            type="text"
+            size="small"
+            @click="shipNoticeHandle(scope.row)">船期通知</el-button>
           <el-button
             v-if="isAuth('erp:tradeorder:delete')"
             type="text"
@@ -135,6 +140,54 @@
       :brand-options="brandPartnerList"
       @saved="batchProductSavedHandle">
     </presale-product-batch-dialog>
+
+    <el-dialog
+      title="发送船期通知"
+      :close-on-click-modal="false"
+      :visible.sync="shipNoticeVisible"
+      width="620px">
+      <el-form :model="shipNoticeForm" label-width="110px">
+        <el-form-item label="预销售单">
+          <el-input :value="shipNoticeForm.orderNo" disabled></el-input>
+        </el-form-item>
+        <el-form-item label="二批商" required>
+          <el-select
+            v-model="shipNoticeForm.partnerId"
+            filterable
+            clearable
+            placeholder="请选择已绑定企微客户群的二批商"
+            style="width: 100%;">
+            <el-option
+              v-for="item in secondaryPartnerList"
+              :key="item.id"
+              :label="item.partnerName"
+              :value="item.id"
+              :disabled="!item.wecomChatId">
+              <span>{{ item.partnerName }}</span>
+              <span style="float: right; color: #909399; font-size: 12px;">{{ item.wecomChatName || '未绑定企微群' }}</span>
+            </el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="通知内容">
+          <el-input
+            v-model="shipNoticeForm.content"
+            type="textarea"
+            :rows="6"
+            placeholder="可留空，系统会根据确认函合同号、预计到港时间自动生成。">
+          </el-input>
+        </el-form-item>
+        <el-alert
+          title="企业微信会创建待发送任务，需要对应群主在企业微信里确认后才会真正发到客户群。"
+          type="info"
+          show-icon
+          :closable="false">
+        </el-alert>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="shipNoticeVisible = false">取消</el-button>
+        <el-button type="primary" :loading="shipNoticeLoading" @click="sendShipNotice()">创建群发任务</el-button>
+      </span>
+    </el-dialog>
   </div>
 </template>
 
@@ -165,6 +218,14 @@ export default {
       uploadType: 'estimate',
       currentOrderId: 0,
       pendingRecognizedResult: null,
+      shipNoticeVisible: false,
+      shipNoticeLoading: false,
+      shipNoticeForm: {
+        presaleOrderId: 0,
+        orderNo: '',
+        partnerId: '',
+        content: ''
+      },
       productList: [],
       partnerList: []
     }
@@ -172,6 +233,9 @@ export default {
   computed: {
     brandPartnerList () {
       return this.partnerList.filter(item => this.hasBusinessRole(item, 'BRAND'))
+    },
+    secondaryPartnerList () {
+      return this.partnerList.filter(item => this.hasBusinessRole(item, 'SECONDARY'))
     }
   },
   activated () {
@@ -405,6 +469,39 @@ export default {
       this.dialogVisible = true
       this.$nextTick(() => {
         this.$refs.dialog.init(id, false, 'estimate')
+      })
+    },
+    shipNoticeHandle (row) {
+      this.loadPartnerList().then(() => {
+        this.shipNoticeForm = {
+          presaleOrderId: row.id,
+          orderNo: row.orderNo || row.sellerContractNo || '',
+          partnerId: '',
+          content: ''
+        }
+        this.shipNoticeVisible = true
+      })
+    },
+    sendShipNotice () {
+      if (!this.shipNoticeForm.partnerId) {
+        this.$message.warning('请选择二批商')
+        return
+      }
+      this.shipNoticeLoading = true
+      this.$http({
+        url: this.$http.adornUrl('/erp/wecom/ship-notice/send'),
+        method: 'post',
+        data: this.$http.adornData(this.shipNoticeForm)
+      }).then(({ data }) => {
+        if (data && data.code === 0) {
+          this.$message.success('企业微信群发任务已创建，请群主在企业微信里确认发送')
+          this.shipNoticeVisible = false
+        } else {
+          this.$message.error((data && data.msg) || '创建船期通知失败')
+        }
+        this.shipNoticeLoading = false
+      }).catch(() => {
+        this.shipNoticeLoading = false
       })
     },
     deleteHandle (id) {

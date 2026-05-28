@@ -16,6 +16,7 @@
       </el-form-item>
       <el-form-item>
         <el-button type="primary" @click="getDataList()">查询</el-button>
+        <el-button v-if="isAuth('erp:partner:update')" type="warning" :loading="syncWecomLoading" @click="syncWecomGroups()">同步企微客户群</el-button>
         <el-button v-if="isAuth('erp:partner:save')" type="success" @click="addOrUpdateHandle()">新增</el-button>
         <el-button v-if="isAuth('erp:partner:delete')" type="danger" :disabled="dataListSelections.length <= 0" @click="deleteHandle()">批量删除</el-button>
       </el-form-item>
@@ -31,6 +32,8 @@
       <el-table-column label="冷库减免天数" width="120" align="center" header-align="center">
         <template slot-scope="scope">{{ scope.row.coldStorageFreeDays || 7 }}天</template>
       </el-table-column>
+      <el-table-column prop="wecomChatName" label="企微客户群" min-width="180" show-overflow-tooltip></el-table-column>
+      <el-table-column prop="wecomChatOwner" label="企微群主" width="110" align="center" header-align="center"></el-table-column>
       <el-table-column prop="taxNo" label="税号" min-width="170" show-overflow-tooltip></el-table-column>
       <el-table-column prop="contactName" label="联系人" width="100" align="center" header-align="center"></el-table-column>
       <el-table-column prop="contactPhone" label="联系电话" width="130" align="center" header-align="center"></el-table-column>
@@ -80,6 +83,7 @@ export default {
       dataListLoading: false,
       dataListSelections: [],
       addOrUpdateVisible: false,
+      syncWecomLoading: false,
       bizRoleOptions: PARTNER_BIZ_ROLE_OPTIONS
     }
   },
@@ -134,6 +138,23 @@ export default {
       this.addOrUpdateVisible = true
       this.$nextTick(() => {
         this.$refs.addOrUpdate.init(id)
+      })
+    },
+    syncWecomGroups () {
+      this.syncWecomLoading = true
+      this.$http({
+        url: this.$http.adornUrl('/erp/wecom/groups/sync'),
+        method: 'post',
+        data: this.$http.adornData({})
+      }).then(({ data }) => {
+        if (data && data.code === 0) {
+          this.$message.success(`已同步${(data.list || []).length}个企微客户群`)
+        } else {
+          this.$message.error((data && data.msg) || '同步企微客户群失败')
+        }
+        this.syncWecomLoading = false
+      }).catch(() => {
+        this.syncWecomLoading = false
       })
     },
     deleteHandle (id) {
