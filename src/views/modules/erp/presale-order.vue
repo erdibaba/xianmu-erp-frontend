@@ -152,10 +152,12 @@
         </el-form-item>
         <el-form-item label="二批商" required>
           <el-select
-            v-model="shipNoticeForm.partnerId"
+            v-model="shipNoticeForm.partnerIds"
+            multiple
+            collapse-tags
             filterable
             clearable
-            placeholder="请选择已绑定企微客户群的二批商"
+            placeholder="可输入搜索，支持选择多个已绑定企微客户群的二批商"
             style="width: 100%;">
             <el-option
               v-for="item in secondaryPartnerList"
@@ -223,7 +225,7 @@ export default {
       shipNoticeForm: {
         presaleOrderId: 0,
         orderNo: '',
-        partnerId: '',
+        partnerIds: [],
         content: ''
       },
       productList: [],
@@ -476,15 +478,15 @@ export default {
         this.shipNoticeForm = {
           presaleOrderId: row.id,
           orderNo: row.orderNo || row.sellerContractNo || '',
-          partnerId: '',
+          partnerIds: [],
           content: ''
         }
         this.shipNoticeVisible = true
       })
     },
     sendShipNotice () {
-      if (!this.shipNoticeForm.partnerId) {
-        this.$message.warning('请选择二批商')
+      if (!this.shipNoticeForm.partnerIds || !this.shipNoticeForm.partnerIds.length) {
+        this.$message.warning('请选择至少一个二批商')
         return
       }
       this.shipNoticeLoading = true
@@ -494,7 +496,7 @@ export default {
         data: this.$http.adornData(this.shipNoticeForm)
       }).then(({ data }) => {
         if (data && data.code === 0) {
-          this.$message.success('企业微信群发任务已创建，请群主在企业微信里确认发送')
+          this.$message.success(`已创建${(data.list || []).length}个企业微信群发任务，请群主在企业微信里确认发送`)
           this.shipNoticeVisible = false
         } else {
           this.$message.error((data && data.msg) || '创建船期通知失败')
