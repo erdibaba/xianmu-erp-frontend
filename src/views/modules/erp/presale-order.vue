@@ -475,10 +475,13 @@ export default {
     },
     shipNoticeHandle (row) {
       this.loadPartnerList().then(() => {
+        const defaultPartnerIds = this.secondaryPartnerList
+          .filter(item => item.wecomChatId)
+          .map(item => item.id)
         this.shipNoticeForm = {
           presaleOrderId: row.id,
           orderNo: row.orderNo || row.sellerContractNo || '',
-          partnerIds: [],
+          partnerIds: defaultPartnerIds,
           content: ''
         }
         this.shipNoticeVisible = true
