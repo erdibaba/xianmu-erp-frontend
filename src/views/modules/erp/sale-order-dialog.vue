@@ -141,9 +141,9 @@
                 <el-option
                   v-for="item in presaleOrderOptions"
                   :key="item.presaleOrderId"
-                  :label="item.sellerContractNo || item.presaleOrderNo"
+                  :label="presaleOrderLabel(item)"
                   :value="item.presaleOrderId">
-                  <div class="product-option-code">{{ item.sellerContractNo || item.presaleOrderNo }}</div>
+                  <div class="product-option-code">{{ presaleOrderLabel(item) }}</div>
                   <div class="product-option-name">{{ item.customerReference || '-' }} / {{ item.brandName || '-' }}</div>
                 </el-option>
               </el-select>
@@ -1002,8 +1002,10 @@ export default {
       result.allocationItemList = (source.allocationItemList || []).map(item => Object.assign(this.defaultAllocationRow(), item))
       result.secondaryPartnerColdStorageFreeDays = this.findSecondaryPartnerColdStorageFreeDays(result.secondaryPartnerId)
       if (result.saleType === 'FUTURES' && result.itemList.length) {
-        result.sourcePresaleOrderId = result.itemList[0].sourcePresaleOrderId || ''
-        result.sourcePresaleOrderNo = result.itemList[0].sourcePresaleOrderNo || ''
+        const firstItem = result.itemList[0] || {}
+        result.sourcePresaleOrderId = result.sourcePresaleOrderId || firstItem.sourcePresaleOrderId || ''
+        result.sourcePresaleOrderNo = result.sourcePresaleOrderNo || firstItem.sourcePresaleOrderNo || ''
+        this.ensureCurrentPresaleOrderOption(result)
       }
       if (!result.itemList.length) {
         result.itemList = [this.defaultItemRow()]
@@ -1217,6 +1219,31 @@ export default {
       this.presaleOrderKeyword = keyword
       this.fetchPresaleOrderOptions()
     },
+    presaleOrderLabel (item) {
+      if (!item) return ''
+      return item.sellerContractNo || item.presaleOrderNo || item.sourcePresaleOrderNo || (item.presaleOrderId ? `预销售单ID：${item.presaleOrderId}` : '')
+    },
+    ensureCurrentPresaleOrderOption (form) {
+      if (!form || !form.sourcePresaleOrderId) return
+      const options = this.presaleOrderOptions || []
+      const index = options.findIndex(item => String(item.presaleOrderId) === String(form.sourcePresaleOrderId))
+      if (index >= 0) {
+        if (!this.presaleOrderLabel(options[index]) && form.sourcePresaleOrderNo) {
+          this.$set(this.presaleOrderOptions, index, Object.assign({}, options[index], {
+            sellerContractNo: form.sourcePresaleOrderNo,
+            presaleOrderNo: form.sourcePresaleOrderNo
+          }))
+        }
+        return
+      }
+      this.presaleOrderOptions = [{
+        presaleOrderId: form.sourcePresaleOrderId,
+        sellerContractNo: form.sourcePresaleOrderNo,
+        presaleOrderNo: form.sourcePresaleOrderNo,
+        customerReference: form.customerReference || '',
+        brandName: form.brandName || ''
+      }].concat(options)
+    },
     fetchPresaleOrderOptions () {
       this.presaleOrderLoading = true
       this.$http({
@@ -1225,9 +1252,11 @@ export default {
         params: this.$http.adornParams({ keyword: this.presaleOrderKeyword })
       }).then(({ data }) => {
         this.presaleOrderOptions = data && data.code === 0 ? (data.list || []) : []
+        this.ensureCurrentPresaleOrderOption(this.dataForm)
         this.presaleOrderLoading = false
       }).catch(() => {
         this.presaleOrderOptions = []
+        this.ensureCurrentPresaleOrderOption(this.dataForm)
         this.presaleOrderLoading = false
       })
     },
