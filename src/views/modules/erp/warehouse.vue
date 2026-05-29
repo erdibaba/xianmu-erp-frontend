@@ -17,8 +17,10 @@
       <el-table-column prop="warehouseName" label="仓库名称" min-width="180" show-overflow-tooltip></el-table-column>
       <el-table-column prop="warehouseType" label="类型" width="120" align="center" header-align="center"></el-table-column>
       <el-table-column prop="freeStorageDays" label="免仓天数" width="100" align="right" header-align="center"></el-table-column>
-      <el-table-column prop="dailyStorageFee" label="仓储费/天" width="110" align="right" header-align="center"></el-table-column>
-      <el-table-column prop="dailyColdFee" label="冷链费/天" width="110" align="right" header-align="center"></el-table-column>
+      <el-table-column prop="frozenStorageFee" label="仓储冷冻" width="110" align="right" header-align="center"></el-table-column>
+      <el-table-column prop="chilledStorageFee" label="仓储冷藏" width="110" align="right" header-align="center"></el-table-column>
+      <el-table-column prop="frozenColdFee" label="冷链冷冻" width="110" align="right" header-align="center"></el-table-column>
+      <el-table-column prop="chilledColdFee" label="冷链冷藏" width="110" align="right" header-align="center"></el-table-column>
       <el-table-column prop="feeUnit" label="计费单位" width="100" align="center" header-align="center"></el-table-column>
       <el-table-column prop="contactName" label="联系人" width="100" align="center" header-align="center"></el-table-column>
       <el-table-column prop="contactPhone" label="联系电话" width="130" align="center" header-align="center"></el-table-column>

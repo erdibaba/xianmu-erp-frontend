@@ -36,13 +36,23 @@
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-form-item label="仓储费/天">
-            <el-input v-model.number="dataForm.dailyStorageFee"></el-input>
+          <el-form-item label="仓储费(冷冻)">
+            <el-input v-model.number="dataForm.frozenStorageFee"></el-input>
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-form-item label="冷链费/天">
-            <el-input v-model.number="dataForm.dailyColdFee"></el-input>
+          <el-form-item label="仓储费(冷藏)">
+            <el-input v-model.number="dataForm.chilledStorageFee"></el-input>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="冷链费(冷冻)">
+            <el-input v-model.number="dataForm.frozenColdFee"></el-input>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="冷链费(冷藏)">
+            <el-input v-model.number="dataForm.chilledColdFee"></el-input>
           </el-form-item>
         </el-col>
         <el-col :span="12">
@@ -99,6 +109,10 @@
     freeStorageDays: 0,
     dailyStorageFee: 0,
     dailyColdFee: 0,
+    frozenStorageFee: 0,
+    chilledStorageFee: 0,
+    frozenColdFee: 0,
+    chilledColdFee: 0,
     feeUnit: 'PIECE',
     status: 1,
     remark: ''
