@@ -24,7 +24,7 @@
             <el-form-item prop="password">
               <el-input v-model="dataForm.password" type="password" placeholder="密码"></el-input>
             </el-form-item>
-            <el-form-item prop="captcha">
+            <el-form-item class="login-captcha-form" prop="captcha">
               <el-row :gutter="20">
                 <el-col :span="14">
                   <el-input v-model="dataForm.captcha" placeholder="验证码">
@@ -120,6 +120,7 @@
     right: 0;
     bottom: 0;
     left: 0;
+    min-width: 0;
     background:
       radial-gradient(circle at 18% 22%, rgba(62, 161, 73, .34), transparent 28%),
       radial-gradient(circle at 70% 72%, rgba(255, 167, 38, .16), transparent 32%),
@@ -301,6 +302,113 @@
         min-height: auto;
         padding: 34px 28px 42px;
         border-radius: 24px;
+      }
+    }
+    @media (max-width: 600px) {
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      &:after {
+        left: -180px;
+        bottom: -220px;
+        width: 360px;
+        height: 360px;
+        border-width: 48px;
+      }
+      .site-content__wrapper {
+        min-width: 0;
+        min-height: 100%;
+      }
+      .site-content {
+        width: 100%;
+        min-width: 0;
+        min-height: 100%;
+        padding: 22px 16px 28px;
+      }
+      .brand-info {
+        margin: 18px 0 18px;
+        text-align: center;
+      }
+      .brand-info__logo-card {
+        padding: 12px 14px;
+        margin-bottom: 14px;
+        border-radius: 18px;
+      }
+      .brand-info__logo {
+        width: 170px;
+      }
+      .brand-info__eyebrow {
+        margin-bottom: 8px;
+        font-size: 11px;
+        letter-spacing: 2px;
+      }
+      .brand-info__text {
+        margin-bottom: 10px;
+        font-size: 28px;
+        letter-spacing: 1px;
+      }
+      .brand-info__intro {
+        display: none;
+      }
+      .brand-info__features {
+        justify-content: center;
+        margin-top: 14px;
+        span {
+          margin: 0 6px 8px;
+          padding: 7px 11px;
+          font-size: 12px;
+        }
+      }
+      .login-main {
+        width: 100%;
+        padding: 26px 18px 28px;
+        border-radius: 22px;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, .2);
+      }
+      .login-title {
+        margin-bottom: 22px;
+        font-size: 20px;
+        text-align: center;
+      }
+      .el-form-item {
+        margin-bottom: 18px;
+      }
+      .el-input__inner {
+        height: 48px;
+        line-height: 48px;
+        font-size: 16px;
+        border-radius: 14px;
+      }
+      .login-captcha {
+        > img {
+          height: 48px;
+          border-radius: 14px;
+          object-fit: cover;
+        }
+      }
+      .login-btn-submit {
+        height: 50px;
+        margin-top: 18px;
+        border-radius: 16px;
+      }
+    }
+    @media (max-width: 420px) {
+      .site-content {
+        padding-right: 12px;
+        padding-left: 12px;
+      }
+      .brand-info__features {
+        display: none;
+      }
+      .login-main {
+        padding: 24px 14px 26px;
+      }
+      .login-captcha-form .el-row {
+        margin-right: -5px !important;
+        margin-left: -5px !important;
+      }
+      .login-captcha-form .el-col {
+        padding-right: 5px !important;
+        padding-left: 5px !important;
       }
     }
   }
