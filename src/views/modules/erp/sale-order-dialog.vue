@@ -1736,7 +1736,8 @@ export default {
         this.$message.error('缺少文件ID')
         return
       }
-      window.open(this.$http.adornUrl(`/erp/saleorder/download/file/${row.id}`), '_blank')
+      const token = this.$cookie.get('token') || ''
+      window.open(this.$http.adornUrl(`/erp/saleorder/download/file/${row.id}?token=${encodeURIComponent(token)}`), '_blank')
     },
     deleteFile (row) {
       if (!row || !row.id) return
