@@ -85,6 +85,19 @@
           <span v-else>-</span>
         </template>
       </el-table-column>
+      <el-table-column label="上传通知" width="130" align="center">
+        <template slot-scope="scope">
+          <el-tooltip
+            v-if="Number(scope.row.uploadNoticeStatus || 0) === 9 && scope.row.uploadNoticeErrorMessage"
+            :content="scope.row.uploadNoticeErrorMessage"
+            placement="top">
+            <el-tag size="small" type="danger">{{ scope.row.uploadNoticeStatusText || '发送失败' }}</el-tag>
+          </el-tooltip>
+          <el-tag v-else size="small" :type="getUploadNoticeType(scope.row.uploadNoticeStatus)">
+            {{ scope.row.uploadNoticeStatusText || '未发送' }}
+          </el-tag>
+        </template>
+      </el-table-column>
       <el-table-column fixed="right" label="操作" width="220" align="center">
         <template slot-scope="scope">
           <div class="action-wrap">
@@ -102,6 +115,14 @@
               size="small"
               @click="editHandle(scope.row.id)">
               附件处理
+            </el-button>
+            <el-button
+              v-if="isAuth('erp:tradeorder:update')"
+              type="text"
+              size="small"
+              :loading="noticeSendingId === scope.row.id"
+              @click="sendUploadNotice(scope.row)">
+              {{ Number(scope.row.uploadNoticeStatus || 0) === 1 || Number(scope.row.uploadNoticeStatus || 0) === 2 ? '重新发送链接' : '发送上传链接' }}
             </el-button>
             <el-button
               v-if="isAuth('erp:tradeorder:delete') && !hasUploadedAttachment(scope.row)"
@@ -222,6 +243,7 @@ export default {
       totalPage: 0,
       dataListLoading: false,
       dialogVisible: false,
+      noticeSendingId: 0,
       presaleLinkVisible: false,
       presaleLinkSaving: false,
       presaleLinkConfirming: false,
@@ -286,6 +308,12 @@ export default {
       }
       return map[value] || 'info'
     },
+    getUploadNoticeType (value) {
+      const status = Number(value || 0)
+      if (status === 9) return 'danger'
+      if (status === 1 || status === 2) return 'success'
+      return 'info'
+    },
     openContract (url) {
       if (!url) {
         this.$message.error('合同链接不存在')
@@ -329,6 +357,41 @@ export default {
       } catch (e) {
         failure()
       }
+    },
+    sendUploadNotice (row) {
+      const sent = Number(row.uploadNoticeStatus || 0) === 1 || Number(row.uploadNoticeStatus || 0) === 2
+      const run = () => {
+        this.noticeSendingId = row.id
+        this.$http({
+          url: this.$http.adornUrl('/erp/wecom/sale-upload-notice/send'),
+          method: 'post',
+          data: this.$http.adornData({
+            saleOrderId: row.id,
+            force: sent
+          })
+        }).then(({ data }) => {
+          if (data && data.code === 0) {
+            this.$message.success('已创建企业微信群发任务，请群主在企业微信里确认发送')
+            this.getDataList()
+          } else {
+            this.$message.error((data && data.msg) || '发送上传链接失败')
+            this.getDataList()
+          }
+          this.noticeSendingId = 0
+        }).catch(() => {
+          this.noticeSendingId = 0
+          this.getDataList()
+        })
+      }
+      if (!sent) {
+        run()
+        return
+      }
+      this.$confirm('该销售单已经发送过上传链接，是否重新创建群发任务？', '重新发送上传链接', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(run).catch(() => {})
     },
     hasUploadedAttachment (row) {
       return Number(row.signedContractUploaded || 0) > 0 ||
