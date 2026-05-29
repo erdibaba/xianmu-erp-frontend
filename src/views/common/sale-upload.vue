@@ -162,6 +162,8 @@
 </template>
 
 <script>
+import { clearLoginInfo } from '@/utils'
+
 export default {
   data () {
     return {
@@ -340,6 +342,9 @@ export default {
         method: 'get',
         responseType: 'blob'
       }).then((response) => {
+        if (this.handleDownloadError(response)) {
+          return
+        }
         const blob = new Blob([response.data], { type: response.headers['content-type'] || 'application/octet-stream' })
         const url = window.URL.createObjectURL(blob)
         const link = document.createElement('a')
@@ -352,6 +357,30 @@ export default {
       }).catch(() => {
         this.$message.error('下载失败')
       })
+    },
+    handleDownloadError (response) {
+      const contentType = (response && response.headers && response.headers['content-type']) || ''
+      if (!response || !response.data || contentType.indexOf('application/json') === -1) {
+        return false
+      }
+      const reader = new FileReader()
+      reader.onload = () => {
+        let result = {}
+        try {
+          result = JSON.parse(reader.result || '{}')
+        } catch (e) {
+          result = {}
+        }
+        if (Number(result.code || 0) === 401) {
+          clearLoginInfo()
+          this.$message.error('登录已失效，请重新登录后下载')
+          this.goLogin()
+        } else {
+          this.$message.error(result.msg || '下载失败')
+        }
+      }
+      reader.readAsText(response.data, 'utf-8')
+      return true
     },
     deletePortalFile (row) {
       if (!row || !row.id) {
