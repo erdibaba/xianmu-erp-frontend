@@ -3,7 +3,7 @@
  */
 ;(function() {
   var resList = {
-    icon: window.SITE_CONFIG.cdnUrl + '/static/img/favicon.ico',
+    icon: window.SITE_CONFIG.cdnUrl + '/static/img/xianmu-logo.png?v=20260529',
     css: [
       window.SITE_CONFIG.cdnUrl + '/static/css/app.css',
     ],
@@ -25,8 +25,8 @@
   // 图标
   (function () {
     var _icon = document.createElement('link');
-    _icon.setAttribute('rel', 'shortcut icon');
-    _icon.setAttribute('type', 'image/x-icon');
+    _icon.setAttribute('rel', 'icon');
+    _icon.setAttribute('type', 'image/png');
     _icon.setAttribute('href', resList.icon);
     document.getElementsByTagName('head')[0].appendChild(_icon);
   })();
