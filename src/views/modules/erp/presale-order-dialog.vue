@@ -31,7 +31,20 @@
                   </el-col>
                   <el-col :span="8">
                     <el-form-item label="采购方">
-                      <el-input v-model="dataForm.customerReference" :disabled="readonly"></el-input>
+                      <el-select
+                        v-model="dataForm.customerPartnerId"
+                        filterable
+                        clearable
+                        :disabled="readonly"
+                        style="width: 100%;"
+                        @change="customerPartnerChange">
+                        <el-option
+                          v-for="item in internalPartnerList"
+                          :key="item.id"
+                          :label="item.partnerName"
+                          :value="item.id">
+                        </el-option>
+                      </el-select>
                     </el-form-item>
                   </el-col>
                   <el-col :span="8">
@@ -721,6 +734,7 @@ function defaultForm () {
     id: 0,
     orderNo: '',
     sellerContractNo: '',
+    customerPartnerId: '',
     customerReference: '',
     brandId: '',
     brandName: '',
@@ -796,6 +810,9 @@ export default {
     },
     brandPartnerList () {
       return this.partnerList.filter(item => this.hasBusinessRole(item, 'BRAND'))
+    },
+    internalPartnerList () {
+      return this.partnerList.filter(item => this.hasBusinessRole(item, 'INTERNAL'))
     },
     buyerPartnerList () {
       return this.partnerList.filter(item => this.hasBusinessRole(item, 'FUNDER') || this.hasBusinessRole(item, 'INTERNAL'))
@@ -967,8 +984,15 @@ export default {
       }
       return sourceName
     },
+    customerPartnerChange (value) {
+      const target = this.findPartnerById(value)
+      this.dataForm.customerReference = target ? target.partnerName : ''
+    },
     normalizeForm (form) {
       const result = Object.assign(defaultForm(), form || {})
+      if (!result.customerPartnerId && result.customerReference) {
+        result.customerPartnerId = this.findPartnerIdByName(result.customerReference, ['INTERNAL'])
+      }
       result.itemList = (form.itemList || []).map(item => {
         const row = Object.assign(defaultEstimateItem(), item)
         row._recognizedProductName = row.productName || ''
@@ -1006,6 +1030,7 @@ export default {
       const form = defaultForm()
       form.sellerContractNo = draft.contractNo || ''
       form.customerReference = draft.partnerName || ''
+      form.customerPartnerId = this.findPartnerIdByName(form.customerReference, ['INTERNAL'])
       form.brandId = this.findPartnerIdByName(resolvedBrandName, ['BRAND'])
       form.brandName = resolvedBrandName
       form.estimateFilePath = result.savedFilePath || ''
@@ -1409,6 +1434,9 @@ export default {
         return roles.some(role => this.hasBusinessRole(item, role))
       })
       return target ? target.id : ''
+    },
+    findPartnerById (id) {
+      return this.partnerList.find(item => String(item.id) === String(id))
     },
     findPartnerRole (id) {
       const target = this.partnerList.find(item => String(item.id) === String(id))
