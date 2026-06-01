@@ -1128,6 +1128,8 @@ export default {
     },
     buildPackingItem (item, confirmItems, usedConfirmIndexes) {
       const row = defaultPackingItem()
+      row.sourceProductCode = item.sourceProductCode || item.productCode || ''
+      row.productCode = ''
       row.productName = item.productName || ''
       row.productNameEn = item.productNameEn || ''
       row._recognizedProductName = row.productName
@@ -1135,7 +1137,10 @@ export default {
       row.totalBoxes = this.toNumber(item.totalBoxes)
       row.totalWeight = this.toNumber(item.totalWeight)
       row.shelfLifeDays = this.toNumber(item.shelfLifeDays)
-      this.fillPackingProductByConfirmItem(row, confirmItems, usedConfirmIndexes)
+      this.fillPackingProductByCode(row)
+      if (!row.productCode || !row.productNameEn) {
+        this.fillPackingProductByConfirmItem(row, confirmItems, usedConfirmIndexes)
+      }
       if (!row.productCode) {
         this.fillPackingProductByEnglishName(row)
       }
@@ -1244,6 +1249,15 @@ export default {
     },
     fillPackingProductByEnglishName (row) {
       const product = this.findProductByEnglishName(row.productNameEn)
+      if (!product) return
+      row.productCode = product.productCode || row.productCode || ''
+      row.sourceProductCode = row.sourceProductCode || product.productCode || ''
+      row.productName = product.productName || row.productName || ''
+      row.productNameEn = product.productNameEn || row.productNameEn || ''
+      this.ensureProductOption(row, product)
+    },
+    fillPackingProductByCode (row) {
+      const product = this.findProductByCode(row.productCode || row.sourceProductCode)
       if (!product) return
       row.productCode = product.productCode || row.productCode || ''
       row.sourceProductCode = row.sourceProductCode || product.productCode || ''
