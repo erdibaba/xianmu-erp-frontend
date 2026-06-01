@@ -255,7 +255,12 @@
                   </div>
                   
                 </div>
-                <el-table :data="dataForm.confirmInfo.itemList" border size="mini" height="450" style="margin-top:12px">
+                <el-table
+                  class="confirm-item-table"
+                  :data="dataForm.confirmInfo.itemList"
+                  border
+                  size="mini"
+                  height="100%">
               <el-table-column label="#" width="50" align="center">
                 <template slot-scope="scope">{{ scope.$index + 1 }}</template>
               </el-table-column>
@@ -1587,6 +1592,16 @@ export default {
 
 .confirm-table-wrap {
   position: relative;
+  flex: 1 1 auto;
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
+  padding-top: 12px;
+  overflow: hidden;
+}
+
+.confirm-table-wrap /deep/ .confirm-item-table {
+  flex: 1 1 auto;
 }
 
 .confirm-summary-line {
