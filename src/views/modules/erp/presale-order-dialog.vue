@@ -1597,7 +1597,6 @@ export default {
   display: flex;
   flex-direction: column;
   padding-top: 12px;
-  overflow: hidden;
 }
 
 .confirm-table-wrap /deep/ .confirm-item-table {
