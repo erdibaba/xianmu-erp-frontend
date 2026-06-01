@@ -89,31 +89,14 @@
             <el-table-column label="#" width="50" align="center">
               <template slot-scope="scope">{{ scope.$index + 1 }}</template>
             </el-table-column>
-            <el-table-column label="原始产品代码" prop="sourceProductCode" min-width="110"></el-table-column>
-            <el-table-column label="主产品代码" min-width="160">
+            <el-table-column label="产品代码" min-width="170">
               <template slot-scope="scope">
-                <el-select
+                <el-input
                   v-model="scope.row.productCode"
-                  filterable
-                  clearable
-                  remote
-                  reserve-keyword
                   :disabled="readonly"
-                  :loading="scope.row._productLoading"
-                  placeholder="请输入产品编码/中英文名称搜索"
-                  style="width: 100%;"
-                  @visible-change="(visible) => productSelectVisibleChange(scope.row, visible)"
-                  :remote-method="(keyword) => remoteSearchProducts(scope.row, keyword)"
-                  @change="(value) => productSelectChange(scope.row, value)">
-                  <el-option
-                    v-for="item in scope.row._productOptions"
-                    :key="item.productCode"
-                    :label="item.productCode"
-                    :value="item.productCode">
-                    <div class="product-option-code">{{ item.productCode }}</div>
-                    <div class="product-option-name">{{ item.productName || '-' }} / {{ item.productNameEn || '-' }}</div>
-                  </el-option>
-                </el-select>
+                  placeholder="可填写组合编码，如 27917/27918/27887"
+                  @input="scope.row.sourceProductCode = scope.row.productCode">
+                </el-input>
               </template>
             </el-table-column>
             <el-table-column label="产品中文名" min-width="180">
@@ -1002,7 +985,6 @@ export default {
         const row = Object.assign(defaultEstimateItem(), item)
         row._recognizedProductName = row.productName || ''
         row._recognizedProductNameEn = row.productNameEn || ''
-        this.fillEstimateProductByCode(row)
         return row
       })
       result.confirmInfo = Object.assign(defaultConfirmInfo(), form.confirmInfo || {})
@@ -1053,7 +1035,7 @@ export default {
       const ton = this.toNumber(item.quantityTon != null ? item.quantityTon : this.kgToTon(item.quantityKg || item.quantity || item.estimatedWeight))
       const kg = this.toNumber(item.quantityKg != null ? item.quantityKg : item.quantity || item.estimatedWeight || this.tonToKg(ton))
       row.sourceProductCode = item.sourceProductCode || item.productCode || ''
-      row.productCode = this.normalizeProductCode(item.productCode || item.sourceProductCode || '')
+      row.productCode = item.productCode || item.sourceProductCode || ''
       row.productName = item.productName || ''
       row.productNameEn = item.productNameEn || ''
       row._recognizedProductName = row.productName
@@ -1064,7 +1046,6 @@ export default {
       row.priceCurrency = item.priceCurrency || item.currency || 'CNY'
       row.priceUnit = item.priceUnit || item.unit || 'KG'
       row.remark = item.remark || ''
-      this.fillEstimateProductByCode(row)
       return row
     },
     buildConfirmInfo (result, baseConfirm) {

@@ -432,23 +432,7 @@ export default {
         })
         return
       }
-      Promise.all([this.loadProductList(), this.loadPartnerList()]).then(() => {
-        const missingProducts = this.buildMissingProducts(result)
-        if (missingProducts.length) {
-          this.pendingRecognizedResult = result
-          this.batchProductVisible = true
-          this.$nextTick(() => {
-            this.$refs.batchProductDialog.init(missingProducts)
-            this.$message({
-              message: '识别到部分产品未建立主数据，请先确认新增后再继续录入预销售单。',
-              type: 'error',
-              customClass: 'presale-top-message'
-            })
-          })
-          return
-        }
-        this.openRecognizedResult(result)
-      })
+      this.openRecognizedResult(result)
     },
     batchProductSavedHandle () {
       const result = this.pendingRecognizedResult
