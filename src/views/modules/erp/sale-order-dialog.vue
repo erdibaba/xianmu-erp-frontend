@@ -569,6 +569,13 @@
                 </el-button>
               </el-col>
             </el-row>
+            <div v-if="dataForm.outboundReceipt" class="outbound-adjustment-summary">
+              <span>多退少补汇总：</span>
+              <strong :class="outboundAdjustmentTotal >= 0 ? 'refund' : 'supplement'">
+                {{ outboundAdjustmentTotal >= 0 ? '应退款' : '应补款' }} ¥{{ Math.abs(outboundAdjustmentTotal).toFixed(2) }}
+              </strong>
+              <span class="summary-tip">正数表示少出需退款，负数表示多出需补收。</span>
+            </div>
             <el-table
               v-if="dataForm.outboundReceipt"
               :data="dataForm.outboundReceipt.itemList"
@@ -576,6 +583,7 @@
               size="mini"
               class="attachment-table outbound-receipt-table">
               <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
+              <el-table-column prop="contractNo" label="合同号" width="150" show-overflow-tooltip></el-table-column>
               <el-table-column prop="recognizedProductCode" label="识别编码" width="100"></el-table-column>
               <el-table-column label="系统编码" min-width="220">
                 <template slot-scope="scope">
@@ -604,8 +612,8 @@
                   </el-select>
                 </template>
               </el-table-column>
-              <el-table-column prop="productName" label="产品名称" min-width="150" show-overflow-tooltip></el-table-column>
-              <el-table-column label="规格" width="95">
+              <el-table-column prop="productName" label="品名" min-width="170" show-overflow-tooltip></el-table-column>
+              <el-table-column label="规格" width="90">
                 <template slot-scope="scope">
                   <el-input v-model="scope.row.productSpec" :disabled="!outboundReceiptEditable" size="mini"></el-input>
                 </template>
@@ -613,16 +621,6 @@
               <el-table-column label="单位" width="80">
                 <template slot-scope="scope">
                   <el-input v-model="scope.row.unit" :disabled="!outboundReceiptEditable" size="mini"></el-input>
-                </template>
-              </el-table-column>
-              <el-table-column label="订单数" width="95">
-                <template slot-scope="scope">
-                  <el-input-number v-model="scope.row.orderQty" :disabled="!outboundReceiptEditable" :controls="false" :precision="0" size="mini" style="width: 100%;"></el-input-number>
-                </template>
-              </el-table-column>
-              <el-table-column label="发货数" width="95">
-                <template slot-scope="scope">
-                  <el-input-number v-model="scope.row.shippedQty" :disabled="!outboundReceiptEditable" :controls="false" :precision="0" size="mini" style="width: 100%;"></el-input-number>
                 </template>
               </el-table-column>
               <el-table-column label="柜号" width="130">
@@ -635,14 +633,46 @@
                   <el-input v-model="scope.row.factoryNo" :disabled="!outboundReceiptEditable" size="mini"></el-input>
                 </template>
               </el-table-column>
-              <el-table-column label="均重" width="100">
+              <el-table-column label="应出箱数" width="95" align="right">
                 <template slot-scope="scope">
-                  <el-input-number v-model="scope.row.avgWeight" :disabled="!outboundReceiptEditable" :controls="false" :precision="4" size="mini" style="width: 100%;"></el-input-number>
+                  {{ formatInteger(scope.row.expectedBoxes) }}
                 </template>
               </el-table-column>
-              <el-table-column label="合计" width="110">
+              <el-table-column label="实际箱数" width="100">
+                <template slot-scope="scope">
+                  <el-input-number v-model="scope.row.shippedQty" :disabled="!outboundReceiptEditable" :controls="false" :precision="0" size="mini" style="width: 100%;"></el-input-number>
+                </template>
+              </el-table-column>
+              <el-table-column label="差异箱数" width="95" align="right">
+                <template slot-scope="scope">
+                  {{ formatInteger(calcOutboundDiffBoxes(scope.row)) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="应出重量(KG)" width="120" align="right">
+                <template slot-scope="scope">
+                  {{ formatNumber(scope.row.expectedWeight, 3) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="实际重量(KG)" width="125">
                 <template slot-scope="scope">
                   <el-input-number v-model="scope.row.totalWeight" :disabled="!outboundReceiptEditable" :controls="false" :precision="3" size="mini" style="width: 100%;"></el-input-number>
+                </template>
+              </el-table-column>
+              <el-table-column label="差异重量(KG)" width="120" align="right">
+                <template slot-scope="scope">
+                  {{ formatNumber(calcOutboundDiffWeight(scope.row), 3) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="单价" width="95" align="right">
+                <template slot-scope="scope">
+                  {{ formatNumber(scope.row.salePriceKg, 2) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="应退/应补" width="115" align="right">
+                <template slot-scope="scope">
+                  <span :class="calcOutboundAdjustmentAmount(scope.row) >= 0 ? 'refund' : 'supplement'">
+                    {{ formatNumber(calcOutboundAdjustmentAmount(scope.row), 2) }}
+                  </span>
                 </template>
               </el-table-column>
               <el-table-column v-if="outboundReceiptEditable" label="操作" width="80" align="center" fixed="right">
@@ -797,6 +827,12 @@ export default {
       if (!receipt || !receipt.itemList) return 0
       return receipt.itemList.reduce((total, item) => total + Number(item.shippedQty || 0), 0)
     },
+    outboundAdjustmentTotal () {
+      const receipt = this.dataForm.outboundReceipt
+      if (!receipt || !receipt.itemList) return 0
+      const total = receipt.itemList.reduce((sum, item) => sum + this.calcOutboundAdjustmentAmount(item), 0)
+      return Number(total.toFixed(2))
+    },
     outboundReceiptMatchMessage () {
       const receipt = this.dataForm.outboundReceipt
       if (!receipt) return '-'
@@ -914,6 +950,15 @@ export default {
         factoryNo: '',
         avgWeight: null,
         totalWeight: null,
+        contractNo: '',
+        expectedFactoryNo: '',
+        expectedContainerNo: '',
+        expectedBoxes: 0,
+        expectedWeight: 0,
+        salePriceKg: 0,
+        diffBoxes: 0,
+        diffWeight: 0,
+        adjustmentAmount: 0,
         _productKeyword: '',
         _productPageSize: 15,
         _productLoading: false,
@@ -1028,6 +1073,25 @@ export default {
         return row
       })
       return result
+    },
+    toNumber (value) {
+      const numberValue = Number(value)
+      return Number.isFinite(numberValue) ? numberValue : 0
+    },
+    formatNumber (value, precision) {
+      return this.toNumber(value).toFixed(precision)
+    },
+    formatInteger (value) {
+      return String(Math.trunc(this.toNumber(value)))
+    },
+    calcOutboundDiffBoxes (row) {
+      return this.toNumber(row && row.expectedBoxes) - this.toNumber(row && row.shippedQty)
+    },
+    calcOutboundDiffWeight (row) {
+      return Number((this.toNumber(row && row.expectedWeight) - this.toNumber(row && row.totalWeight)).toFixed(3))
+    },
+    calcOutboundAdjustmentAmount (row) {
+      return Number((this.calcOutboundDiffWeight(row) * this.toNumber(row && row.salePriceKg)).toFixed(2))
     },
     saleTypeChangeHandle (value) {
       if (value !== 'SPOT') {
@@ -1828,6 +1892,31 @@ export default {
 .outbound-receipt-actions {
   text-align: right;
   line-height: 36px;
+}
+
+.outbound-adjustment-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0 8px;
+  color: #303133;
+}
+
+.outbound-adjustment-summary strong {
+  font-size: 15px;
+}
+
+.summary-tip {
+  color: #909399;
+  font-size: 12px;
+}
+
+.refund {
+  color: #e23b3b;
+}
+
+.supplement {
+  color: #0b8f72;
 }
 
 .contract-link-wrap {
