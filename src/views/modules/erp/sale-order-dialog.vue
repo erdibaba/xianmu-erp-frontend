@@ -527,28 +527,6 @@
             </div>
             <el-row v-if="dataForm.outboundReceipt" :gutter="20">
               <el-col :span="6">
-                <el-form-item label="WMS单号">
-                  <el-input v-model="dataForm.outboundReceipt.wmsOrderNo" :disabled="!outboundReceiptEditable"></el-input>
-                </el-form-item>
-              </el-col>
-              <el-col :span="6">
-                <el-form-item label="订单编号">
-                  <el-input v-model="dataForm.outboundReceipt.outboundOrderNo" :disabled="!outboundReceiptEditable"></el-input>
-                </el-form-item>
-              </el-col>
-              <el-col :span="6">
-                <el-form-item label="客户编码">
-                  <el-input v-model="dataForm.outboundReceipt.customerCode" :disabled="!outboundReceiptEditable"></el-input>
-                </el-form-item>
-              </el-col>
-              <el-col :span="6">
-                <el-form-item label="客户名称">
-                  <el-input v-model="dataForm.outboundReceipt.customerName" :disabled="!outboundReceiptEditable"></el-input>
-                </el-form-item>
-              </el-col>
-            </el-row>
-            <el-row v-if="dataForm.outboundReceipt" :gutter="20">
-              <el-col :span="6">
                 <el-form-item label="销售单箱数">
                   <el-input :value="dataForm.outboundReceipt.saleTotalBoxes || 0" disabled></el-input>
                 </el-form-item>
@@ -584,6 +562,26 @@
               class="attachment-table outbound-receipt-table">
               <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
               <el-table-column prop="contractNo" label="合同号" width="150" show-overflow-tooltip></el-table-column>
+              <el-table-column label="WMS单号" width="130">
+                <template slot-scope="scope">
+                  <el-input v-model="scope.row.wmsOrderNo" :disabled="!outboundReceiptEditable" size="mini"></el-input>
+                </template>
+              </el-table-column>
+              <el-table-column label="订单编号" width="150">
+                <template slot-scope="scope">
+                  <el-input v-model="scope.row.outboundOrderNo" :disabled="!outboundReceiptEditable" size="mini"></el-input>
+                </template>
+              </el-table-column>
+              <el-table-column label="客户编码" width="110">
+                <template slot-scope="scope">
+                  <el-input v-model="scope.row.customerCode" :disabled="!outboundReceiptEditable" size="mini"></el-input>
+                </template>
+              </el-table-column>
+              <el-table-column label="客户名称" width="140">
+                <template slot-scope="scope">
+                  <el-input v-model="scope.row.customerName" :disabled="!outboundReceiptEditable" size="mini"></el-input>
+                </template>
+              </el-table-column>
               <el-table-column prop="recognizedProductCode" label="识别编码" width="100"></el-table-column>
               <el-table-column label="系统编码" min-width="220">
                 <template slot-scope="scope">
@@ -937,6 +935,10 @@ export default {
       return {
         id: 0,
         lineNo: 0,
+        wmsOrderNo: '',
+        outboundOrderNo: '',
+        customerCode: '',
+        customerName: '',
         productId: '',
         productCode: '',
         recognizedProductCode: '',
@@ -1656,6 +1658,10 @@ export default {
         itemList: (this.dataForm.outboundReceipt.itemList || []).map((item, index) => ({
           id: item.id,
           lineNo: index + 1,
+          wmsOrderNo: item.wmsOrderNo,
+          outboundOrderNo: item.outboundOrderNo,
+          customerCode: item.customerCode,
+          customerName: item.customerName,
           productId: item.productId || null,
           productCode: item.productCode,
           recognizedProductCode: item.recognizedProductCode,
@@ -1771,7 +1777,8 @@ export default {
         url: this.$http.adornUrl(url),
         method: 'post',
         data: formData,
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: this.currentUploadType === 'OUTBOUND_RECEIPT' ? 1000 * 180 : undefined
       }).then(({ data }) => {
         if (data && data.code === 0) {
           if (this.currentUploadType === 'OUTBOUND_RECEIPT') {
