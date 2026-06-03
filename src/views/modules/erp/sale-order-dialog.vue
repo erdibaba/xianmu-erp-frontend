@@ -6,7 +6,7 @@
     width="96%"
     top="3vh"
     custom-class="sale-order-dialog-modal">
-    <div class="sale-order-dialog" v-loading="detailLoading">
+    <div class="sale-order-dialog" v-loading.fullscreen.lock="dialogLoading">
       <el-form
         ref="dataForm"
         :model="dataForm"
@@ -673,7 +673,7 @@
                   </span>
                 </template>
               </el-table-column>
-              <el-table-column v-if="outboundReceiptEditable" label="操作" width="80" align="center" fixed="right">
+              <el-table-column v-if="outboundReceiptEditable" label="操作" width="80" align="center">
                 <template slot-scope="scope">
                   <el-button type="text" size="small" @click="removeOutboundReceiptItemRow(scope.$index)">删除</el-button>
                 </template>
@@ -757,6 +757,7 @@ export default {
       uploadLoading: false,
       confirmLoading: false,
       outboundSaveLoading: false,
+      globalLoadingCount: 0,
       currentUploadType: '',
       currentConfirmType: '',
       secondaryPartnerList: [],
@@ -815,6 +816,12 @@ export default {
     outboundReceiptEditable () {
       return this.attachmentEditable && !this.isStepConfirmed('OUTBOUND_RECEIPT')
     },
+    globalRequestLoading () {
+      return this.globalLoadingCount > 0
+    },
+    dialogLoading () {
+      return this.detailLoading || this.globalRequestLoading
+    },
     outboundReceiptMatched () {
       const receipt = this.dataForm.outboundReceipt
       if (!receipt) return false
@@ -843,6 +850,17 @@ export default {
     }
   },
   methods: {
+    withGlobalLoading (request) {
+      this.globalLoadingCount += 1
+      const promise = typeof request === 'function' ? request() : request
+      return Promise.resolve(promise).then(result => {
+        this.globalLoadingCount = Math.max(0, this.globalLoadingCount - 1)
+        return result
+      }).catch(error => {
+        this.globalLoadingCount = Math.max(0, this.globalLoadingCount - 1)
+        throw error
+      })
+    },
     defaultForm () {
       return {
         id: 0,
@@ -1387,11 +1405,11 @@ export default {
         return
       }
       this.previewLoading = true
-      this.$http({
+      this.withGlobalLoading(this.$http({
         url: this.$http.adornUrl('/erp/saleorder/preview-allocation'),
         method: 'post',
         data: this.$http.adornData(this.buildPreviewData())
-      }).then(({ data }) => {
+      })).then(({ data }) => {
         if (data && data.code === 0) {
           this.dataForm.allocationItemList = (data.list || []).map(item => Object.assign(this.defaultAllocationRow(), item))
         } else {
@@ -1542,11 +1560,11 @@ export default {
           return false
         }
         this.saveLoading = true
-        this.$http({
+        this.withGlobalLoading(this.$http({
           url: this.$http.adornUrl('/erp/saleorder/save'),
           method: 'post',
           data: this.$http.adornData(this.buildSubmitData())
-        }).then(({ data }) => {
+        })).then(({ data }) => {
           if (data && data.code === 0) {
             this.$message.success('保存成功')
             this.visible = false
@@ -1625,14 +1643,14 @@ export default {
           this.currentConfirmType = ''
           return
         }
-        this.$http({
+        this.withGlobalLoading(this.$http({
           url: this.$http.adornUrl('/erp/saleorder/confirm'),
           method: 'post',
           data: this.$http.adornData({
             saleOrderId: this.dataForm.id,
             fileType
           })
-        }).then(({ data }) => {
+        })).then(({ data }) => {
           if (data && data.code === 0) {
             this.$message.success('确认成功')
             this.refreshDetail()
@@ -1685,11 +1703,11 @@ export default {
       if (!opts.silent) {
         this.outboundSaveLoading = true
       }
-      return this.$http({
+      return this.withGlobalLoading(this.$http({
         url: this.$http.adornUrl('/erp/saleorder/outbound/receipt/save'),
         method: 'post',
         data: this.$http.adornData(receipt)
-      }).then(({ data }) => {
+      })).then(({ data }) => {
         if (data && data.code === 0) {
           this.dataForm.outboundReceipt = this.normalizeOutboundReceipt(data.receipt)
           if (!opts.silent) {
@@ -1773,13 +1791,13 @@ export default {
       files.forEach(file => formData.append('files', file))
       this.uploadLoading = true
       const url = this.currentUploadType === 'OUTBOUND_RECEIPT' ? '/erp/saleorder/outbound/receipt/recognize' : '/erp/saleorder/upload'
-      this.$http({
+      this.withGlobalLoading(this.$http({
         url: this.$http.adornUrl(url),
         method: 'post',
         data: formData,
         headers: { 'Content-Type': 'multipart/form-data' },
         timeout: this.currentUploadType === 'OUTBOUND_RECEIPT' ? 1000 * 180 : undefined
-      }).then(({ data }) => {
+      })).then(({ data }) => {
         if (data && data.code === 0) {
           if (this.currentUploadType === 'OUTBOUND_RECEIPT') {
             this.dataForm.outboundReceipt = this.normalizeOutboundReceipt(data.receipt || this.dataForm.outboundReceipt)
@@ -1817,11 +1835,11 @@ export default {
         cancelButtonText: '取消',
         type: 'warning'
       }).then(() => {
-        this.$http({
+        this.withGlobalLoading(this.$http({
           url: this.$http.adornUrl(`/erp/saleorder/delete/file/${row.id}`),
           method: 'post',
           data: this.$http.adornData({})
-        }).then(({ data }) => {
+        })).then(({ data }) => {
           if (data && data.code === 0) {
             this.$message.success('删除成功')
             this.refreshDetail()
