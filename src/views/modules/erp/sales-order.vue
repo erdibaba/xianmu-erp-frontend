@@ -101,20 +101,19 @@
       <el-table-column fixed="right" label="操作" width="220" align="center">
         <template slot-scope="scope">
           <div class="action-wrap">
-            <el-button type="text" size="small" @click="viewHandle(scope.row.id)">详情</el-button>
+            <el-button
+              v-if="isAuth('erp:tradeorder:update')"
+              type="text"
+              size="small"
+              @click="editHandle(scope.row.id)">
+              编辑
+            </el-button>
             <el-button
               v-if="isAuth('erp:tradeorder:update') && scope.row.saleType === 'FUTURES'"
               type="text"
               size="small"
               @click="openPresaleLinkDialog(scope.row)">
               预售关联
-            </el-button>
-            <el-button
-              v-if="isAuth('erp:tradeorder:update')"
-              type="text"
-              size="small"
-              @click="editHandle(scope.row.id)">
-              附件处理
             </el-button>
             <el-button
               v-if="isAuth('erp:tradeorder:update')"
