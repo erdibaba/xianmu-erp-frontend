@@ -2,7 +2,7 @@
   <div class="mod-erp-product">
     <el-form :inline="true" :model="queryForm">
       <el-form-item>
-        <el-input v-model="queryForm.keyword" placeholder="产品编码/中文名称/英文名称/品牌" clearable @keyup.enter.native="getDataList()"></el-input>
+        <el-input v-model="queryForm.keyword" placeholder="产品编码/中文名称/英文名称/市场流通名称/品牌" clearable @keyup.enter.native="getDataList()"></el-input>
       </el-form-item>
       <el-form-item>
         <el-button type="primary" @click="getDataList()">查询</el-button>
@@ -16,6 +16,7 @@
       <el-table-column prop="productCode" label="产品编码" min-width="120" align="center" header-align="center"></el-table-column>
       <el-table-column prop="productName" label="产品名称" min-width="180" show-overflow-tooltip></el-table-column>
       <el-table-column prop="productNameEn" label="英文名称" min-width="240" show-overflow-tooltip></el-table-column>
+      <el-table-column prop="marketCirculationName" label="市场流通名称" min-width="180" show-overflow-tooltip></el-table-column>
       <el-table-column prop="productSpec" label="规格" min-width="120"></el-table-column>
       <el-table-column prop="unit" label="单位" width="80" align="center" header-align="center"></el-table-column>
       <el-table-column prop="brand" label="品牌" width="120" align="center" header-align="center"></el-table-column>

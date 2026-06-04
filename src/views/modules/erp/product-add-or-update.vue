@@ -22,6 +22,11 @@
           </el-form-item>
         </el-col>
         <el-col :span="12">
+          <el-form-item label="市场流通名称">
+            <el-input v-model="dataForm.marketCirculationName"></el-input>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
           <el-form-item label="规格">
             <el-input v-model="dataForm.productSpec"></el-input>
           </el-form-item>
@@ -73,6 +78,7 @@
     productCode: '',
     productName: '',
     productNameEn: '',
+    marketCirculationName: '',
     productSpec: '',
     unit: 'KG',
     brand: '',
