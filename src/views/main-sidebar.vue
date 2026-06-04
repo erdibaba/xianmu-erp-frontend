@@ -87,8 +87,7 @@
         const url = String((menu && menu.url) || '').trim().toLowerCase()
         if ([
           'erp/product-price',
-          'erp/purchase-order',
-          'erp/inbound-manage'
+          'erp/purchase-order'
         ].indexOf(url) !== -1) {
           return true
         }
