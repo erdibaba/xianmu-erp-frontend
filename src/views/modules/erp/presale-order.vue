@@ -158,12 +158,28 @@
           <template slot-scope="scope">{{ scope.$index + 1 }}</template>
         </el-table-column>
         <el-table-column prop="actionText" label="处理方式" width="100" align="center"></el-table-column>
-        <el-table-column prop="productCode" label="主产品代码" width="120" align="center"></el-table-column>
-        <el-table-column prop="sourceProductCode" label="确认函编码" width="130" align="center"></el-table-column>
+        <el-table-column label="主产品代码" width="140" align="center">
+          <template slot-scope="scope">
+            <el-input v-model.trim="scope.row.productCode" size="mini"></el-input>
+          </template>
+        </el-table-column>
+        <el-table-column label="确认函编码" width="150" align="center">
+          <template slot-scope="scope">
+            <el-input v-model.trim="scope.row.sourceProductCode" size="mini"></el-input>
+          </template>
+        </el-table-column>
         <el-table-column prop="currentName" label="当前中文名" min-width="160" show-overflow-tooltip></el-table-column>
-        <el-table-column prop="recognizedName" label="确认函中文名" min-width="160" show-overflow-tooltip></el-table-column>
+        <el-table-column label="确认函中文名" min-width="190">
+          <template slot-scope="scope">
+            <el-input v-model.trim="scope.row.recognizedName" size="mini"></el-input>
+          </template>
+        </el-table-column>
         <el-table-column prop="currentNameEn" label="当前英文名" min-width="210" show-overflow-tooltip></el-table-column>
-        <el-table-column prop="recognizedNameEn" label="确认函英文名" min-width="230" show-overflow-tooltip></el-table-column>
+        <el-table-column label="确认函英文名" min-width="260">
+          <template slot-scope="scope">
+            <el-input v-model.trim="scope.row.recognizedNameEn" size="mini"></el-input>
+          </template>
+        </el-table-column>
         <el-table-column prop="brandName" label="品牌方" min-width="170" show-overflow-tooltip></el-table-column>
       </el-table>
       <span slot="footer" class="dialog-footer">
@@ -482,6 +498,8 @@ export default {
         if (!product) {
           rowMap[productCode] = {
             actionText: '新增',
+            originalProductCode: productCode,
+            originalSourceProductCode: sourceProductCode,
             productCode,
             sourceProductCode,
             currentName: '',
@@ -501,6 +519,8 @@ export default {
         if (needName || needNameEn || needBrand || needAlias) {
           rowMap[productCode] = {
             actionText: '补全/更新',
+            originalProductCode: productCode,
+            originalSourceProductCode: sourceProductCode,
             productCode: product.productCode || productCode,
             sourceProductCode,
             currentName,
@@ -512,6 +532,35 @@ export default {
         }
       })
       return Object.keys(rowMap).map(key => rowMap[key])
+    },
+    applyConfirmProductSyncEdits (result) {
+      const orderDraft = (result && result.orderDraft) || {}
+      const itemList = orderDraft.itemList || []
+      this.confirmProductSyncList.forEach(row => {
+        const originalProductCode = String(row.originalProductCode || '').trim()
+        const originalSourceProductCode = String(row.originalSourceProductCode || '').trim()
+        itemList.forEach(item => {
+          const itemSourceCode = String(item.sourceProductCode || item.productCode || '').trim()
+          const itemProductCode = this.normalizeProductCode(itemSourceCode)
+          const matched = itemProductCode === originalProductCode || itemSourceCode === originalSourceProductCode
+          if (!matched) {
+            return
+          }
+          item.productCode = String(row.productCode || '').trim()
+          item.sourceProductCode = String(row.sourceProductCode || row.productCode || '').trim()
+          item.productName = String(row.recognizedName || '').trim()
+          item.productNameEn = String(row.recognizedNameEn || '').trim()
+        })
+      })
+      return result
+    },
+    validateConfirmProductSyncRows () {
+      const invalidRow = this.confirmProductSyncList.find(item => !String(item.productCode || '').trim())
+      if (invalidRow) {
+        this.$message.error('主产品代码不能为空')
+        return false
+      }
+      return true
     },
     prepareConfirmProductSync (result) {
       return Promise.all([this.loadProductList(), this.loadPartnerList()]).then(() => {
@@ -530,7 +579,7 @@ export default {
       this.pendingRecognizedResult = null
       this.confirmProductSyncVisible = false
       if (result) {
-        this.openRecognizedResult(result)
+        this.openRecognizedResult(this.applyConfirmProductSyncEdits(result))
       }
     },
     confirmProductSync () {
@@ -542,14 +591,18 @@ export default {
         this.confirmProductSyncVisible = false
         return
       }
+      if (!this.validateConfirmProductSyncRows()) {
+        return
+      }
+      const editedResult = this.applyConfirmProductSyncEdits(result)
       this.confirmProductSyncLoading = true
-      this.syncConfirmProductMaster(result).then(() => {
+      this.syncConfirmProductMaster(editedResult).then(() => {
         this.$message.success('产品主数据同步成功')
         this.pendingRecognizedResult = null
         this.confirmProductSyncVisible = false
         return this.loadProductList()
       }).then(() => {
-        this.openRecognizedResult(result)
+        this.openRecognizedResult(editedResult)
       }).catch(() => {
         this.$message.error('产品主数据同步失败，请核对后重试')
       }).finally(() => {
