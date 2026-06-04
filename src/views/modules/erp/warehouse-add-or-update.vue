@@ -24,36 +24,17 @@
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-form-item label="计费单位">
-            <el-select v-model="dataForm.feeUnit" style="width: 100%;">
-              <el-option v-for="item in feeUnitOptions" :key="item.value" :label="item.label" :value="item.value"></el-option>
-            </el-select>
-          </el-form-item>
-        </el-col>
-        <el-col :span="12">
           <el-form-item label="免仓天数">
             <el-input v-model.number="dataForm.freeStorageDays"></el-input>
           </el-form-item>
         </el-col>
-        <el-col :span="12">
-          <el-form-item label="仓储费(冷冻)">
-            <el-input v-model.number="dataForm.frozenStorageFee"></el-input>
-          </el-form-item>
-        </el-col>
-        <el-col :span="12">
-          <el-form-item label="仓储费(冷藏)">
-            <el-input v-model.number="dataForm.chilledStorageFee"></el-input>
-          </el-form-item>
-        </el-col>
-        <el-col :span="12">
-          <el-form-item label="冷链费(冷冻)">
-            <el-input v-model.number="dataForm.frozenColdFee"></el-input>
-          </el-form-item>
-        </el-col>
-        <el-col :span="12">
-          <el-form-item label="冷链费(冷藏)">
-            <el-input v-model.number="dataForm.chilledColdFee"></el-input>
-          </el-form-item>
+        <el-col :span="24">
+          <el-alert
+            title="仓储、冷链费用请在仓库列表的“费用历史”中按生效日期维护。"
+            type="info"
+            :closable="false"
+            show-icon>
+          </el-alert>
         </el-col>
         <el-col :span="12">
           <el-form-item label="是否自有">
@@ -95,7 +76,7 @@
 </template>
 
 <script>
-  import { WAREHOUSE_TYPE_OPTIONS, FEE_UNIT_OPTIONS } from './const'
+  import { WAREHOUSE_TYPE_OPTIONS } from './const'
 
   const defaultForm = () => ({
     id: 0,
@@ -113,7 +94,7 @@
     chilledStorageFee: 0,
     frozenColdFee: 0,
     chilledColdFee: 0,
-    feeUnit: 'PIECE',
+    feeUnit: 'WEIGHT',
     status: 1,
     remark: ''
   })
@@ -123,7 +104,6 @@
       return {
         visible: false,
         warehouseTypeOptions: WAREHOUSE_TYPE_OPTIONS,
-        feeUnitOptions: FEE_UNIT_OPTIONS,
         dataForm: defaultForm(),
         dataRule: {
           warehouseCode: [

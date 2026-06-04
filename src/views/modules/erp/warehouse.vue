@@ -17,10 +17,10 @@
       <el-table-column prop="warehouseName" label="仓库名称" min-width="180" show-overflow-tooltip></el-table-column>
       <el-table-column prop="warehouseType" label="类型" width="120" align="center" header-align="center"></el-table-column>
       <el-table-column prop="freeStorageDays" label="免仓天数" width="100" align="right" header-align="center"></el-table-column>
-      <el-table-column prop="frozenStorageFee" label="仓储冷冻" width="110" align="right" header-align="center"></el-table-column>
-      <el-table-column prop="chilledStorageFee" label="仓储冷藏" width="110" align="right" header-align="center"></el-table-column>
-      <el-table-column prop="frozenColdFee" label="冷链冷冻" width="110" align="right" header-align="center"></el-table-column>
-      <el-table-column prop="chilledColdFee" label="冷链冷藏" width="110" align="right" header-align="center"></el-table-column>
+      <el-table-column prop="frozenStorageFee" label="仓储冷冻(元/吨)" width="130" align="right" header-align="center"></el-table-column>
+      <el-table-column prop="chilledStorageFee" label="仓储冷藏(元/吨)" width="130" align="right" header-align="center"></el-table-column>
+      <el-table-column prop="frozenColdFee" label="冷链冷冻装卸费(元/吨)" width="170" align="right" header-align="center"></el-table-column>
+      <el-table-column prop="chilledColdFee" label="冷链冷藏装卸费(元/吨)" width="170" align="right" header-align="center"></el-table-column>
       <el-table-column prop="feeUnit" label="计费单位" width="100" align="center" header-align="center"></el-table-column>
       <el-table-column prop="contactName" label="联系人" width="100" align="center" header-align="center"></el-table-column>
       <el-table-column prop="contactPhone" label="联系电话" width="130" align="center" header-align="center"></el-table-column>
@@ -29,9 +29,10 @@
           <el-tag size="small" :type="scope.row.status === 1 ? 'success' : 'info'">{{ scope.row.status === 1 ? '启用' : '停用' }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column fixed="right" label="操作" width="150" align="center" header-align="center">
+      <el-table-column fixed="right" label="操作" width="210" align="center" header-align="center">
         <template slot-scope="scope">
           <el-button v-if="isAuth('erp:warehouse:update')" type="text" size="small" @click="addOrUpdateHandle(scope.row.id)">修改</el-button>
+          <el-button v-if="isAuth('erp:warehouse:update')" type="text" size="small" @click="feeRateHandle(scope.row)">费用历史</el-button>
           <el-button v-if="isAuth('erp:warehouse:delete')" type="text" size="small" @click="deleteHandle(scope.row.id)">删除</el-button>
         </template>
       </el-table-column>
@@ -48,11 +49,13 @@
     </el-pagination>
 
     <add-or-update v-if="addOrUpdateVisible" ref="addOrUpdate" @refreshDataList="getDataList"></add-or-update>
+    <fee-rate-dialog v-if="feeRateVisible" ref="feeRateDialog" @refreshDataList="getDataList"></fee-rate-dialog>
   </div>
 </template>
 
 <script>
   import AddOrUpdate from './warehouse-add-or-update'
+  import FeeRateDialog from './warehouse-fee-rate-dialog'
 
   export default {
     data () {
@@ -66,11 +69,13 @@
         totalPage: 0,
         dataListLoading: false,
         dataListSelections: [],
-        addOrUpdateVisible: false
+        addOrUpdateVisible: false,
+        feeRateVisible: false
       }
     },
     components: {
-      AddOrUpdate
+      AddOrUpdate,
+      FeeRateDialog
     },
     activated () {
       this.getDataList()
@@ -116,6 +121,12 @@
         this.addOrUpdateVisible = true
         this.$nextTick(() => {
           this.$refs.addOrUpdate.init(id)
+        })
+      },
+      feeRateHandle (row) {
+        this.feeRateVisible = true
+        this.$nextTick(() => {
+          this.$refs.feeRateDialog.init(row)
         })
       },
       deleteHandle (id) {
