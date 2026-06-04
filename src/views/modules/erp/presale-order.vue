@@ -507,27 +507,6 @@ export default {
             recognizedNameEn,
             brandName
           }
-          return
-        }
-        const currentName = String(product.productName || '').trim()
-        const currentNameEn = String(product.productNameEn || '').trim()
-        const needName = !currentName && recognizedName
-        const needNameEn = recognizedNameEn && currentNameEn !== recognizedNameEn
-        const needBrand = !String(product.brand || '').trim() && brandName
-        const needAlias = sourceProductCode && sourceProductCode !== String(product.productCode || '').trim()
-        if (needName || needNameEn || needBrand || needAlias) {
-          rowMap[productCode] = {
-            actionText: '补全/更新',
-            originalProductCode: productCode,
-            originalSourceProductCode: sourceProductCode,
-            productCode: product.productCode || productCode,
-            sourceProductCode,
-            currentName,
-            currentNameEn,
-            recognizedName,
-            recognizedNameEn,
-            brandName
-          }
         }
       })
       return Object.keys(rowMap).map(key => rowMap[key])
@@ -552,6 +531,23 @@ export default {
         })
       })
       return result
+    },
+    buildConfirmProductSyncRequest (result) {
+      const syncKeys = {}
+      this.confirmProductSyncList.forEach(row => {
+        if (row.originalProductCode) syncKeys[String(row.originalProductCode)] = true
+        if (row.originalSourceProductCode) syncKeys[String(row.originalSourceProductCode)] = true
+        if (row.productCode) syncKeys[String(row.productCode)] = true
+        if (row.sourceProductCode) syncKeys[String(row.sourceProductCode)] = true
+      })
+      const request = JSON.parse(JSON.stringify(result || {}))
+      const orderDraft = request.orderDraft || (request.orderDraft = {})
+      orderDraft.itemList = (orderDraft.itemList || []).filter(item => {
+        const sourceCode = String(item.sourceProductCode || item.productCode || '').trim()
+        const productCode = this.normalizeProductCode(sourceCode)
+        return !!(syncKeys[sourceCode] || syncKeys[productCode])
+      })
+      return request
     },
     validateConfirmProductSyncRows () {
       const invalidRow = this.confirmProductSyncList.find(item => !String(item.productCode || '').trim())
@@ -594,8 +590,9 @@ export default {
         return
       }
       const editedResult = this.applyConfirmProductSyncEdits(result)
+      const syncRequest = this.buildConfirmProductSyncRequest(editedResult)
       this.confirmProductSyncLoading = true
-      this.syncConfirmProductMaster(editedResult).then(() => {
+      this.syncConfirmProductMaster(syncRequest).then(() => {
         this.$message.success('产品主数据同步成功')
         this.pendingRecognizedResult = null
         this.confirmProductSyncVisible = false
