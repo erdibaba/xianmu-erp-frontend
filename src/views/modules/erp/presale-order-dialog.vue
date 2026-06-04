@@ -193,6 +193,14 @@
                       </el-form-item>
                     </el-col>
                     <el-col :span="8">
+                      <el-form-item label="冷冻/冷鲜" prop="coldFreshType">
+                        <el-select v-model="dataForm.confirmInfo.coldFreshType" clearable :disabled="readonly" placeholder="请选择冷冻/冷鲜" style="width: 100%;">
+                          <el-option label="冷冻" value="冷冻"></el-option>
+                          <el-option label="冷鲜" value="冷鲜"></el-option>
+                        </el-select>
+                      </el-form-item>
+                    </el-col>
+                    <el-col :span="8">
                       <el-form-item label="预计到港时间" prop="expectedArrivalDate">
                         <el-date-picker
                           v-model="dataForm.confirmInfo.expectedArrivalDate"
@@ -649,6 +657,7 @@ function defaultConfirmInfo () {
     buyerPartnerRole: '',
     contractNo: '',
     containerNo: '',
+    coldFreshType: '',
     expectedArrivalDate: null,
     totalAmount: 0,
     currency: 'CNY',
@@ -779,6 +788,9 @@ export default {
         ],
         containerNo: [
           { required: true, message: '请输入集装箱箱号', trigger: 'blur' }
+        ],
+        coldFreshType: [
+          { required: true, message: '请选择冷冻/冷鲜', trigger: 'change' }
         ],
         expectedArrivalDate: [
           { required: true, message: '请选择预计到港时间', trigger: 'change' }
