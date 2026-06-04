@@ -183,7 +183,6 @@
         <el-table-column prop="brandName" label="品牌方" min-width="170" show-overflow-tooltip></el-table-column>
       </el-table>
       <span slot="footer" class="dialog-footer">
-        <el-button :disabled="confirmProductSyncLoading" @click="skipConfirmProductSync()">暂不同步，带入编辑</el-button>
         <el-button
           type="primary"
           :loading="confirmProductSyncLoading"
