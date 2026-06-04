@@ -3,7 +3,7 @@
     :title="`${warehouse.warehouseName || '仓库'} - 费用历史`"
     :close-on-click-modal="false"
     :visible.sync="visible"
-    width="980px">
+    width="1180px">
     <el-alert
       title="费用统一按元/吨维护；系统取业务日期当天已生效的最新价格，跨调价日期时后续计算会按生效区间拆分。"
       type="info"
@@ -67,7 +67,7 @@
       </el-row>
     </el-form>
 
-    <el-table :data="dataList" border stripe v-loading="dataListLoading" height="340">
+    <el-table :data="dataList" border stripe v-loading="dataListLoading" height="380">
       <el-table-column prop="effectiveDate" label="生效日期" width="120" align="center" header-align="center"></el-table-column>
       <el-table-column prop="frozenStorageFee" label="仓储冷冻费(元/吨)" width="150" align="right" header-align="center"></el-table-column>
       <el-table-column prop="chilledStorageFee" label="仓储冷藏费(元/吨)" width="150" align="right" header-align="center"></el-table-column>
