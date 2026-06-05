@@ -37,13 +37,13 @@
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-form-item label="品牌方" prop="brand">
-            <el-select v-model="dataForm.brand" clearable filterable style="width: 100%;">
+          <el-form-item label="品牌方" prop="brandId">
+            <el-select v-model="dataForm.brandId" clearable filterable style="width: 100%;" @change="brandChange">
               <el-option
                 v-for="item in brandOptions"
                 :key="item.id"
                 :label="item.partnerName"
-                :value="item.partnerName">
+                :value="item.id">
               </el-option>
             </el-select>
           </el-form-item>
@@ -81,6 +81,7 @@
     marketCirculationName: '',
     productSpec: '',
     unit: 'KG',
+    brandId: null,
     brand: '',
     originCountry: '',
     status: 1,
@@ -100,7 +101,7 @@
           productName: [
             { required: true, message: '产品名称不能为空', trigger: 'blur' }
           ],
-          brand: [
+          brandId: [
             { required: true, message: '品牌方不能为空', trigger: 'change' }
           ]
         }
@@ -127,6 +128,10 @@
             callback()
           }
         })
+      },
+      brandChange (brandId) {
+        const brand = this.brandOptions.find(item => item.id === brandId)
+        this.dataForm.brand = brand ? brand.partnerName : ''
       },
       init (id) {
         this.visible = true
