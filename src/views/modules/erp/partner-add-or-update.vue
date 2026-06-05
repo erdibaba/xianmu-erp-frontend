@@ -43,6 +43,17 @@
               style="width: 100%;"></el-input-number>
           </el-form-item>
         </el-col>
+        <el-col :span="12" v-if="showAnnualInterestRate">
+          <el-form-item label="年利率（%）">
+            <el-input-number
+              v-model="dataForm.annualInterestRate"
+              :min="0"
+              :precision="10"
+              :controls="false"
+              placeholder="请输入年利率"
+              style="width: 100%;"></el-input-number>
+          </el-form-item>
+        </el-col>
         <el-col :span="12">
           <el-form-item label="税号">
             <el-input v-model="dataForm.taxNo"></el-input>
@@ -128,6 +139,7 @@ const defaultForm = () => ({
   businessRole: '',
   businessRoles: [],
   coldStorageFreeDays: 7,
+  annualInterestRate: null,
   taxNo: '',
   bankName: '',
   bankAccount: '',
@@ -157,6 +169,11 @@ export default {
           { required: true, message: '单位名称不能为空', trigger: 'blur' }
         ]
       }
+    }
+  },
+  computed: {
+    showAnnualInterestRate () {
+      return (this.dataForm.businessRoles || []).some(role => role === 'FUNDER' || role === 'SECONDARY')
     }
   },
   methods: {
