@@ -63,7 +63,7 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="修改金额" prop="modifiedAmount">
-              <el-input-number v-model="paymentForm.modifiedAmount" :min="0" :precision="2" :controls="false" style="width:100%"></el-input-number>
+              <el-input-number v-model="paymentForm.modifiedAmount" :min="0" :precision="2" :controls="false" style="width:100%" @change="recalculateLastAllocation"></el-input-number>
             </el-form-item>
           </el-col>
           <el-col :span="24">
@@ -111,13 +111,20 @@
           <el-table-column prop="customerReference" label="采购方" min-width="180" show-overflow-tooltip></el-table-column>
           <el-table-column label="分摊贷款本金" width="190">
             <template slot-scope="scope">
-              <el-input-number v-model="scope.row.allocationAmount" :min="0" :precision="2" :controls="false" style="width:160px"></el-input-number>
+              <el-input
+                :value="scope.row.allocationAmount"
+                inputmode="decimal"
+                placeholder="支持粘贴1,234.56"
+                style="width:160px"
+                @input="allocationAmountInput(scope.$index, $event)"
+                @blur="allocationAmountBlur(scope.$index)">
+              </el-input>
             </template>
           </el-table-column>
         </el-table>
         <div class="allocation-summary">
           <strong>分摊合计：{{ money(allocationTotal) }}</strong>
-          <span :class="allocationMatched ? 'matched' : 'mismatch'">{{ allocationMatched ? '与修改金额一致' : '分摊合计必须与修改金额完全一致' }}</span>
+          <span :class="allocationMatched ? 'matched' : 'mismatch'">{{ allocationMessage }}</span>
         </div>
       </el-form>
       <span slot="footer">
@@ -195,6 +202,17 @@ export default {
     },
     allocationMatched () {
       return Math.round(this.allocationTotal * 100) === Math.round(Number(this.paymentForm.modifiedAmount || 0) * 100)
+    },
+    previousAllocationTotal () {
+      const rows = this.paymentForm.allocationList || []
+      return rows.slice(0, -1).reduce((sum, item) => sum + Number(item.allocationAmount || 0), 0)
+    },
+    allocationExceeded () {
+      return Math.round(this.previousAllocationTotal * 100) > Math.round(Number(this.paymentForm.modifiedAmount || 0) * 100)
+    },
+    allocationMessage () {
+      if (this.allocationExceeded) return '前面行分摊本金合计已超过修改金额，请核对'
+      return this.allocationMatched ? '与修改金额一致' : '分摊合计必须与修改金额完全一致'
     }
   },
   activated () {
@@ -202,6 +220,7 @@ export default {
   },
   methods: {
     money (value) { return Number(value || 0).toFixed(2) },
+    roundMoney (value) { return Math.round(Number(value || 0) * 100) / 100 },
     rateLabel (item) {
       return item.annualInterestRate === null || item.annualInterestRate === undefined ? '未维护' : item.annualInterestRate + '%'
     },
@@ -278,6 +297,38 @@ export default {
           allocationAmount: 0
         }
       })
+      this.$nextTick(() => this.recalculateLastAllocation())
+    },
+    allocationAmountInput (index, value) {
+      const rows = this.paymentForm.allocationList || []
+      if (!rows[index]) return
+      let normalized = String(value === null || value === undefined ? '' : value)
+        .replace(/[,，]/g, '')
+        .replace(/[^\d.]/g, '')
+      const decimalIndex = normalized.indexOf('.')
+      if (decimalIndex >= 0) {
+        normalized = normalized.substring(0, decimalIndex + 1) +
+          normalized.substring(decimalIndex + 1).replace(/\./g, '').substring(0, 2)
+      }
+      this.$set(rows[index], 'allocationAmount', normalized)
+      if (index < rows.length - 1) {
+        this.recalculateLastAllocation()
+      }
+    },
+    allocationAmountBlur (index) {
+      const rows = this.paymentForm.allocationList || []
+      if (!rows[index]) return
+      const value = rows[index].allocationAmount
+      this.$set(rows[index], 'allocationAmount', value === '' ? '' : this.roundMoney(value))
+      if (index < rows.length - 1) {
+        this.recalculateLastAllocation()
+      }
+    },
+    recalculateLastAllocation () {
+      const rows = this.paymentForm.allocationList || []
+      if (!rows.length) return
+      const remainder = this.roundMoney(Number(this.paymentForm.modifiedAmount || 0) - this.previousAllocationTotal)
+      this.$set(rows[rows.length - 1], 'allocationAmount', Math.max(0, remainder))
     },
     recognizePaymentVoucher (request) {
       const formData = new FormData()
@@ -300,6 +351,7 @@ export default {
           this.paymentForm.fileName = voucher.fileName || request.file.name
           this.paymentForm.rawText = voucher.rawText || ''
           this.paymentForm.recognizedReceipt = voucher
+          this.$nextTick(() => this.recalculateLastAllocation())
           this.$message.success('凭证识别完成，请核对金额和日期')
         } else {
           this.$message.error((data && data.msg) || '凭证识别失败')
@@ -329,6 +381,9 @@ export default {
         const loading = this.$loading({ lock: true, text: '正在确认打款并生成贷款记录...' })
         const payload = Object.assign({}, this.paymentForm)
         delete payload.recognizedReceipt
+        payload.allocationList = (this.paymentForm.allocationList || []).map(item => Object.assign({}, item, {
+          allocationAmount: this.roundMoney(item.allocationAmount)
+        }))
         this.$http({
           url: this.$http.adornUrl('/erp/funder-finance/payment/confirm'),
           method: 'post',
