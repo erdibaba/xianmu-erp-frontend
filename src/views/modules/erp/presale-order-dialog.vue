@@ -292,6 +292,11 @@
                   <span>{{ scope.row.productNameEn || '-' }}</span>
                 </template>
               </el-table-column>
+              <el-table-column label="市场流通名称" min-width="180">
+                <template slot-scope="scope">
+                  <span>{{ scope.row.marketCirculationName || '-' }}</span>
+                </template>
+              </el-table-column>
               <el-table-column label="计量单位" min-width="130">
                 <template slot-scope="scope">
                   <el-select v-model="scope.row.unit" :disabled="readonly" style="width: 100%;">
@@ -633,6 +638,7 @@ function defaultConfirmItem () {
     productCode: '',
     productName: '',
     productNameEn: '',
+    marketCirculationName: '',
     unit: 'KG',
     quantity: 0,
     unitPriceInclTax: 0,
@@ -1203,6 +1209,9 @@ export default {
         row.productCode = ''
         row.productName = row._recognizedProductName || ''
         row.productNameEn = row._recognizedProductNameEn || ''
+        if (Object.prototype.hasOwnProperty.call(row, 'marketCirculationName')) {
+          row.marketCirculationName = ''
+        }
         return
       }
       const product = (row._productOptions || []).find(item => String(item.productCode) === String(value)) ||
@@ -1211,6 +1220,9 @@ export default {
         row.productCode = ''
         row.productName = row._recognizedProductName || ''
         row.productNameEn = row._recognizedProductNameEn || ''
+        if (Object.prototype.hasOwnProperty.call(row, 'marketCirculationName')) {
+          row.marketCirculationName = ''
+        }
         return
       }
       row.productCode = product.productCode || ''
@@ -1219,6 +1231,9 @@ export default {
       }
       row.productName = product.productName || row._recognizedProductName || ''
       row.productNameEn = product.productNameEn || row._recognizedProductNameEn || ''
+      if (Object.prototype.hasOwnProperty.call(row, 'marketCirculationName')) {
+        row.marketCirculationName = product.marketCirculationName || ''
+      }
       this.ensureProductOption(row, product)
     },
     findProductByEnglishName (name) {
@@ -1238,6 +1253,7 @@ export default {
       if (!product) return
       row.productName = product.productName || row.productName || ''
       row.productNameEn = product.productNameEn || row.productNameEn || ''
+      row.marketCirculationName = product.marketCirculationName || ''
       this.ensureProductOption(row, product)
     },
     fillPackingProductByEnglishName (row) {
