@@ -478,7 +478,15 @@ export default {
       const normalizedCode = this.normalizeProductCode(sourceCode)
       return this.productList.find(item => String(item.productCode || '').trim() === sourceCode) ||
         this.productList.find(item => String(item.productCode || '').trim() === normalizedCode) ||
+        this.productList.find(item => this.hasProductAlias(item, sourceCode)) ||
         null
+    },
+    hasProductAlias (product, code) {
+      const target = String(code || '').trim().toUpperCase()
+      if (!target) return false
+      return String((product && product.aliasCodes) || '')
+        .split(',')
+        .some(alias => alias.trim().toUpperCase() === target)
     },
     buildConfirmProductSyncRows (result) {
       const orderDraft = (result && result.orderDraft) || {}
@@ -488,7 +496,8 @@ export default {
       itemList.forEach(item => {
         const sourceProductCode = String(item.sourceProductCode || item.productCode || '').trim()
         const productCode = this.normalizeProductCode(sourceProductCode)
-        if (!productCode || productCode.indexOf('/') !== -1 || rowMap[productCode]) {
+        const rowKey = productCode + '|' + sourceProductCode.toUpperCase()
+        if (!productCode || productCode.indexOf('/') !== -1 || rowMap[rowKey]) {
           return
         }
         const product = this.findProductByConfirmCode(sourceProductCode)
@@ -503,6 +512,24 @@ export default {
             sourceProductCode,
             currentName: '',
             currentNameEn: '',
+            recognizedName,
+            recognizedNameEn,
+            brandName
+          }
+          return
+        }
+        const masterCode = String(product.productCode || productCode).trim()
+        const missingMasterAlias = !this.hasProductAlias(product, masterCode)
+        const missingSourceAlias = !this.hasProductAlias(product, sourceProductCode)
+        if (missingMasterAlias || missingSourceAlias) {
+          rowMap[rowKey] = {
+            actionText: '补全别名',
+            originalProductCode: productCode,
+            originalSourceProductCode: sourceProductCode,
+            productCode: masterCode,
+            sourceProductCode,
+            currentName: product.productName || '',
+            currentNameEn: product.productNameEn || '',
             recognizedName,
             recognizedNameEn,
             brandName
