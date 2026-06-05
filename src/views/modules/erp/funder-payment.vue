@@ -88,7 +88,7 @@
         </el-row>
 
         <div class="section-title">预销售单金额分摊</div>
-        <el-table :data="paymentForm.allocationList" border max-height="360">
+        <el-table :data="paymentForm.allocationList" border height="360">
           <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
           <el-table-column prop="presaleOrderNo" label="预销售单号" min-width="170"></el-table-column>
           <el-table-column prop="sellerContractNo" label="合同号" min-width="160"></el-table-column>
