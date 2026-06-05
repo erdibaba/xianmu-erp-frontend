@@ -74,6 +74,22 @@
               <span class="file-name">{{ paymentForm.fileName || '尚未上传' }}</span>
             </el-form-item>
           </el-col>
+          <el-col :span="24" v-if="paymentForm.recognizedReceipt && paymentForm.recognizedReceipt.voucherTemplate">
+            <el-form-item label="凭证识别结果">
+              <el-descriptions :column="2" border size="small" class="receipt-result">
+                <el-descriptions-item label="凭证模板">{{ paymentForm.recognizedReceipt.voucherTemplate }}</el-descriptions-item>
+                <el-descriptions-item label="凭证号">{{ paymentForm.recognizedReceipt.voucherNo || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="付款人">{{ paymentForm.recognizedReceipt.payerName || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="付款账号">{{ paymentForm.recognizedReceipt.payerAccount || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="收款人">{{ paymentForm.recognizedReceipt.payeeName || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="收款账号">{{ paymentForm.recognizedReceipt.payeeAccount || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="付款开户行">{{ paymentForm.recognizedReceipt.payerBank || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="收款开户行">{{ paymentForm.recognizedReceipt.payeeBank || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="用途">{{ paymentForm.recognizedReceipt.purpose || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="摘要">{{ paymentForm.recognizedReceipt.summary || '-' }}</el-descriptions-item>
+              </el-descriptions>
+            </el-form-item>
+          </el-col>
           <el-col :span="24">
             <el-form-item label="选择预销售单" prop="selectedPresaleIds">
               <el-select
@@ -140,6 +156,7 @@ const emptyPayment = () => ({
   filePath: '',
   fileName: '',
   rawText: '',
+  recognizedReceipt: {},
   selectedPresaleIds: [],
   allocationList: []
 })
@@ -282,6 +299,7 @@ export default {
           this.paymentForm.filePath = voucher.filePath || ''
           this.paymentForm.fileName = voucher.fileName || request.file.name
           this.paymentForm.rawText = voucher.rawText || ''
+          this.paymentForm.recognizedReceipt = voucher
           this.$message.success('凭证识别完成，请核对金额和日期')
         } else {
           this.$message.error((data && data.msg) || '凭证识别失败')
@@ -309,10 +327,12 @@ export default {
         }
         this.submitLoading = true
         const loading = this.$loading({ lock: true, text: '正在确认打款并生成贷款记录...' })
+        const payload = Object.assign({}, this.paymentForm)
+        delete payload.recognizedReceipt
         this.$http({
           url: this.$http.adornUrl('/erp/funder-finance/payment/confirm'),
           method: 'post',
-          data: this.$http.adornData(this.paymentForm)
+          data: this.$http.adornData(payload)
         }).then(({ data }) => {
           if (data && data.code === 0) {
             this.$message.success('资方打款已确认，贷款记录已生成')
@@ -367,6 +387,7 @@ export default {
 .file-name { margin-left: 12px; color: #606266; }
 .section-title { margin: 8px 0 12px; font-weight: 700; color: #1f5f78; }
 .allocation-summary { display: flex; justify-content: flex-end; gap: 20px; margin-top: 12px; }
+.receipt-result { width: 100%; }
 .matched { color: #2b8a3e; }
 .mismatch { color: #d93025; font-weight: 700; }
 </style>
