@@ -129,7 +129,7 @@
               <el-input :value="money(paymentForm.recognizedAmount)" disabled></el-input>
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col v-if="isFunderPayment" :span="12">
             <el-form-item label="修改金额" prop="modifiedAmount">
               <el-input-number
                 v-model="paymentForm.modifiedAmount"
@@ -165,14 +165,13 @@
               </el-descriptions>
             </el-form-item>
           </el-col>
-          <el-col :span="24">
+          <el-col v-if="isFunderPayment" :span="24">
             <el-form-item label="选择预销售单" prop="selectedPresaleIds">
               <el-select
                 v-model="paymentForm.selectedPresaleIds"
                 multiple
                 filterable
                 remote
-                :disabled="!!paymentForm.id"
                 :remote-method="searchPresales"
                 :loading="presaleLoading"
                 placeholder="输入预销售单号、合同号或采购方搜索，最多返回15条"
@@ -182,8 +181,26 @@
               </el-select>
             </el-form-item>
           </el-col>
+          <el-col v-else :span="24">
+            <el-form-item label="选择预销售单" prop="selectedPresaleId">
+              <el-select
+                v-model="paymentForm.selectedPresaleId"
+                filterable
+                remote
+                clearable
+                :disabled="!!paymentForm.id"
+                :remote-method="searchPresales"
+                :loading="presaleLoading"
+                placeholder="输入预销售单号、合同号或采购方搜索，最多返回15条"
+                style="width: 100%"
+                @change="xianmuPresaleChange">
+                <el-option v-for="item in presaleOptions" :key="item.id" :label="presaleLabel(item)" :value="item.id"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
         </el-row>
 
+        <template v-if="isFunderPayment">
         <div class="section-title">预销售单金额分摊</div>
         <el-table :data="paymentForm.allocationList" border height="360">
           <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
@@ -339,6 +356,62 @@
           <strong>分摊合计：{{ money(allocationTotal) }}</strong>
           <span :class="allocationMatched ? 'matched' : 'mismatch'">{{ allocationMessage }}</span>
         </div>
+        </template>
+        <div v-else class="xianmu-single-payment">
+          <div class="section-title">鲜牧全款打款</div>
+          <el-alert
+            v-if="!xianmuAllocation.presaleOrderId"
+            type="info"
+            title="请先选择一张已上传客户订单确认函的预销售单"
+            :closable="false">
+          </el-alert>
+          <template v-else>
+            <el-descriptions :column="3" border size="small" class="xianmu-summary">
+              <el-descriptions-item label="预销售单号">{{ xianmuAllocation.presaleOrderNo || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="合同号">{{ xianmuAllocation.sellerContractNo || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="采购方">{{ xianmuAllocation.customerReference || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="确认函总金额">{{ money(xianmuAllocation.allocationAmount) }}</el-descriptions-item>
+              <el-descriptions-item label="已付合计">{{ money(xianmuPaidAmount(xianmuAllocation)) }}</el-descriptions-item>
+              <el-descriptions-item label="待付金额">{{ money(xianmuRemainAmount(xianmuAllocation)) }}</el-descriptions-item>
+            </el-descriptions>
+            <el-row :gutter="18" class="installment-row">
+              <el-col :span="12">
+                <el-card shadow="never">
+                  <div slot="header"><strong>定金凭证</strong></div>
+                  <el-form-item label="定金凭证">
+                    <el-upload action="#" :show-file-list="false" :http-request="request => recognizeXianmuInstallment(request, 0, 'deposit')" accept=".jpg,.jpeg,.png,.jfif,.bmp,.pdf">
+                      <el-button type="primary" plain :loading="xianmuInstallmentLoadingKey === installmentLoadingKey(0, 'deposit')">上传并识别定金</el-button>
+                    </el-upload>
+                    <span class="file-name">{{ xianmuAllocation.xianmuDepositFileName || '未上传' }}</span>
+                  </el-form-item>
+                  <el-form-item label="定金金额">
+                    <el-input-number v-model="xianmuAllocation.xianmuDepositModifiedAmount" :min="0" :precision="2" :controls="false" style="width: 100%"></el-input-number>
+                  </el-form-item>
+                  <el-form-item label="定金日期">
+                    <el-date-picker v-model="xianmuAllocation.xianmuDepositDate" type="date" value-format="yyyy-MM-dd" placeholder="选择日期" style="width: 100%"></el-date-picker>
+                  </el-form-item>
+                </el-card>
+              </el-col>
+              <el-col :span="12">
+                <el-card shadow="never">
+                  <div slot="header"><strong>尾款凭证</strong></div>
+                  <el-form-item label="尾款凭证">
+                    <el-upload action="#" :show-file-list="false" :http-request="request => recognizeXianmuInstallment(request, 0, 'balance')" accept=".jpg,.jpeg,.png,.jfif,.bmp,.pdf">
+                      <el-button type="warning" plain :loading="xianmuInstallmentLoadingKey === installmentLoadingKey(0, 'balance')">上传并识别尾款</el-button>
+                    </el-upload>
+                    <span class="file-name">{{ xianmuAllocation.xianmuBalanceFileName || '未上传' }}</span>
+                  </el-form-item>
+                  <el-form-item label="尾款金额">
+                    <el-input-number v-model="xianmuAllocation.xianmuBalanceModifiedAmount" :min="0" :precision="2" :controls="false" style="width: 100%"></el-input-number>
+                  </el-form-item>
+                  <el-form-item label="尾款日期">
+                    <el-date-picker v-model="xianmuAllocation.xianmuBalanceDate" type="date" value-format="yyyy-MM-dd" placeholder="选择日期" style="width: 100%"></el-date-picker>
+                  </el-form-item>
+                </el-card>
+              </el-col>
+            </el-row>
+          </template>
+        </div>
       </el-form>
       <span slot="footer">
         <el-button @click="createVisible = false">取消</el-button>
@@ -417,6 +490,7 @@ const emptyPayment = (paymentType = PAYMENT_TYPE_FUNDER) => ({
   fileName: '',
   rawText: '',
   recognizedReceipt: {},
+  selectedPresaleId: null,
   selectedPresaleIds: [],
   allocationList: []
 })
@@ -450,6 +524,7 @@ export default {
         paymentDate: [{ required: true, message: '请选择打款日期', trigger: 'change' }],
         modifiedAmount: [{ required: true, message: '请输入修改金额', trigger: 'blur' }],
         filePath: [{ required: true, message: '请上传打款凭证', trigger: 'change' }],
+        selectedPresaleId: [{ required: true, message: '请选择一张预销售单', trigger: 'change' }],
         selectedPresaleIds: [{ type: 'array', required: true, min: 1, message: '请至少选择一张预销售单', trigger: 'change' }]
       }
     }
@@ -468,6 +543,9 @@ export default {
     },
     allocationTotal () {
       return (this.paymentForm.allocationList || []).reduce((sum, item) => sum + Number(item.allocationAmount || 0), 0)
+    },
+    xianmuAllocation () {
+      return (this.paymentForm.allocationList && this.paymentForm.allocationList[0]) || {}
     },
     allocationMatched () {
       return Math.round(this.allocationTotal * 100) === Math.round(Number(this.paymentForm.modifiedAmount || 0) * 100)
@@ -639,6 +717,40 @@ export default {
         }
       })
       this.$nextTick(() => this.recalculateLastAllocation())
+    },
+    xianmuPresaleChange (id) {
+      if (!id) {
+        this.paymentForm.allocationList = []
+        return
+      }
+      const option = this.presaleOptions.find(item => item.id === id) || {}
+      const confirmAmount = Number(option.confirmInfo && option.confirmInfo.totalAmount ? option.confirmInfo.totalAmount : 0)
+      if (confirmAmount <= 0) {
+        this.$message.error('所选预销售单尚未上传客户订单确认函，或确认函总金额为空，不能进行鲜牧全款打款')
+        this.paymentForm.selectedPresaleId = null
+        this.paymentForm.allocationList = []
+        return
+      }
+      this.paymentForm.modifiedAmount = this.roundMoney(confirmAmount)
+      this.paymentForm.allocationList = [{
+        presaleOrderId: id,
+        presaleOrderNo: option.orderNo,
+        sellerContractNo: option.sellerContractNo,
+        customerReference: option.customerReference,
+        allocationAmount: this.roundMoney(confirmAmount),
+        xianmuDepositRecognizedAmount: 0,
+        xianmuDepositModifiedAmount: 0,
+        xianmuDepositDate: '',
+        xianmuDepositFilePath: '',
+        xianmuDepositFileName: '',
+        xianmuDepositRawText: '',
+        xianmuBalanceRecognizedAmount: 0,
+        xianmuBalanceModifiedAmount: 0,
+        xianmuBalanceDate: '',
+        xianmuBalanceFilePath: '',
+        xianmuBalanceFileName: '',
+        xianmuBalanceRawText: ''
+      }]
     },
     allocationAmountInput (index, value) {
       const rows = this.paymentForm.allocationList || []
@@ -861,7 +973,11 @@ export default {
         payload.allocationList = (this.paymentForm.allocationList || []).map(item => Object.assign({}, item, {
           allocationAmount: this.roundMoney(item.allocationAmount),
           xianmuContributionRecognizedAmount: this.roundMoney(item.xianmuContributionRecognizedAmount),
-          xianmuContributionModifiedAmount: this.roundMoney(item.xianmuContributionModifiedAmount)
+          xianmuContributionModifiedAmount: this.roundMoney(item.xianmuContributionModifiedAmount),
+          xianmuDepositRecognizedAmount: this.roundMoney(item.xianmuDepositRecognizedAmount),
+          xianmuDepositModifiedAmount: this.roundMoney(item.xianmuDepositModifiedAmount),
+          xianmuBalanceRecognizedAmount: this.roundMoney(item.xianmuBalanceRecognizedAmount),
+          xianmuBalanceModifiedAmount: this.roundMoney(item.xianmuBalanceModifiedAmount)
         }))
         this.$http({
           url: this.$http.adornUrl('/erp/funder-finance/payment/confirm'),
@@ -892,6 +1008,7 @@ export default {
           const payment = data.payment || {}
           payment.paymentType = PAYMENT_TYPE_XIANMU
           payment.selectedPresaleIds = (payment.allocationList || []).map(item => item.presaleOrderId)
+          payment.selectedPresaleId = payment.selectedPresaleIds[0] || null
           payment.recognizedReceipt = {}
           this.paymentForm = Object.assign(emptyPayment(PAYMENT_TYPE_XIANMU), payment)
           this.presaleOptions = (payment.allocationList || []).map(item => ({
