@@ -42,11 +42,22 @@
       <el-table-column label="确认金额" width="140" align="right">
         <template slot-scope="scope"><strong>{{ money(scope.row.modifiedAmount) }}</strong></template>
       </el-table-column>
-      <el-table-column label="状态" width="90" align="center">
-        <template><el-tag type="success" size="small">已确认</el-tag></template>
-      </el-table-column>
-      <el-table-column fixed="right" label="操作" width="150" align="center">
+      <el-table-column label="状态" width="100" align="center">
         <template slot-scope="scope">
+          <el-tag :type="scope.row.status === 0 ? 'warning' : 'success'" size="small">
+            {{ paymentStatusName(scope.row.status) }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column fixed="right" label="操作" width="190" align="center">
+        <template slot-scope="scope">
+          <el-button
+            v-if="isAuth('erp:funderpayment:save') && scope.row.paymentType === 2 && scope.row.status === 0"
+            type="text"
+            size="small"
+            @click="openEditBalance(scope.row.id)">
+            补尾款
+          </el-button>
           <el-button type="text" size="small" @click="openDetail(scope.row.id)">详情</el-button>
           <el-button type="text" size="small" @click="downloadVoucher(scope.row.id, scope.row.fileName)">下载凭证</el-button>
         </template>
@@ -102,7 +113,7 @@
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col v-if="isFunderPayment" :span="12">
             <el-form-item label="打款日期" prop="paymentDate">
               <el-date-picker
                 v-model="paymentForm.paymentDate"
@@ -113,7 +124,7 @@
               </el-date-picker>
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col v-if="isFunderPayment" :span="12">
             <el-form-item label="识别金额">
               <el-input :value="money(paymentForm.recognizedAmount)" disabled></el-input>
             </el-form-item>
@@ -130,7 +141,7 @@
               </el-input-number>
             </el-form-item>
           </el-col>
-          <el-col :span="24">
+          <el-col v-if="isFunderPayment" :span="24">
             <el-form-item label="打款凭证" prop="filePath">
               <el-upload action="#" :show-file-list="false" :http-request="recognizePaymentVoucher" accept=".jpg,.jpeg,.png,.jfif,.bmp,.pdf">
                 <el-button type="primary" plain :loading="recognizeLoading">上传并识别凭证</el-button>
@@ -138,7 +149,7 @@
               <span class="file-name">{{ paymentForm.fileName || '尚未上传' }}</span>
             </el-form-item>
           </el-col>
-          <el-col :span="24" v-if="paymentForm.recognizedReceipt && paymentForm.recognizedReceipt.voucherTemplate">
+          <el-col :span="24" v-if="isFunderPayment && paymentForm.recognizedReceipt && paymentForm.recognizedReceipt.voucherTemplate">
             <el-form-item label="凭证识别结果">
               <el-descriptions :column="2" border size="small" class="receipt-result">
                 <el-descriptions-item label="凭证模板">{{ paymentForm.recognizedReceipt.voucherTemplate }}</el-descriptions-item>
@@ -161,6 +172,7 @@
                 multiple
                 filterable
                 remote
+                :disabled="!!paymentForm.id"
                 :remote-method="searchPresales"
                 :loading="presaleLoading"
                 placeholder="输入预销售单号、合同号或采购方搜索，最多返回15条"
@@ -236,6 +248,92 @@
           <el-table-column v-if="isFunderPayment" label="贷款本金" width="130" align="right">
             <template slot-scope="scope">{{ money(loanPrincipal(scope.row)) }}</template>
           </el-table-column>
+          <el-table-column v-if="!isFunderPayment" label="定金凭证" width="180">
+            <template slot-scope="scope">
+              <el-upload
+                action="#"
+                :show-file-list="false"
+                :http-request="request => recognizeXianmuInstallment(request, scope.$index, 'deposit')"
+                accept=".jpg,.jpeg,.png,.jfif,.bmp,.pdf">
+                <el-button
+                  type="primary"
+                  plain
+                  size="mini"
+                  :loading="xianmuInstallmentLoadingKey === installmentLoadingKey(scope.$index, 'deposit')">
+                  上传定金
+                </el-button>
+              </el-upload>
+              <div class="row-file-name">{{ scope.row.xianmuDepositFileName || '未上传' }}</div>
+            </template>
+          </el-table-column>
+          <el-table-column v-if="!isFunderPayment" label="定金金额" width="150">
+            <template slot-scope="scope">
+              <el-input-number
+                v-model="scope.row.xianmuDepositModifiedAmount"
+                :min="0"
+                :precision="2"
+                :controls="false"
+                style="width: 125px">
+              </el-input-number>
+            </template>
+          </el-table-column>
+          <el-table-column v-if="!isFunderPayment" label="定金日期" width="145">
+            <template slot-scope="scope">
+              <el-date-picker
+                v-model="scope.row.xianmuDepositDate"
+                type="date"
+                value-format="yyyy-MM-dd"
+                placeholder="选择日期"
+                style="width: 120px">
+              </el-date-picker>
+            </template>
+          </el-table-column>
+          <el-table-column v-if="!isFunderPayment" label="尾款凭证" width="180">
+            <template slot-scope="scope">
+              <el-upload
+                action="#"
+                :show-file-list="false"
+                :http-request="request => recognizeXianmuInstallment(request, scope.$index, 'balance')"
+                accept=".jpg,.jpeg,.png,.jfif,.bmp,.pdf">
+                <el-button
+                  type="warning"
+                  plain
+                  size="mini"
+                  :loading="xianmuInstallmentLoadingKey === installmentLoadingKey(scope.$index, 'balance')">
+                  上传尾款
+                </el-button>
+              </el-upload>
+              <div class="row-file-name">{{ scope.row.xianmuBalanceFileName || '未上传' }}</div>
+            </template>
+          </el-table-column>
+          <el-table-column v-if="!isFunderPayment" label="尾款金额" width="150">
+            <template slot-scope="scope">
+              <el-input-number
+                v-model="scope.row.xianmuBalanceModifiedAmount"
+                :min="0"
+                :precision="2"
+                :controls="false"
+                style="width: 125px">
+              </el-input-number>
+            </template>
+          </el-table-column>
+          <el-table-column v-if="!isFunderPayment" label="尾款日期" width="145">
+            <template slot-scope="scope">
+              <el-date-picker
+                v-model="scope.row.xianmuBalanceDate"
+                type="date"
+                value-format="yyyy-MM-dd"
+                placeholder="选择日期"
+                style="width: 120px">
+              </el-date-picker>
+            </template>
+          </el-table-column>
+          <el-table-column v-if="!isFunderPayment" label="已付合计" width="130" align="right">
+            <template slot-scope="scope">{{ money(xianmuPaidAmount(scope.row)) }}</template>
+          </el-table-column>
+          <el-table-column v-if="!isFunderPayment" label="待付金额" width="130" align="right">
+            <template slot-scope="scope">{{ money(xianmuRemainAmount(scope.row)) }}</template>
+          </el-table-column>
         </el-table>
         <div class="allocation-summary">
           <strong>分摊合计：{{ money(allocationTotal) }}</strong>
@@ -257,6 +355,7 @@
         <el-descriptions-item label="打款日期">{{ detailData.paymentDate }}</el-descriptions-item>
         <el-descriptions-item label="识别金额">{{ money(detailData.recognizedAmount) }}</el-descriptions-item>
         <el-descriptions-item label="确认金额">{{ money(detailData.modifiedAmount) }}</el-descriptions-item>
+        <el-descriptions-item label="状态">{{ paymentStatusName(detailData.status) }}</el-descriptions-item>
         <el-descriptions-item label="归档原件">
           <el-button type="text" @click="downloadVoucher(detailData.id, detailData.fileName)">下载凭证</el-button>
         </el-descriptions-item>
@@ -268,19 +367,34 @@
         <el-table-column label="分摊打款金额" width="180" align="right">
           <template slot-scope="scope">{{ money(scope.row.allocationAmount) }}</template>
         </el-table-column>
-        <el-table-column label="鲜牧出资款" width="150" align="right">
+        <el-table-column v-if="detailData.paymentType === 1" label="鲜牧出资款" width="150" align="right">
           <template slot-scope="scope">{{ money(scope.row.xianmuContributionModifiedAmount) }}</template>
         </el-table-column>
-        <el-table-column label="出资日期" width="120" align="center">
+        <el-table-column v-if="detailData.paymentType === 1" label="出资日期" width="120" align="center">
           <template slot-scope="scope">{{ scope.row.xianmuContributionDate || '-' }}</template>
         </el-table-column>
-        <el-table-column label="贷款本金" width="150" align="right">
+        <el-table-column v-if="detailData.paymentType === 1" label="贷款本金" width="150" align="right">
           <template slot-scope="scope">{{ money(loanPrincipal(scope.row)) }}</template>
         </el-table-column>
-        <el-table-column label="出资凭证" width="100" align="center">
+        <el-table-column v-if="detailData.paymentType === 1" label="出资凭证" width="100" align="center">
           <template slot-scope="scope">
             <span>{{ scope.row.xianmuContributionFileName ? '已归档' : '-' }}</span>
           </template>
+        </el-table-column>
+        <el-table-column v-if="detailData.paymentType === 2" label="定金" width="130" align="right">
+          <template slot-scope="scope">{{ money(scope.row.xianmuDepositModifiedAmount) }}</template>
+        </el-table-column>
+        <el-table-column v-if="detailData.paymentType === 2" label="定金日期" width="120" align="center">
+          <template slot-scope="scope">{{ scope.row.xianmuDepositDate || '-' }}</template>
+        </el-table-column>
+        <el-table-column v-if="detailData.paymentType === 2" label="尾款" width="130" align="right">
+          <template slot-scope="scope">{{ money(scope.row.xianmuBalanceModifiedAmount) }}</template>
+        </el-table-column>
+        <el-table-column v-if="detailData.paymentType === 2" label="尾款日期" width="120" align="center">
+          <template slot-scope="scope">{{ scope.row.xianmuBalanceDate || '-' }}</template>
+        </el-table-column>
+        <el-table-column v-if="detailData.paymentType === 2" label="待付金额" width="130" align="right">
+          <template slot-scope="scope">{{ money(xianmuRemainAmount(scope.row)) }}</template>
         </el-table-column>
       </el-table>
     </el-dialog>
@@ -292,6 +406,7 @@ const PAYMENT_TYPE_FUNDER = 1
 const PAYMENT_TYPE_XIANMU = 2
 
 const emptyPayment = (paymentType = PAYMENT_TYPE_FUNDER) => ({
+  id: null,
   paymentType,
   payerId: null,
   funderId: null,
@@ -327,6 +442,7 @@ export default {
       presaleLoading: false,
       recognizeLoading: false,
       xianmuContributionLoadingIndex: -1,
+      xianmuInstallmentLoadingKey: '',
       submitLoading: false,
       paymentRules: {
         funderId: [{ required: true, message: '请选择资方', trigger: 'change' }],
@@ -343,9 +459,11 @@ export default {
       return this.paymentForm.paymentType === PAYMENT_TYPE_FUNDER
     },
     createTitle () {
+      if (this.paymentForm.id) return '补上传鲜牧全款尾款'
       return this.isFunderPayment ? '新增资方全款打款' : '新增鲜牧全款打款'
     },
     confirmButtonText () {
+      if (this.paymentForm.id) return '保存尾款并更新状态'
       return this.isFunderPayment ? '确认打款并生成贷款' : '确认鲜牧全款打款'
     },
     allocationTotal () {
@@ -381,6 +499,18 @@ export default {
     },
     paymentTypeName (value) {
       return Number(value || PAYMENT_TYPE_FUNDER) === PAYMENT_TYPE_XIANMU ? '鲜牧全款' : '资方全款'
+    },
+    paymentStatusName (value) {
+      return Number(value || 0) === 0 ? '待尾款' : '已确认'
+    },
+    installmentLoadingKey (index, kind) {
+      return `${index}-${kind}`
+    },
+    xianmuPaidAmount (row) {
+      return this.roundMoney(Number(row.xianmuDepositModifiedAmount || 0) + Number(row.xianmuBalanceModifiedAmount || 0))
+    },
+    xianmuRemainAmount (row) {
+      return this.roundMoney(Number(row.allocationAmount || 0) - this.xianmuPaidAmount(row))
     },
     rateLabel (item) {
       return item.annualInterestRate === null || item.annualInterestRate === undefined ? '未维护' : item.annualInterestRate + '%'
@@ -493,7 +623,19 @@ export default {
           xianmuContributionDate: '',
           xianmuContributionFilePath: '',
           xianmuContributionFileName: '',
-          xianmuContributionRawText: ''
+          xianmuContributionRawText: '',
+          xianmuDepositRecognizedAmount: 0,
+          xianmuDepositModifiedAmount: 0,
+          xianmuDepositDate: '',
+          xianmuDepositFilePath: '',
+          xianmuDepositFileName: '',
+          xianmuDepositRawText: '',
+          xianmuBalanceRecognizedAmount: 0,
+          xianmuBalanceModifiedAmount: 0,
+          xianmuBalanceDate: '',
+          xianmuBalanceFilePath: '',
+          xianmuBalanceFileName: '',
+          xianmuBalanceRawText: ''
         }
       })
       this.$nextTick(() => this.recalculateLastAllocation())
@@ -592,7 +734,92 @@ export default {
         loading.close()
       })
     },
+    recognizeXianmuInstallment (request, index, kind) {
+      const rows = this.paymentForm.allocationList || []
+      if (!rows[index]) return
+      const formData = new FormData()
+      formData.append('file', request.file)
+      const loadingKey = this.installmentLoadingKey(index, kind)
+      const name = kind === 'deposit' ? '定金' : '尾款'
+      this.xianmuInstallmentLoadingKey = loadingKey
+      const loading = this.$loading({ lock: true, text: `正在识别并归档鲜牧全款${name}凭证...` })
+      this.$http({
+        url: this.$http.adornUrl('/erp/funder-finance/voucher/recognize'),
+        method: 'post',
+        data: formData,
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 120000
+      }).then(({ data }) => {
+        if (data && data.code === 0) {
+          const voucher = data.voucher || {}
+          const row = rows[index]
+          const prefix = kind === 'deposit' ? 'xianmuDeposit' : 'xianmuBalance'
+          this.$set(row, `${prefix}RecognizedAmount`, Number(voucher.recognizedAmount || 0))
+          this.$set(row, `${prefix}ModifiedAmount`, Number(voucher.recognizedAmount || 0))
+          this.$set(row, `${prefix}Date`, voucher.paymentDate || '')
+          this.$set(row, `${prefix}FilePath`, voucher.filePath || '')
+          this.$set(row, `${prefix}FileName`, voucher.fileName || request.file.name)
+          this.$set(row, `${prefix}RawText`, voucher.rawText || '')
+          this.$message.success(`鲜牧全款${name}凭证识别完成，请核对金额和日期`)
+        } else {
+          this.$message.error((data && data.msg) || `鲜牧全款${name}凭证识别失败`)
+        }
+      }).catch(() => this.$message.error(`鲜牧全款${name}凭证识别请求失败`)).finally(() => {
+        this.xianmuInstallmentLoadingKey = ''
+        loading.close()
+      })
+    },
+    prepareXianmuPaymentForm () {
+      const rows = this.paymentForm.allocationList || []
+      if (!rows.length) {
+        this.$message.error('请至少选择一张预销售单')
+        return false
+      }
+      let recognizedTotal = 0
+      let latestDate = ''
+      let firstFilePath = ''
+      let firstFileName = ''
+      for (let index = 0; index < rows.length; index++) {
+        const row = rows[index]
+        const allocationAmount = Number(row.allocationAmount || 0)
+        const depositAmount = Number(row.xianmuDepositModifiedAmount || 0)
+        const balanceAmount = Number(row.xianmuBalanceModifiedAmount || 0)
+        if (!row.xianmuDepositFilePath || !row.xianmuDepositDate || depositAmount <= 0) {
+          this.$message.error(`第${index + 1}行必须先上传定金凭证，并填写定金日期和金额`)
+          return false
+        }
+        if (depositAmount > allocationAmount) {
+          this.$message.error(`第${index + 1}行定金不能大于分摊打款金额`)
+          return false
+        }
+        const hasBalance = !!row.xianmuBalanceFilePath || !!row.xianmuBalanceDate || balanceAmount > 0
+        if (hasBalance && (!row.xianmuBalanceFilePath || !row.xianmuBalanceDate || balanceAmount <= 0)) {
+          this.$message.error(`第${index + 1}行已填写尾款时，尾款凭证、日期和金额都必须完整`)
+          return false
+        }
+        if (depositAmount + balanceAmount > allocationAmount) {
+          this.$message.error(`第${index + 1}行定金加尾款不能大于分摊打款金额`)
+          return false
+        }
+        recognizedTotal += Number(row.xianmuDepositRecognizedAmount || 0) + Number(row.xianmuBalanceRecognizedAmount || 0)
+        if (!latestDate || (row.xianmuDepositDate && row.xianmuDepositDate > latestDate)) latestDate = row.xianmuDepositDate
+        if (hasBalance && row.xianmuBalanceDate && row.xianmuBalanceDate > latestDate) latestDate = row.xianmuBalanceDate
+        if (!firstFilePath) {
+          firstFilePath = row.xianmuDepositFilePath
+          firstFileName = row.xianmuDepositFileName
+        }
+      }
+      this.paymentForm.recognizedAmount = this.roundMoney(recognizedTotal)
+      this.paymentForm.modifiedAmount = this.roundMoney(this.allocationTotal)
+      this.paymentForm.paymentDate = latestDate
+      this.paymentForm.filePath = firstFilePath
+      this.paymentForm.fileName = firstFileName || '鲜牧全款定金/尾款凭证'
+      return true
+    },
     confirmPayment () {
+      if (!this.isFunderPayment && !this.prepareXianmuPaymentForm()) {
+        return
+      }
       this.$refs.paymentForm.validate(valid => {
         if (!valid) return
         if (!this.allocationMatched) {
@@ -653,6 +880,33 @@ export default {
           loading.close()
         })
       })
+    },
+    openEditBalance (id) {
+      const loading = this.$loading({ lock: true, text: '正在加载待尾款打款记录...' })
+      this.$http({
+        url: this.$http.adornUrl(`/erp/funder-finance/payment/info/${id}`),
+        method: 'get',
+        params: this.$http.adornParams()
+      }).then(({ data }) => {
+        if (data && data.code === 0) {
+          const payment = data.payment || {}
+          payment.paymentType = PAYMENT_TYPE_XIANMU
+          payment.selectedPresaleIds = (payment.allocationList || []).map(item => item.presaleOrderId)
+          payment.recognizedReceipt = {}
+          this.paymentForm = Object.assign(emptyPayment(PAYMENT_TYPE_XIANMU), payment)
+          this.presaleOptions = (payment.allocationList || []).map(item => ({
+            id: item.presaleOrderId,
+            orderNo: item.presaleOrderNo,
+            sellerContractNo: item.sellerContractNo,
+            customerReference: item.customerReference
+          }))
+          this.createVisible = true
+          this.searchInternalPayers('')
+          this.$nextTick(() => this.$refs.paymentForm && this.$refs.paymentForm.clearValidate())
+        } else {
+          this.$message.error((data && data.msg) || '加载待尾款记录失败')
+        }
+      }).catch(() => this.$message.error('加载待尾款记录请求失败')).finally(() => loading.close())
     },
     openDetail (id) {
       const loading = this.$loading({ lock: true, text: '正在加载预销售单打款详情...' })
