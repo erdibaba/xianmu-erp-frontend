@@ -4,7 +4,7 @@
       <div class="portal-header">
         <div>
           <h2>销售单上传中心</h2>
-          <p>请按流程上传盖章合同与二批打款凭证，系统会自动锁定到当前二批商账户。</p>
+          <p>请下载合同盖章后上传，系统会自动锁定到当前二批商账户。</p>
         </div>
         <div class="portal-header__actions">
           <el-button size="small" @click="goLogin">切换账号</el-button>
@@ -47,13 +47,10 @@
 
       <el-steps :active="stepActive" finish-status="success" align-center class="step-bar">
         <el-step title="盖章合同"></el-step>
-        <el-step title="二批打款凭证"></el-step>
-        <el-step title="内部上传银行水单"></el-step>
-        <el-step title="内部上传资方打款凭证"></el-step>
       </el-steps>
 
       <div class="step-grid">
-        <el-card shadow="never" class="step-card">
+        <el-card v-if="false" shadow="never" class="step-card">
           <div slot="header" class="step-card__header">
             <span>第一步：盖章合同</span>
             <el-tag size="small" :type="confirmedTagType(saleOrder.signedContractConfirmed)">{{ confirmedText(saleOrder.signedContractConfirmed) }}</el-tag>
@@ -96,64 +93,6 @@
           </el-table>
         </el-card>
 
-        <el-card shadow="never" class="step-card">
-          <div slot="header" class="step-card__header">
-            <span>第二步：二批打款凭证</span>
-            <el-tag size="small" :type="confirmedTagType(saleOrder.buyerPaymentConfirmed)">{{ confirmedText(saleOrder.buyerPaymentConfirmed) }}</el-tag>
-          </div>
-          <p class="step-card__tip">合同确认后上传银行打款凭证，确认无误后交由内部继续处理。</p>
-          <div class="step-card__actions">
-            <el-button
-              v-if="canUploadBuyerPayment"
-              size="small"
-              type="primary"
-              plain
-              :loading="uploading && currentUploadType === 'BUYER_PAYMENT_PROOF'"
-              @click="triggerUpload('BUYER_PAYMENT_PROOF')">
-              上传二批打款凭证
-            </el-button>
-            <el-button
-              v-if="canConfirmBuyerPayment"
-              size="small"
-              type="success"
-              :loading="confirming && currentConfirmType === 'BUYER_PAYMENT_PROOF'"
-              @click="confirmStep('BUYER_PAYMENT_PROOF')">
-              确认打款凭证
-            </el-button>
-          </div>
-          <el-table :data="buyerPaymentFiles" border size="mini">
-            <el-table-column prop="fileName" label="文件名称" min-width="180" show-overflow-tooltip></el-table-column>
-            <el-table-column label="上传时间" width="160" align="center">
-              <template slot-scope="scope">{{ formatDateTime(scope.row.createTime) }}</template>
-            </el-table-column>
-            <el-table-column label="下载" width="80" align="center">
-              <template slot-scope="scope">
-                <el-button type="text" size="small" @click="downloadPortalFile(scope.row)">下载</el-button>
-              </template>
-            </el-table-column>
-            <el-table-column label="删除" width="80" align="center">
-              <template slot-scope="scope">
-                <el-button v-if="canDeleteBuyerPayment" type="text" size="small" @click="deletePortalFile(scope.row)">删除</el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-        </el-card>
-
-        <el-card shadow="never" class="step-card step-card--readonly">
-          <div slot="header" class="step-card__header">
-            <span>第三步：内部上传银行水单</span>
-            <el-tag size="small" :type="confirmedTagType(saleOrder.buyerBankConfirmed)">{{ confirmedText(saleOrder.buyerBankConfirmed) }}</el-tag>
-          </div>
-          <p class="step-card__tip">此步骤由内部人员处理，你可以在这里看到进度。</p>
-        </el-card>
-
-        <el-card shadow="never" class="step-card step-card--readonly">
-          <div slot="header" class="step-card__header">
-            <span>第四步：内部上传资方打款凭证</span>
-            <el-tag size="small" :type="confirmedTagType(saleOrder.funderPaymentConfirmed)">{{ confirmedText(saleOrder.funderPaymentConfirmed) }}</el-tag>
-          </div>
-          <p class="step-card__tip">此步骤由内部人员处理，完成后整条销售流程结束。</p>
-        </el-card>
       </div>
 
       <input ref="uploadInput" type="file" multiple style="display:none;" @change="uploadFileChangeHandle">
@@ -194,39 +133,25 @@ export default {
     statusLabel () {
       const map = {
         1: '待确认盖章合同',
-        2: '待确认二批打款凭证',
-        3: '待内部确认银行水单',
-        4: '待内部确认资方打款凭证',
-        5: '流程完成'
+        2: '待出库完成',
+        3: '待出库完成',
+        4: '待出库完成',
+        5: '待出库完成',
+        6: '流程完成'
       }
       return map[this.saleOrder.status] || '待处理'
     },
     stepActive () {
-      const status = Number(this.saleOrder.status || 1)
-      return Math.min(status, 4)
+      return Number(this.saleOrder.signedContractConfirmed || 0) === 1 ? 1 : 0
     },
     signedContractFiles () {
       return this.getFilesByType('SIGNED_CONTRACT')
-    },
-    buyerPaymentFiles () {
-      return this.getFilesByType('BUYER_PAYMENT_PROOF')
     },
     canConfirmSigned () {
       return !this.saleOrder.signedContractConfirmed && this.signedContractFiles.length > 0
     },
     canDeleteSigned () {
       return Number(this.saleOrder.signedContractConfirmed || 0) === 0
-    },
-    canUploadBuyerPayment () {
-      return Number(this.saleOrder.signedContractConfirmed || 0) === 1 && Number(this.saleOrder.buyerPaymentConfirmed || 0) === 0
-    },
-    canConfirmBuyerPayment () {
-      return Number(this.saleOrder.signedContractConfirmed || 0) === 1 &&
-        Number(this.saleOrder.buyerPaymentConfirmed || 0) === 0 &&
-        this.buyerPaymentFiles.length > 0
-    },
-    canDeleteBuyerPayment () {
-      return Number(this.saleOrder.buyerPaymentConfirmed || 0) === 0
     }
   },
   created () {

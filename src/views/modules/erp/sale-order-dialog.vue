@@ -380,7 +380,7 @@
             </el-table>
           </el-tab-pane>
 
-          <el-tab-pane label="二批打款凭证" name="buyerPayment">
+          <el-tab-pane v-if="false" label="二批打款凭证" name="buyerPayment">
             <div class="attachment-toolbar">
               <el-button
                 v-if="attachmentEditable && canUploadStep('BUYER_PAYMENT_PROOF')"
@@ -417,7 +417,7 @@
             </el-table>
           </el-tab-pane>
 
-          <el-tab-pane label="二批来款水单" name="buyerBank">
+          <el-tab-pane v-if="false" label="二批来款水单" name="buyerBank">
             <div class="attachment-toolbar">
               <el-button
                 v-if="attachmentEditable && canUploadStep('BUYER_BANK_SLIP')"
@@ -454,7 +454,7 @@
             </el-table>
           </el-tab-pane>
 
-          <el-tab-pane label="资方打款凭证" name="funderPayment">
+          <el-tab-pane v-if="false" label="资方打款凭证" name="funderPayment">
             <div class="attachment-toolbar">
               <el-button
                 v-if="attachmentEditable && canUploadStep('FUNDER_PAYMENT_PROOF')"
@@ -491,16 +491,56 @@
             </el-table>
           </el-tab-pane>
 
-          <el-tab-pane label="出库回单" name="outboundReceipt">
+          <el-tab-pane label="出库批次" name="outboundReceipt">
+            <div class="outbound-batch-panel">
+              <div class="attachment-toolbar">
+                <el-button
+                  v-if="attachmentEditable"
+                  size="mini"
+                  type="primary"
+                  plain
+                  :loading="outboundBatchLoading"
+                  @click="createOutboundBatch">
+                  新增出库批次
+                </el-button>
+                <el-select
+                  v-if="dataForm.outboundBatchList && dataForm.outboundBatchList.length"
+                  v-model="activeOutboundBatchId"
+                  size="mini"
+                  style="width: 260px;"
+                  placeholder="请选择出库批次"
+                  @change="setActiveOutboundBatch">
+                  <el-option
+                    v-for="batch in dataForm.outboundBatchList"
+                    :key="batch.id"
+                    :label="`${batch.batchNo} / ${formatOutboundBatchStatus(batch.status)}`"
+                    :value="batch.id">
+                  </el-option>
+                </el-select>
+                <el-tag v-if="currentOutboundBatch" size="small" :type="currentOutboundBatchTagType">
+                  {{ formatOutboundBatchStatus(currentOutboundBatch.status) }}
+                </el-tag>
+                <span v-if="!currentOutboundBatch" class="sub-title-tip">请先新增出库批次，再上传出库回单和二批来款水单。</span>
+              </div>
+            </div>
             <div class="attachment-toolbar">
               <el-button
-                v-if="attachmentEditable && canUploadStep('OUTBOUND_RECEIPT')"
+                v-if="attachmentEditable && currentOutboundBatch && canUploadStep('OUTBOUND_RECEIPT')"
                 size="mini"
                 type="primary"
                 plain
                 :loading="uploadLoading && currentUploadType === 'OUTBOUND_RECEIPT'"
                 @click="triggerUpload('OUTBOUND_RECEIPT')">
                 上传出库回单识别
+              </el-button>
+              <el-button
+                v-if="attachmentEditable && currentOutboundBatch && canUploadStep('OUTBOUND_BATCH_BANK_SLIP')"
+                size="mini"
+                type="primary"
+                plain
+                :loading="uploadLoading && currentUploadType === 'OUTBOUND_BATCH_BANK_SLIP'"
+                @click="triggerUpload('OUTBOUND_BATCH_BANK_SLIP')">
+                上传二批来款水单
               </el-button>
               <el-button
                 v-if="attachmentEditable && dataForm.outboundReceipt"
@@ -513,12 +553,21 @@
                 保存识别结果
               </el-button>
               <el-button
-                v-if="attachmentEditable && canConfirmStep('OUTBOUND_RECEIPT')"
+                v-if="attachmentEditable && currentOutboundBatch && canConfirmOutboundBatch"
                 size="mini"
                 type="success"
-                :loading="confirmLoading && currentConfirmType === 'OUTBOUND_RECEIPT'"
-                @click="confirmStep('OUTBOUND_RECEIPT')">
-                确认出库完成
+                :loading="confirmLoading && currentConfirmType === 'OUTBOUND_BATCH'"
+                @click="confirmOutboundBatch">
+                确认批次完成
+              </el-button>
+              <el-button
+                v-if="attachmentEditable && currentOutboundBatch && currentOutboundBatchEditable"
+                size="mini"
+                type="danger"
+                plain
+                :loading="outboundBatchLoading"
+                @click="voidOutboundBatch">
+                作废批次
               </el-button>
               <el-tag v-if="dataForm.outboundReceipt" size="small" :type="outboundReceiptMatched ? 'success' : 'danger'">
                 {{ outboundReceiptMatched ? '箱数一致' : '待核对' }}
@@ -679,7 +728,7 @@
                 </template>
               </el-table-column>
             </el-table>
-            <el-table :data="getFileListByType('OUTBOUND_RECEIPT')" border size="mini" class="attachment-table">
+            <el-table :data="currentOutboundReceiptFiles" border size="mini" class="attachment-table">
               <el-table-column prop="fileName" label="归档原件" min-width="240" show-overflow-tooltip></el-table-column>
               <el-table-column label="上传时间" width="170" align="center">
                 <template slot-scope="scope">{{ formatDateTime(scope.row.createTime) }}</template>
@@ -692,6 +741,22 @@
               <el-table-column label="删除" width="100" align="center">
                 <template slot-scope="scope">
                   <el-button v-if="attachmentEditable && canDeleteStep('OUTBOUND_RECEIPT')" type="text" size="small" @click="deleteFile(scope.row)">删除</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+            <el-table :data="currentOutboundBankSlipFiles" border size="mini" class="attachment-table">
+              <el-table-column prop="fileName" label="二批来款水单" min-width="240" show-overflow-tooltip></el-table-column>
+              <el-table-column label="上传时间" width="170" align="center">
+                <template slot-scope="scope">{{ formatDateTime(scope.row.createTime) }}</template>
+              </el-table-column>
+              <el-table-column label="下载" width="100" align="center">
+                <template slot-scope="scope">
+                  <el-button type="text" size="small" @click="downloadFile(scope.row)">下载</el-button>
+                </template>
+              </el-table-column>
+              <el-table-column label="删除" width="100" align="center">
+                <template slot-scope="scope">
+                  <el-button v-if="attachmentEditable && currentOutboundBatchEditable" type="text" size="small" @click="deleteFile(scope.row)">删除</el-button>
                 </template>
               </el-table-column>
             </el-table>
@@ -757,9 +822,11 @@ export default {
       uploadLoading: false,
       confirmLoading: false,
       outboundSaveLoading: false,
+      outboundBatchLoading: false,
       globalLoadingCount: 0,
       currentUploadType: '',
       currentConfirmType: '',
+      activeOutboundBatchId: '',
       secondaryPartnerList: [],
       warehouseList: [],
       productList: [],
@@ -789,10 +856,10 @@ export default {
     statusLabel () {
       const map = {
         1: '待确认盖章合同',
-        2: '待确认二批打款凭证',
-        3: '待内部确认二批来款水单',
-        4: '待内部确认资方打款凭证',
-        5: '待确认出库回单',
+        2: '待出库完成',
+        3: '待出库完成',
+        4: '待出库完成',
+        5: '待出库完成',
         6: '流程完成'
       }
       return map[this.dataForm.status] || '待处理'
@@ -813,8 +880,34 @@ export default {
       const days = this.dataForm.secondaryPartnerColdStorageFreeDays
       return days ? `${days}天` : '-'
     },
+    currentOutboundBatch () {
+      const list = this.dataForm.outboundBatchList || []
+      return list.find(item => String(item.id) === String(this.activeOutboundBatchId)) || null
+    },
+    currentOutboundBatchEditable () {
+      if (!this.currentOutboundBatch) return false
+      const status = Number(this.currentOutboundBatch.status || 0)
+      return status !== 3 && status !== 9
+    },
+    currentOutboundBatchTagType () {
+      if (!this.currentOutboundBatch) return 'info'
+      const status = Number(this.currentOutboundBatch.status || 0)
+      if (status === 3) return 'success'
+      if (status === 9) return 'info'
+      if (status === 2) return 'warning'
+      return 'danger'
+    },
+    currentOutboundReceiptFiles () {
+      const batch = this.currentOutboundBatch
+      return batch ? (batch.receiptFileList || []) : []
+    },
+    currentOutboundBankSlipFiles () {
+      const batch = this.currentOutboundBatch
+      if (!batch || !batch.bankSlipFile) return []
+      return [batch.bankSlipFile]
+    },
     outboundReceiptEditable () {
-      return this.attachmentEditable && !this.isStepConfirmed('OUTBOUND_RECEIPT')
+      return this.attachmentEditable && this.currentOutboundBatchEditable
     },
     globalRequestLoading () {
       return this.globalLoadingCount > 0
@@ -847,6 +940,14 @@ export default {
         return '销售单箱数与出库回单发货数一致'
       }
       return `销售单箱数${saleBoxes}箱，出库回单发货数${shippedBoxes}箱，请核对`
+    },
+    canConfirmOutboundBatch () {
+      const batch = this.currentOutboundBatch
+      if (!batch || !this.currentOutboundBatchEditable) return false
+      const receipt = this.dataForm.outboundReceipt
+      const hasReceipt = !!(receipt && receipt.itemList && receipt.itemList.length)
+      const hasBankSlip = !!batch.bankSlipFileId || !!batch.bankSlipFile
+      return hasReceipt && hasBankSlip
     }
   },
   methods: {
@@ -888,7 +989,8 @@ export default {
         itemList: [],
         allocationItemList: [],
         fileList: [],
-        outboundReceipt: null
+        outboundReceipt: null,
+        outboundBatchList: []
       }
     },
     defaultItemRow () {
@@ -990,6 +1092,7 @@ export default {
       this.readonly = readonly
       this.currentUploadType = ''
       this.currentConfirmType = ''
+      this.activeOutboundBatchId = ''
       this.dataForm = this.defaultForm()
       this.detailLoading = true
       Promise.all([this.loadBaseOptions(), this.fetchDetail(id)]).finally(() => {
@@ -1051,7 +1154,15 @@ export default {
       const result = Object.assign(this.defaultForm(), source)
       result.contractSignDate = this.normalizeDateValue(source.contractSignDate)
       result.fileList = source.fileList || []
-      result.outboundReceipt = this.normalizeOutboundReceipt(source.outboundReceipt)
+      result.outboundBatchList = (source.outboundBatchList || []).map(item => this.normalizeOutboundBatch(item))
+      if (result.outboundBatchList.length) {
+        const active = result.outboundBatchList.find(item => String(item.id) === String(this.activeOutboundBatchId)) || result.outboundBatchList[result.outboundBatchList.length - 1]
+        this.activeOutboundBatchId = active.id
+        result.outboundReceipt = this.normalizeOutboundReceipt(active.receipt)
+      } else {
+        this.activeOutboundBatchId = ''
+        result.outboundReceipt = this.normalizeOutboundReceipt(source.outboundReceipt)
+      }
       result.itemList = (source.itemList || []).map(item => {
         const row = Object.assign(this.defaultItemRow(), item)
         row._productOptions = row.productId ? [{
@@ -1093,6 +1204,38 @@ export default {
         return row
       })
       return result
+    },
+    normalizeOutboundBatch (batch) {
+      const result = Object.assign({
+        id: '',
+        saleOrderId: '',
+        batchNo: '',
+        status: 0,
+        bankSlipFileId: '',
+        receiptCount: 0,
+        shippedTotalBoxes: 0,
+        shippedTotalWeight: 0,
+        receipt: null,
+        bankSlipFile: null,
+        receiptFileList: []
+      }, batch || {})
+      result.receipt = this.normalizeOutboundReceipt(result.receipt)
+      result.receiptFileList = result.receiptFileList || []
+      return result
+    },
+    setActiveOutboundBatch () {
+      const batch = this.currentOutboundBatch
+      this.dataForm.outboundReceipt = batch ? this.normalizeOutboundReceipt(batch.receipt) : null
+    },
+    formatOutboundBatchStatus (status) {
+      const map = {
+        0: '待上传回单',
+        1: '待上传水单',
+        2: '待确认',
+        3: '已完成',
+        9: '已作废'
+      }
+      return map[Number(status || 0)] || '待处理'
     },
     toNumber (value) {
       const numberValue = Number(value)
@@ -1608,7 +1751,10 @@ export default {
       if (fileType === 'BUYER_PAYMENT_PROOF') return this.isStepConfirmed('SIGNED_CONTRACT')
       if (fileType === 'BUYER_BANK_SLIP') return this.isStepConfirmed('BUYER_PAYMENT_PROOF')
       if (fileType === 'FUNDER_PAYMENT_PROOF') return this.isStepConfirmed('BUYER_BANK_SLIP')
-      if (fileType === 'OUTBOUND_RECEIPT') return true
+      if (fileType === 'OUTBOUND_RECEIPT') return !!this.currentOutboundBatch && this.currentOutboundBatchEditable
+      if (fileType === 'OUTBOUND_BATCH_BANK_SLIP') {
+        return !!this.currentOutboundBatch && this.currentOutboundBatchEditable && !this.currentOutboundBatch.bankSlipFileId && !this.currentOutboundBatch.bankSlipFile
+      }
       if (fileType === 'OUTBOUND_ATTACHMENT') return true
       return false
     },
@@ -1627,8 +1773,92 @@ export default {
       if (fileType === 'BUYER_PAYMENT_PROOF') return '请先上传并确认盖章合同'
       if (fileType === 'BUYER_BANK_SLIP') return '请先上传并确认二批打款凭证'
       if (fileType === 'FUNDER_PAYMENT_PROOF') return '请先上传并确认二批来款水单'
-      if (fileType === 'OUTBOUND_RECEIPT') return '出库回单已确认，不能重复上传'
+      if (fileType === 'OUTBOUND_RECEIPT') return '请先选择未完成的出库批次'
+      if (fileType === 'OUTBOUND_BATCH_BANK_SLIP') return '当前批次不可上传二批来款水单'
       return '当前节点暂不可上传'
+    },
+    createOutboundBatch () {
+      if (!this.dataForm.id) return
+      this.outboundBatchLoading = true
+      this.withGlobalLoading(this.$http({
+        url: this.$http.adornUrl('/erp/saleorder/outbound/batch/create'),
+        method: 'post',
+        data: this.$http.adornData({ saleOrderId: this.dataForm.id })
+      })).then(({ data }) => {
+        if (data && data.code === 0) {
+          const batch = this.normalizeOutboundBatch(data.batch)
+          this.activeOutboundBatchId = batch.id
+          this.$message.success('出库批次已创建')
+          this.refreshDetail()
+        } else {
+          this.$message.error((data && data.msg) || '创建出库批次失败')
+        }
+        this.outboundBatchLoading = false
+      }).catch(() => {
+        this.outboundBatchLoading = false
+      })
+    },
+    confirmOutboundBatch () {
+      if (!this.currentOutboundBatch) return
+      this.confirmLoading = true
+      this.currentConfirmType = 'OUTBOUND_BATCH'
+      const beforeConfirm = this.dataForm.outboundReceipt
+        ? this.saveOutboundReceipt({ silent: true, skipRefresh: true })
+        : Promise.resolve(true)
+      beforeConfirm.then(saved => {
+        if (saved === false) {
+          this.confirmLoading = false
+          this.currentConfirmType = ''
+          return
+        }
+        this.withGlobalLoading(this.$http({
+          url: this.$http.adornUrl('/erp/saleorder/outbound/batch/confirm'),
+          method: 'post',
+          data: this.$http.adornData({ batchId: this.currentOutboundBatch.id })
+        })).then(({ data }) => {
+          if (data && data.code === 0) {
+            this.$message.success('出库批次已确认')
+            this.refreshDetail()
+            this.$emit('refreshDataList')
+          } else {
+            this.$message.error((data && data.msg) || '确认批次失败')
+          }
+          this.confirmLoading = false
+          this.currentConfirmType = ''
+        }).catch(() => {
+          this.confirmLoading = false
+          this.currentConfirmType = ''
+        })
+      }).catch(() => {
+        this.confirmLoading = false
+        this.currentConfirmType = ''
+      })
+    },
+    voidOutboundBatch () {
+      if (!this.currentOutboundBatch) return
+      this.$confirm('确认作废当前出库批次？作废后不能继续修改，只能重新创建批次。', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        this.outboundBatchLoading = true
+        this.withGlobalLoading(this.$http({
+          url: this.$http.adornUrl('/erp/saleorder/outbound/batch/void'),
+          method: 'post',
+          data: this.$http.adornData({ batchId: this.currentOutboundBatch.id })
+        })).then(({ data }) => {
+          if (data && data.code === 0) {
+            this.$message.success('出库批次已作废')
+            this.refreshDetail()
+            this.$emit('refreshDataList')
+          } else {
+            this.$message.error((data && data.msg) || '作废批次失败')
+          }
+          this.outboundBatchLoading = false
+        }).catch(() => {
+          this.outboundBatchLoading = false
+        })
+      }).catch(() => {})
     },
     confirmStep (fileType) {
       if (!this.dataForm.id) return
@@ -1673,6 +1903,7 @@ export default {
       if (!this.dataForm.id || !this.dataForm.outboundReceipt) return null
       return Object.assign({}, this.dataForm.outboundReceipt, {
         saleOrderId: this.dataForm.id,
+        batchId: this.currentOutboundBatch ? this.currentOutboundBatch.id : (this.dataForm.outboundReceipt.batchId || null),
         itemList: (this.dataForm.outboundReceipt.itemList || []).map((item, index) => ({
           id: item.id,
           lineNo: index + 1,
@@ -1785,12 +2016,21 @@ export default {
       if (!files.length || !this.currentUploadType || !this.dataForm.id) return
       const formData = new FormData()
       formData.append('saleOrderId', this.dataForm.id)
-      if (this.currentUploadType !== 'OUTBOUND_RECEIPT') {
+      if (this.currentUploadType === 'OUTBOUND_RECEIPT' || this.currentUploadType === 'OUTBOUND_BATCH_BANK_SLIP') {
+        if (!this.currentOutboundBatch) {
+          this.$message.error('请先选择出库批次')
+          return
+        }
+        formData.append('batchId', this.currentOutboundBatch.id)
+      }
+      if (this.currentUploadType !== 'OUTBOUND_RECEIPT' && this.currentUploadType !== 'OUTBOUND_BATCH_BANK_SLIP') {
         formData.append('fileType', this.currentUploadType)
       }
       files.forEach(file => formData.append('files', file))
       this.uploadLoading = true
-      const url = this.currentUploadType === 'OUTBOUND_RECEIPT' ? '/erp/saleorder/outbound/receipt/recognize' : '/erp/saleorder/upload'
+      const url = this.currentUploadType === 'OUTBOUND_RECEIPT'
+        ? '/erp/saleorder/outbound/receipt/recognize'
+        : (this.currentUploadType === 'OUTBOUND_BATCH_BANK_SLIP' ? '/erp/saleorder/outbound/batch/bank-slip/upload' : '/erp/saleorder/upload')
       this.withGlobalLoading(this.$http({
         url: this.$http.adornUrl(url),
         method: 'post',
@@ -1801,6 +2041,9 @@ export default {
         if (data && data.code === 0) {
           if (this.currentUploadType === 'OUTBOUND_RECEIPT') {
             this.dataForm.outboundReceipt = this.normalizeOutboundReceipt(data.receipt || this.dataForm.outboundReceipt)
+          }
+          if (this.currentUploadType === 'OUTBOUND_BATCH_BANK_SLIP' && data.batch) {
+            this.activeOutboundBatchId = data.batch.id
           }
           this.$message.success('上传成功')
           this.refreshDetail()

@@ -230,10 +230,7 @@ export default {
       ],
       statusOptions: [
         { value: '1', label: '待确认盖章合同' },
-        { value: '2', label: '待确认二批打款凭证' },
-        { value: '3', label: '待内部确认二批来款水单' },
-        { value: '4', label: '待内部确认资方打款凭证' },
-        { value: '5', label: '待确认出库回单' },
+        { value: '5', label: '待出库完成' },
         { value: '6', label: '流程完成' }
       ],
       dataList: [],
