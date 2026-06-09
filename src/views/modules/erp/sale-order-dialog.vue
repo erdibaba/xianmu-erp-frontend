@@ -552,7 +552,7 @@
                 :loading="outboundSaveLoading"
                 :disabled="isStepConfirmed('OUTBOUND_RECEIPT')"
                 @click="saveOutboundReceipt()">
-                保存识别结果
+                保存
               </el-button>
               <el-button
                 v-if="attachmentEditable && currentOutboundBatch && canConfirmOutboundBatch"
@@ -644,6 +644,40 @@
                 </template>
               </el-table-column>
             </el-table>
+            <div class="outbound-section-title">
+              <strong>历史确认批次明细</strong>
+              <span class="sub-title-tip">只展示已确认完成批次，便于核对历史出库。</span>
+            </div>
+            <el-table
+              ref="outboundHistoryTable"
+              :data="confirmedOutboundReceiptItemList"
+              border
+              size="mini"
+              class="attachment-table outbound-history-table">
+              <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
+              <el-table-column prop="batchNo" label="批次号" width="110"></el-table-column>
+              <el-table-column prop="wmsOrderNo" label="WMS单号" width="130" show-overflow-tooltip></el-table-column>
+              <el-table-column prop="outboundOrderNo" label="订单编号" width="150" show-overflow-tooltip></el-table-column>
+              <el-table-column prop="customerCode" label="客户编码" width="110" show-overflow-tooltip></el-table-column>
+              <el-table-column prop="customerName" label="客户名称" width="140" show-overflow-tooltip></el-table-column>
+              <el-table-column prop="productCode" label="系统编码" width="110"></el-table-column>
+              <el-table-column prop="productName" label="品名" min-width="170" show-overflow-tooltip></el-table-column>
+              <el-table-column prop="containerNo" label="柜号" width="130" show-overflow-tooltip></el-table-column>
+              <el-table-column prop="factoryNo" label="厂号" width="100" show-overflow-tooltip></el-table-column>
+              <el-table-column label="实际箱数" width="100" align="right">
+                <template slot-scope="scope">{{ formatInteger(scope.row.shippedQty) }}</template>
+              </el-table-column>
+              <el-table-column label="实际重量(KG)" width="125" align="right">
+                <template slot-scope="scope">{{ formatNumber(scope.row.totalWeight, 3) }}</template>
+              </el-table-column>
+              <el-table-column label="单价" width="95" align="right">
+                <template slot-scope="scope">{{ formatNumber(scope.row.salePriceKg, 2) }}</template>
+              </el-table-column>
+            </el-table>
+            <div class="outbound-section-title">
+              <strong>当前批次明细</strong>
+              <span class="sub-title-tip">当前正在上传、核对和保存的出库批次。</span>
+            </div>
             <el-table
               v-if="dataForm.outboundReceipt"
               ref="outboundReceiptTable"
@@ -954,6 +988,20 @@ export default {
       const batch = this.currentOutboundBatch
       if (!batch || !batch.bankSlipFile) return []
       return [batch.bankSlipFile]
+    },
+    confirmedOutboundReceiptItemList () {
+      const list = this.dataForm.outboundBatchList || []
+      const result = []
+      list.forEach(batch => {
+        if (Number(batch.status || 0) !== 3 || !batch.receipt || !batch.receipt.itemList) return
+        batch.receipt.itemList.forEach(item => {
+          result.push(Object.assign({}, item, {
+            batchId: batch.id,
+            batchNo: batch.batchNo
+          }))
+        })
+      })
+      return result
     },
     outboundReceiptEditable () {
       return this.attachmentEditable && this.currentOutboundBatchEditable
@@ -1280,7 +1328,7 @@ export default {
     },
     layoutOutboundTables () {
       this.$nextTick(() => {
-        ;['outboundSummaryTable', 'outboundReceiptTable'].forEach(refName => {
+        ;['outboundSummaryTable', 'outboundHistoryTable', 'outboundReceiptTable'].forEach(refName => {
           const table = this.$refs[refName]
           if (table && table.doLayout) {
             table.doLayout()
@@ -2298,6 +2346,16 @@ export default {
 
 .outbound-adjustment-summary strong {
   font-size: 15px;
+}
+
+.outbound-section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 8px;
+  padding-left: 8px;
+  border-left: 3px solid #1f6fbf;
+  color: #303133;
 }
 
 .summary-tip {
