@@ -664,10 +664,6 @@
                 <template slot-scope="scope">
                   <el-table :data="scope.row.receiptItemList" border size="mini" class="attachment-table outbound-history-detail-table">
                     <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
-                    <el-table-column prop="wmsOrderNo" label="WMS单号" width="130" show-overflow-tooltip></el-table-column>
-                    <el-table-column prop="outboundOrderNo" label="订单编号" width="150" show-overflow-tooltip></el-table-column>
-                    <el-table-column prop="customerCode" label="客户编码" width="110" show-overflow-tooltip></el-table-column>
-                    <el-table-column prop="customerName" label="客户名称" width="140" show-overflow-tooltip></el-table-column>
                     <el-table-column prop="productCode" label="系统编码" width="110"></el-table-column>
                     <el-table-column prop="productName" label="品名" min-width="170" show-overflow-tooltip></el-table-column>
                     <el-table-column prop="containerNo" label="柜号" width="130" show-overflow-tooltip></el-table-column>
@@ -681,6 +677,10 @@
                     <el-table-column label="单价" width="95" align="right">
                       <template slot-scope="itemScope">{{ formatNumber(itemScope.row.salePriceKg, 2) }}</template>
                     </el-table-column>
+                    <el-table-column prop="wmsOrderNo" label="WMS单号" width="130" show-overflow-tooltip></el-table-column>
+                    <el-table-column prop="outboundOrderNo" label="订单编号" width="150" show-overflow-tooltip></el-table-column>
+                    <el-table-column prop="customerCode" label="客户编码" width="110" show-overflow-tooltip></el-table-column>
+                    <el-table-column prop="customerName" label="客户名称" width="140" show-overflow-tooltip></el-table-column>
                   </el-table>
                 </template>
               </el-table-column>
@@ -735,26 +735,6 @@
               class="attachment-table outbound-receipt-table">
               <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
               <el-table-column prop="contractNo" label="合同号" width="150" show-overflow-tooltip></el-table-column>
-              <el-table-column label="WMS单号" width="130">
-                <template slot-scope="scope">
-                  <el-input v-model="scope.row.wmsOrderNo" :disabled="!outboundReceiptEditable" size="mini"></el-input>
-                </template>
-              </el-table-column>
-              <el-table-column label="订单编号" width="150">
-                <template slot-scope="scope">
-                  <el-input v-model="scope.row.outboundOrderNo" :disabled="!outboundReceiptEditable" size="mini"></el-input>
-                </template>
-              </el-table-column>
-              <el-table-column label="客户编码" width="110">
-                <template slot-scope="scope">
-                  <el-input v-model="scope.row.customerCode" :disabled="!outboundReceiptEditable" size="mini"></el-input>
-                </template>
-              </el-table-column>
-              <el-table-column label="客户名称" width="140">
-                <template slot-scope="scope">
-                  <el-input v-model="scope.row.customerName" :disabled="!outboundReceiptEditable" size="mini"></el-input>
-                </template>
-              </el-table-column>
               <el-table-column prop="recognizedProductCode" label="识别编码" width="100"></el-table-column>
               <el-table-column label="系统编码" min-width="220">
                 <template slot-scope="scope">
@@ -844,6 +824,26 @@
                   <span :class="calcOutboundAdjustmentAmount(scope.row) >= 0 ? 'refund' : 'supplement'">
                     {{ formatNumber(calcOutboundAdjustmentAmount(scope.row), 2) }}
                   </span>
+                </template>
+              </el-table-column>
+              <el-table-column label="WMS单号" width="130">
+                <template slot-scope="scope">
+                  <el-input v-model="scope.row.wmsOrderNo" :disabled="!outboundReceiptEditable" size="mini"></el-input>
+                </template>
+              </el-table-column>
+              <el-table-column label="订单编号" width="150">
+                <template slot-scope="scope">
+                  <el-input v-model="scope.row.outboundOrderNo" :disabled="!outboundReceiptEditable" size="mini"></el-input>
+                </template>
+              </el-table-column>
+              <el-table-column label="客户编码" width="110">
+                <template slot-scope="scope">
+                  <el-input v-model="scope.row.customerCode" :disabled="!outboundReceiptEditable" size="mini"></el-input>
+                </template>
+              </el-table-column>
+              <el-table-column label="客户名称" width="140">
+                <template slot-scope="scope">
+                  <el-input v-model="scope.row.customerName" :disabled="!outboundReceiptEditable" size="mini"></el-input>
                 </template>
               </el-table-column>
               <el-table-column v-if="outboundReceiptEditable" label="操作" width="80" align="center">
