@@ -876,9 +876,11 @@ export default {
 
 <style scoped>
 .inbound-order-dialog {
-  height: calc(100vh - 306px);
-  max-height: calc(100vh - 306px);
-  overflow: hidden;
+  height: calc(100vh - 246px);
+  max-height: calc(100vh - 246px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 0 4px 14px 0;
 }
 
 .inbound-order-dialog /deep/ .el-form-item {
@@ -908,6 +910,10 @@ export default {
 
 .item-table /deep/ .el-table__body-wrapper {
   overflow: auto !important;
+}
+
+.item-table {
+  margin-bottom: 8px;
 }
 
 .item-table /deep/ .el-table__fixed-right {
