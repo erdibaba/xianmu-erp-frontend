@@ -96,6 +96,7 @@
                 <el-button type="primary" plain :loading="recognizeLoading">上传并识别还款凭证</el-button>
               </el-upload>
               <span class="file-name">{{ repaymentForm.fileName || '尚未上传' }}</span>
+              <div class="bank-voucher-tip">{{ bankVoucherSupportTip }}</div>
             </el-form-item>
           </el-col>
           <el-col :span="12"><el-form-item label="识别金额"><el-input :value="money(repaymentForm.recognizedAmount)" disabled></el-input></el-form-item></el-col>
@@ -146,6 +147,7 @@ export default {
       repaymentVisible: false,
       activeLoan: {},
       repaymentForm: emptyRepayment(null),
+      bankVoucherSupportTip: '支持浦发银行、建设银行、工商银行、兴业银行电子回单样本，支持 PDF / JPG / PNG，识别后请核对金额和日期。',
       recognizeLoading: false,
       submitLoading: false,
       repaymentRules: {
@@ -300,5 +302,6 @@ export default {
 <style scoped>
 .mod-funder-loan .el-pagination { margin-top: 15px; text-align: right; }
 .file-name { margin-left: 12px; color: #606266; }
+.bank-voucher-tip { color: #909399; font-size: 12px; line-height: 20px; margin-top: 4px; }
 .amount-warning { color: #d93025; font-weight: 700; padding: 0 0 12px 150px; }
 </style>

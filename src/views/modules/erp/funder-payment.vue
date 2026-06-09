@@ -147,6 +147,7 @@
                 <el-button type="primary" plain :loading="recognizeLoading">上传并识别凭证</el-button>
               </el-upload>
               <span class="file-name">{{ paymentForm.fileName || '尚未上传' }}</span>
+              <div class="bank-voucher-tip">{{ bankVoucherSupportTip }}</div>
             </el-form-item>
           </el-col>
           <el-col :span="24" v-if="isFunderPayment && paymentForm.recognizedReceipt && paymentForm.recognizedReceipt.voucherTemplate">
@@ -235,6 +236,7 @@
                 </el-button>
               </el-upload>
               <div class="row-file-name">{{ scope.row.xianmuContributionFileName || '未上传' }}</div>
+              <div class="row-support-tip">支持浦发/建行/工行/兴业样本</div>
             </template>
           </el-table-column>
           <el-table-column v-if="isFunderPayment" label="出资识别金额" width="130" align="right">
@@ -281,6 +283,7 @@
                 </el-button>
               </el-upload>
               <div class="row-file-name">{{ scope.row.xianmuDepositFileName || '未上传' }}</div>
+              <div class="row-support-tip">支持浦发/建行/工行/兴业样本</div>
             </template>
           </el-table-column>
           <el-table-column v-if="!isFunderPayment" label="定金金额" width="150">
@@ -321,6 +324,7 @@
                 </el-button>
               </el-upload>
               <div class="row-file-name">{{ scope.row.xianmuBalanceFileName || '未上传' }}</div>
+              <div class="row-support-tip">支持浦发/建行/工行/兴业样本</div>
             </template>
           </el-table-column>
           <el-table-column v-if="!isFunderPayment" label="尾款金额" width="150">
@@ -383,6 +387,7 @@
                       <el-button type="primary" plain :loading="xianmuInstallmentLoadingKey === installmentLoadingKey(0, 'deposit')">上传并识别定金</el-button>
                     </el-upload>
                     <span class="file-name">{{ xianmuAllocation.xianmuDepositFileName || '未上传' }}</span>
+                    <div class="bank-voucher-tip">{{ bankVoucherSupportTip }}</div>
                   </el-form-item>
                   <el-form-item label="定金金额">
                     <el-input-number v-model="xianmuAllocation.xianmuDepositModifiedAmount" :min="0" :precision="2" :controls="false" style="width: 100%"></el-input-number>
@@ -400,6 +405,7 @@
                       <el-button type="warning" plain :loading="xianmuInstallmentLoadingKey === installmentLoadingKey(0, 'balance')">上传并识别尾款</el-button>
                     </el-upload>
                     <span class="file-name">{{ xianmuAllocation.xianmuBalanceFileName || '未上传' }}</span>
+                    <div class="bank-voucher-tip">{{ bankVoucherSupportTip }}</div>
                   </el-form-item>
                   <el-form-item label="尾款金额">
                     <el-input-number v-model="xianmuAllocation.xianmuBalanceModifiedAmount" :min="0" :precision="2" :controls="false" style="width: 100%"></el-input-number>
@@ -508,6 +514,7 @@ export default {
       detailVisible: false,
       detailData: {},
       paymentForm: emptyPayment(),
+      bankVoucherSupportTip: '支持浦发银行、建设银行、工商银行、兴业银行电子回单样本，支持 PDF / JPG / PNG，识别后请核对金额和日期。',
       funderOptions: [],
       internalPayerOptions: [],
       presaleOptions: [],
@@ -1069,6 +1076,17 @@ export default {
 .file-name {
   margin-left: 12px;
   color: #606266;
+}
+.bank-voucher-tip {
+  color: #909399;
+  font-size: 12px;
+  line-height: 20px;
+  margin-top: 4px;
+}
+.row-support-tip {
+  color: #909399;
+  font-size: 12px;
+  line-height: 18px;
 }
 .section-title {
   margin: 8px 0 12px;

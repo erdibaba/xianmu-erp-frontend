@@ -534,6 +534,11 @@
                 @click="triggerUpload('OUTBOUND_BATCH_BANK_SLIP')">
                 上传二批来款水单
               </el-button>
+              <span
+                v-if="attachmentEditable && currentOutboundBatch && canUploadStep('OUTBOUND_BATCH_BANK_SLIP')"
+                class="sub-title-tip">
+                {{ bankVoucherSupportTip }}
+              </span>
               <el-button
                 v-if="attachmentEditable && currentOutboundBatch && currentOutboundBatchEditable"
                 size="mini"
@@ -950,6 +955,7 @@ export default {
       globalLoadingCount: 0,
       currentUploadType: '',
       currentConfirmType: '',
+      bankVoucherSupportTip: '支持浦发银行、建设银行、工商银行、兴业银行电子回单样本，支持 PDF / JPG / PNG。',
       activeOutboundBatchId: '',
       outboundTableVersion: 0,
       secondaryPartnerList: [],
