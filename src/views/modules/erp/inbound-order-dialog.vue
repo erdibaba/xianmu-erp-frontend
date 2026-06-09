@@ -134,7 +134,7 @@
           <div class="sub-title">SKU明细</div>
           <el-button v-if="!readonly" size="mini" type="primary" @click="addItemRow()">新增明细</el-button>
         </div>
-        <el-table :data="dataForm.itemList" border size="mini" height="320" class="item-table">
+        <el-table :data="dataForm.itemList" border size="mini" height="320" :fit="false" class="item-table">
           <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
           <el-table-column label="报损" width="90" align="center">
             <template slot-scope="scope">
