@@ -504,7 +504,7 @@
                   @click="createOutboundBatch">
                   新增出库批次
                 </el-button>
-                <span v-if="hasOpenOutboundBatch" class="sub-title-tip">当前还有未完成批次，请先确认完成或作废后再新增。</span>
+                <span v-if="hasOpenOutboundBatch" class="sub-title-tip">当前还有未完成批次，请先确认完成或删除后再新增。</span>
                 <el-select
                   v-if="dataForm.outboundBatchList && dataForm.outboundBatchList.length"
                   v-model="activeOutboundBatchId"
@@ -569,7 +569,7 @@
                 plain
                 :loading="outboundBatchLoading"
                 @click="voidOutboundBatch">
-                作废批次
+                删除批次
               </el-button>
               <el-tag v-if="dataForm.outboundSummaryList && dataForm.outboundSummaryList.length" size="small" :type="outboundReceiptMatched ? 'success' : 'danger'">
                 {{ outboundReceiptMatched ? '整单箱数一致' : '整单待核对' }}
@@ -603,7 +603,7 @@
               <strong :class="outboundAdjustmentTotal >= 0 ? 'refund' : 'supplement'">
                 {{ outboundAdjustmentTotal >= 0 ? '应退款' : '应补款' }} ¥{{ Math.abs(outboundAdjustmentTotal).toFixed(2) }}
               </strong>
-              <span class="summary-tip">按所有未作废出库批次汇总计算；正数表示少出需退款，负数表示多出需补收。</span>
+              <span class="summary-tip">按所有有效出库批次汇总计算；正数表示少出需退款，负数表示多出需补收。</span>
             </div>
             <el-table
               v-if="dataForm.outboundSummaryList && dataForm.outboundSummaryList.length"
@@ -1884,7 +1884,7 @@ export default {
     createOutboundBatch () {
       if (!this.dataForm.id) return
       if (this.hasOpenOutboundBatch) {
-        this.$message.warning('当前还有未完成批次，请先确认完成或作废后再新增')
+        this.$message.warning('当前还有未完成批次，请先确认完成或删除后再新增')
         return
       }
       this.outboundBatchLoading = true
@@ -1944,7 +1944,7 @@ export default {
     },
     voidOutboundBatch () {
       if (!this.currentOutboundBatch) return
-      this.$confirm('确认作废当前出库批次？作废后不能继续修改，只能重新创建批次。', '提示', {
+      this.$confirm('确认删除当前出库批次？删除后会同步删除该批次出库回单、二批来款水单和识别明细。', '提示', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
@@ -1956,11 +1956,11 @@ export default {
           data: this.$http.adornData({ batchId: this.currentOutboundBatch.id })
         })).then(({ data }) => {
           if (data && data.code === 0) {
-            this.$message.success('出库批次已作废')
+            this.$message.success('出库批次已删除')
             this.refreshDetail()
             this.$emit('refreshDataList')
           } else {
-            this.$message.error((data && data.msg) || '作废批次失败')
+            this.$message.error((data && data.msg) || '删除批次失败')
           }
           this.outboundBatchLoading = false
         }).catch(() => {
