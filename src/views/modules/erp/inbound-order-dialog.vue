@@ -130,7 +130,10 @@
           </el-button>
         </div>
 
-        <div class="sub-title">SKU明细</div>
+        <div class="sku-title-row">
+          <div class="sub-title">SKU明细</div>
+          <el-button v-if="!readonly" size="mini" type="primary" @click="addItemRow()">新增明细</el-button>
+        </div>
         <el-table :data="dataForm.itemList" border size="mini" class="item-table">
           <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
           <el-table-column label="报损" width="90" align="center">
@@ -280,6 +283,11 @@
                 size="mini"
                 style="width:100%;">
               </el-input-number>
+            </template>
+          </el-table-column>
+          <el-table-column v-if="!readonly" label="操作" width="80" align="center" fixed="right">
+            <template slot-scope="scope">
+              <el-button type="text" size="small" @click="removeItemRow(scope.$index)">删除</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -536,6 +544,49 @@ export default {
         row.productName = row._recognizedProductName || row.productName
         row.productNameEn = row._recognizedProductNameEn || row.productNameEn
       })
+    },
+    defaultItemRow () {
+      return {
+        id: 0,
+        productId: '',
+        productCode: '',
+        skuCode: '',
+        productName: '',
+        productNameEn: '',
+        productSpec: '',
+        unit: '',
+        expectedQty: null,
+        actualQty: null,
+        packingBoxes: 0,
+        damageWeightKg: null,
+        damageReason: '',
+        temperatureZone: '',
+        productionDate: '',
+        expiryDate: '',
+        shelfLifeDays: null,
+        specWeight: null,
+        _productKeyword: '',
+        _productPageSize: 15,
+        _productLoading: false,
+        _productOptions: [],
+        _recognizedProductName: '',
+        _recognizedProductNameEn: ''
+      }
+    },
+    addItemRow () {
+      if (this.readonly) {
+        return
+      }
+      if (!this.dataForm.itemList) {
+        this.$set(this.dataForm, 'itemList', [])
+      }
+      this.dataForm.itemList.push(this.defaultItemRow())
+    },
+    removeItemRow (index) {
+      if (this.readonly || !this.dataForm.itemList) {
+        return
+      }
+      this.dataForm.itemList.splice(index, 1)
     },
     extractProductCodeFromSku (skuCode) {
       const match = String(skuCode || '').match(/C?(\d{5})/i)
@@ -838,6 +889,17 @@ export default {
   font-size: 14px;
   font-weight: 600;
   margin: 10px 0 8px;
+}
+
+.sku-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 10px 0 8px;
+}
+
+.sku-title-row .sub-title {
+  margin: 0;
 }
 
 .archive-action-wrap {
