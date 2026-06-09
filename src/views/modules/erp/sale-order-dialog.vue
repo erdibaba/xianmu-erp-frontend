@@ -495,7 +495,7 @@
             <div class="outbound-batch-panel">
               <div class="attachment-toolbar">
                 <el-button
-                  v-if="attachmentEditable"
+                  v-if="attachmentEditable && !outboundCompleted"
                   size="mini"
                   type="primary"
                   plain
@@ -511,7 +511,8 @@
                 <el-tag v-if="currentOutboundBatch" size="small" :type="currentOutboundBatchTagType">
                   {{ formatOutboundBatchStatus(currentOutboundBatch.status) }}
                 </el-tag>
-                <span v-if="!currentOutboundBatch" class="sub-title-tip">请先新增出库批次，再上传出库回单和二批来款水单。</span>
+                <span v-if="!currentOutboundBatch && !outboundCompleted" class="sub-title-tip">请先新增出库批次，再上传出库回单和二批来款水单。</span>
+                <span v-if="outboundCompleted" class="sub-title-tip">整单出库已完成。</span>
               </div>
             </div>
             <div class="attachment-toolbar">
@@ -981,6 +982,9 @@ export default {
     },
     attachmentEditable () {
       return !this.readonly && !!this.dataForm.id
+    },
+    outboundCompleted () {
+      return Number(this.dataForm.outboundReceiptConfirmed || 0) === 1 || this.outboundReceiptMatched
     },
     showSpotPreviewButton () {
       return this.isSpotSale && !this.contentReadonly
