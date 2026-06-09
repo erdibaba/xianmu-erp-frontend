@@ -643,28 +643,63 @@
               :key="`outbound-history-${outboundTableVersion}`"
               ref="outboundHistoryTable"
               row-key="id"
-              :data="confirmedOutboundReceiptItemList"
+              :data="confirmedOutboundBatchList"
               border
               size="mini"
               class="attachment-table outbound-history-table">
+              <el-table-column type="expand">
+                <template slot-scope="scope">
+                  <el-table :data="scope.row.receiptItemList" border size="mini" class="attachment-table outbound-history-detail-table">
+                    <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
+                    <el-table-column prop="wmsOrderNo" label="WMS单号" width="130" show-overflow-tooltip></el-table-column>
+                    <el-table-column prop="outboundOrderNo" label="订单编号" width="150" show-overflow-tooltip></el-table-column>
+                    <el-table-column prop="customerCode" label="客户编码" width="110" show-overflow-tooltip></el-table-column>
+                    <el-table-column prop="customerName" label="客户名称" width="140" show-overflow-tooltip></el-table-column>
+                    <el-table-column prop="productCode" label="系统编码" width="110"></el-table-column>
+                    <el-table-column prop="productName" label="品名" min-width="170" show-overflow-tooltip></el-table-column>
+                    <el-table-column prop="containerNo" label="柜号" width="130" show-overflow-tooltip></el-table-column>
+                    <el-table-column prop="factoryNo" label="厂号" width="100" show-overflow-tooltip></el-table-column>
+                    <el-table-column label="实际箱数" width="100" align="right">
+                      <template slot-scope="itemScope">{{ formatInteger(itemScope.row.shippedQty) }}</template>
+                    </el-table-column>
+                    <el-table-column label="实际重量(KG)" width="125" align="right">
+                      <template slot-scope="itemScope">{{ formatNumber(itemScope.row.totalWeight, 3) }}</template>
+                    </el-table-column>
+                    <el-table-column label="单价" width="95" align="right">
+                      <template slot-scope="itemScope">{{ formatNumber(itemScope.row.salePriceKg, 2) }}</template>
+                    </el-table-column>
+                  </el-table>
+                </template>
+              </el-table-column>
               <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
               <el-table-column prop="batchNo" label="批次号" width="110"></el-table-column>
-              <el-table-column prop="wmsOrderNo" label="WMS单号" width="130" show-overflow-tooltip></el-table-column>
-              <el-table-column prop="outboundOrderNo" label="订单编号" width="150" show-overflow-tooltip></el-table-column>
-              <el-table-column prop="customerCode" label="客户编码" width="110" show-overflow-tooltip></el-table-column>
-              <el-table-column prop="customerName" label="客户名称" width="140" show-overflow-tooltip></el-table-column>
-              <el-table-column prop="productCode" label="系统编码" width="110"></el-table-column>
-              <el-table-column prop="productName" label="品名" min-width="170" show-overflow-tooltip></el-table-column>
-              <el-table-column prop="containerNo" label="柜号" width="130" show-overflow-tooltip></el-table-column>
-              <el-table-column prop="factoryNo" label="厂号" width="100" show-overflow-tooltip></el-table-column>
+              <el-table-column label="明细行数" width="90" align="right">
+                <template slot-scope="scope">{{ scope.row.receiptItemList.length }}</template>
+              </el-table-column>
               <el-table-column label="实际箱数" width="100" align="right">
-                <template slot-scope="scope">{{ formatInteger(scope.row.shippedQty) }}</template>
+                <template slot-scope="scope">{{ formatInteger(scope.row.shippedTotalBoxes) }}</template>
               </el-table-column>
               <el-table-column label="实际重量(KG)" width="125" align="right">
-                <template slot-scope="scope">{{ formatNumber(scope.row.totalWeight, 3) }}</template>
+                <template slot-scope="scope">{{ formatNumber(scope.row.shippedTotalWeight, 3) }}</template>
               </el-table-column>
-              <el-table-column label="单价" width="95" align="right">
-                <template slot-scope="scope">{{ formatNumber(scope.row.salePriceKg, 2) }}</template>
+              <el-table-column label="归档原件" min-width="180">
+                <template slot-scope="scope">
+                  <el-button
+                    v-for="file in scope.row.receiptFileList"
+                    :key="file.id"
+                    type="text"
+                    size="small"
+                    @click="downloadFile(file)">
+                    下载{{ file.lineNo || '' }}
+                  </el-button>
+                  <span v-if="!scope.row.receiptFileList.length" class="sub-title-tip">无</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="水单" min-width="130">
+                <template slot-scope="scope">
+                  <el-button v-if="scope.row.bankSlipFile" type="text" size="small" @click="downloadFile(scope.row.bankSlipFile)">下载水单</el-button>
+                  <span v-else class="sub-title-tip">无</span>
+                </template>
               </el-table-column>
               <el-table-column v-if="attachmentEditable" label="操作" width="95" align="center" fixed="right">
                 <template slot-scope="scope">
@@ -1008,6 +1043,18 @@ export default {
       })
       return result
     },
+    confirmedOutboundBatchList () {
+      const list = this.dataForm.outboundBatchList || []
+      return list.filter(batch => Number(batch.status || 0) === 3).map(batch => {
+        const receiptItemList = batch.receipt && batch.receipt.itemList ? batch.receipt.itemList : []
+        return Object.assign({}, batch, {
+          receiptItemList,
+          receiptFileList: batch.receiptFileList || [],
+          shippedTotalBoxes: receiptItemList.reduce((sum, item) => sum + this.toNumber(item.shippedQty), 0),
+          shippedTotalWeight: receiptItemList.reduce((sum, item) => sum + this.toNumber(item.totalWeight), 0)
+        })
+      })
+    },
     outboundReceiptEditable () {
       return this.attachmentEditable && this.currentOutboundBatchEditable
     },
@@ -1337,11 +1384,13 @@ export default {
     },
     layoutOutboundTables () {
       this.$nextTick(() => {
-        ;['outboundSummaryTable', 'outboundHistoryTable', 'outboundReceiptTable'].forEach(refName => {
-          const table = this.$refs[refName]
-          if (table && table.doLayout) {
-            table.doLayout()
-          }
+        this.$nextTick(() => {
+          ;['outboundSummaryTable', 'outboundHistoryTable', 'outboundReceiptTable'].forEach(refName => {
+            const table = this.$refs[refName]
+            if (table && table.doLayout) {
+              table.doLayout()
+            }
+          })
         })
       })
     },
