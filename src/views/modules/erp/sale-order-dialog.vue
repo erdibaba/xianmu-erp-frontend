@@ -505,20 +505,9 @@
                   新增出库批次
                 </el-button>
                 <span v-if="hasOpenOutboundBatch" class="sub-title-tip">当前还有未完成批次，请先确认完成或删除后再新增。</span>
-                <el-select
-                  v-if="dataForm.outboundBatchList && dataForm.outboundBatchList.length"
-                  v-model="activeOutboundBatchId"
-                  size="mini"
-                  style="width: 260px;"
-                  placeholder="请选择出库批次"
-                  @change="setActiveOutboundBatch">
-                  <el-option
-                    v-for="batch in dataForm.outboundBatchList"
-                    :key="batch.id"
-                    :label="`${batch.batchNo} / ${formatOutboundBatchStatus(batch.status)}`"
-                    :value="batch.id">
-                  </el-option>
-                </el-select>
+                <el-tag v-if="currentOutboundBatch" size="small" type="info">
+                  当前批次：{{ currentOutboundBatch.batchNo }}
+                </el-tag>
                 <el-tag v-if="currentOutboundBatch" size="small" :type="currentOutboundBatchTagType">
                   {{ formatOutboundBatchStatus(currentOutboundBatch.status) }}
                 </el-tag>
@@ -672,6 +661,11 @@
               </el-table-column>
               <el-table-column label="单价" width="95" align="right">
                 <template slot-scope="scope">{{ formatNumber(scope.row.salePriceKg, 2) }}</template>
+              </el-table-column>
+              <el-table-column v-if="attachmentEditable" label="操作" width="95" align="center" fixed="right">
+                <template slot-scope="scope">
+                  <el-button type="text" size="small" @click="deleteOutboundBatch(scope.row)">删除批次</el-button>
+                </template>
               </el-table-column>
             </el-table>
             <div class="outbound-section-title">
@@ -958,7 +952,10 @@ export default {
     },
     currentOutboundBatch () {
       const list = this.dataForm.outboundBatchList || []
-      return list.find(item => String(item.id) === String(this.activeOutboundBatchId)) || null
+      return list.find(item => {
+        const status = Number(item.status || 0)
+        return status !== 3 && status !== 9
+      }) || null
     },
     hasOpenOutboundBatch () {
       const list = this.dataForm.outboundBatchList || []
@@ -997,7 +994,8 @@ export default {
         batch.receipt.itemList.forEach(item => {
           result.push(Object.assign({}, item, {
             batchId: batch.id,
-            batchNo: batch.batchNo
+            batchNo: batch.batchNo,
+            _batch: batch
           }))
         })
       })
@@ -1253,13 +1251,16 @@ export default {
       result.fileList = source.fileList || []
       result.outboundSummaryList = (source.outboundSummaryList || []).map(item => Object.assign(this.defaultOutboundReceiptItemRow(), item))
       result.outboundBatchList = (source.outboundBatchList || []).map(item => this.normalizeOutboundBatch(item))
-      if (result.outboundBatchList.length) {
-        const active = result.outboundBatchList.find(item => String(item.id) === String(this.activeOutboundBatchId)) || result.outboundBatchList[result.outboundBatchList.length - 1]
-        this.activeOutboundBatchId = active.id
-        result.outboundReceipt = this.normalizeOutboundReceipt(active.receipt)
+      const openBatch = result.outboundBatchList.find(item => {
+        const status = Number(item.status || 0)
+        return status !== 3 && status !== 9
+      })
+      if (openBatch) {
+        this.activeOutboundBatchId = openBatch.id
+        result.outboundReceipt = this.normalizeOutboundReceipt(openBatch.receipt)
       } else {
         this.activeOutboundBatchId = ''
-        result.outboundReceipt = this.normalizeOutboundReceipt(source.outboundReceipt)
+        result.outboundReceipt = null
       }
       result.itemList = (source.itemList || []).map(item => {
         const row = Object.assign(this.defaultItemRow(), item)
@@ -1991,8 +1992,12 @@ export default {
       })
     },
     voidOutboundBatch () {
-      if (!this.currentOutboundBatch) return
-      this.$confirm('确认删除当前出库批次？删除后会同步删除该批次出库回单、二批来款水单和识别明细。', '提示', {
+      this.deleteOutboundBatch(this.currentOutboundBatch)
+    },
+    deleteOutboundBatch (batchOrRow) {
+      const batch = batchOrRow && batchOrRow._batch ? batchOrRow._batch : batchOrRow
+      if (!batch || !batch.id) return
+      this.$confirm(`确认删除出库批次 ${batch.batchNo || ''}？删除后会同步删除该批次出库回单、二批来款水单和识别明细。`, '提示', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
@@ -2001,7 +2006,7 @@ export default {
         this.withGlobalLoading(this.$http({
           url: this.$http.adornUrl('/erp/saleorder/outbound/batch/void'),
           method: 'post',
-          data: this.$http.adornData({ batchId: this.currentOutboundBatch.id })
+          data: this.$http.adornData({ batchId: batch.id })
         })).then(({ data }) => {
           if (data && data.code === 0) {
             this.$message.success('出库批次已删除')
