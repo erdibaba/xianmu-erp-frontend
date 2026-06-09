@@ -596,7 +596,9 @@
             </div>
             <el-table
               v-if="dataForm.outboundSummaryList && dataForm.outboundSummaryList.length"
+              :key="`outbound-summary-${outboundTableVersion}`"
               ref="outboundSummaryTable"
+              row-key="productId"
               :data="dataForm.outboundSummaryList"
               border
               size="mini"
@@ -638,7 +640,9 @@
               <span class="sub-title-tip">只展示已确认完成批次，便于核对历史出库。</span>
             </div>
             <el-table
+              :key="`outbound-history-${outboundTableVersion}`"
               ref="outboundHistoryTable"
+              row-key="id"
               :data="confirmedOutboundReceiptItemList"
               border
               size="mini"
@@ -674,7 +678,9 @@
             </div>
             <el-table
               v-if="dataForm.outboundReceipt"
+              :key="`outbound-receipt-${outboundTableVersion}-${currentOutboundBatch ? currentOutboundBatch.id : 'none'}`"
               ref="outboundReceiptTable"
+              row-key="id"
               :data="dataForm.outboundReceipt.itemList"
               border
               size="mini"
@@ -897,6 +903,7 @@ export default {
       currentUploadType: '',
       currentConfirmType: '',
       activeOutboundBatchId: '',
+      outboundTableVersion: 0,
       secondaryPartnerList: [],
       warehouseList: [],
       productList: [],
@@ -1239,6 +1246,7 @@ export default {
       }).then(({ data }) => {
         if (data && data.code === 0) {
           this.dataForm = this.normalizeForm(data.saleOrder || {})
+          this.outboundTableVersion += 1
         } else {
           this.$message.error((data && data.msg) || '加载失败')
         }
@@ -1249,7 +1257,7 @@ export default {
       const result = Object.assign(this.defaultForm(), source)
       result.contractSignDate = this.normalizeDateValue(source.contractSignDate)
       result.fileList = source.fileList || []
-      result.outboundSummaryList = (source.outboundSummaryList || []).map(item => Object.assign(this.defaultOutboundReceiptItemRow(), item))
+      result.outboundSummaryList = (source.outboundSummaryList || []).map(item => Object.assign({}, item))
       result.outboundBatchList = (source.outboundBatchList || []).map(item => this.normalizeOutboundBatch(item))
       const openBatch = result.outboundBatchList.find(item => {
         const status = Number(item.status || 0)
