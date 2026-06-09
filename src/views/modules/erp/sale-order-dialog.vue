@@ -1256,6 +1256,47 @@ export default {
     calcOutboundAdjustmentAmount (row) {
       return Number((this.calcOutboundDiffWeight(row) * this.toNumber(row && row.salePriceKg)).toFixed(2))
     },
+    normalizeOutboundContainerNo (value) {
+      return String(value || '').replace(/\s+/g, '').toUpperCase()
+    },
+    outboundExpectedSourceItems () {
+      if (this.isSpotSale && this.dataForm.allocationItemList && this.dataForm.allocationItemList.length) {
+        return this.dataForm.allocationItemList
+      }
+      return this.dataForm.itemList || []
+    },
+    findOutboundExpectedSaleItem (row) {
+      if (!row || !row.productId) return null
+      const sourceItems = this.outboundExpectedSourceItems()
+      const productItems = sourceItems.filter(item => String(item.productId) === String(row.productId))
+      if (!productItems.length) return null
+      const containerNo = this.normalizeOutboundContainerNo(row.containerNo)
+      if (containerNo) {
+        const containerMatched = productItems.find(item => this.normalizeOutboundContainerNo(item.sourceContainerNo) === containerNo)
+        if (containerMatched) return containerMatched
+      }
+      return productItems[0]
+    },
+    applyOutboundExpectedByProduct (row) {
+      const saleItem = this.findOutboundExpectedSaleItem(row)
+      if (!saleItem) {
+        this.$set(row, 'expectedFactoryNo', '')
+        this.$set(row, 'expectedContainerNo', '')
+        this.$set(row, 'expectedBoxes', 0)
+        this.$set(row, 'expectedWeight', 0)
+        this.$set(row, 'salePriceKg', 0)
+        return
+      }
+      this.$set(row, 'contractNo', this.dataForm.contractNo || this.dataForm.orderNo || '')
+      this.$set(row, 'expectedFactoryNo', saleItem.contractFactoryNo || '')
+      this.$set(row, 'expectedContainerNo', saleItem.sourceContainerNo || '')
+      this.$set(row, 'expectedBoxes', Number(saleItem.boxes || 0))
+      this.$set(row, 'expectedWeight', Number(saleItem.contractQuantityKg || 0))
+      this.$set(row, 'salePriceKg', Number(saleItem.salePriceKg || 0))
+      if (!row.factoryNo && saleItem.contractFactoryNo) {
+        this.$set(row, 'factoryNo', saleItem.contractFactoryNo)
+      }
+    },
     saleTypeChangeHandle (value) {
       if (value !== 'SPOT') {
         this.dataForm.warehouseId = ''
@@ -1421,6 +1462,7 @@ export default {
         row.productId = ''
         row.productCode = ''
         row.productNameEn = ''
+        this.applyOutboundExpectedByProduct(row)
         return
       }
       row.productId = product.id
@@ -1430,6 +1472,7 @@ export default {
       if (!row._productOptions.find(item => String(item.id) === String(product.id))) {
         row._productOptions = [product].concat(row._productOptions)
       }
+      this.applyOutboundExpectedByProduct(row)
     },
     ensureOutboundReceiptProductState (row) {
       if (!row._productOptions) this.$set(row, '_productOptions', [])
