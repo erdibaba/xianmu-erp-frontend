@@ -535,6 +535,15 @@
                 上传二批来款水单
               </el-button>
               <el-button
+                v-if="attachmentEditable && currentOutboundBatch && currentOutboundBatchEditable"
+                size="mini"
+                type="primary"
+                plain
+                :loading="outboundBatchLoading"
+                @click="bindOutboundScanLink">
+                绑定扫码链接
+              </el-button>
+              <el-button
                 v-if="attachmentEditable && dataForm.outboundReceipt"
                 size="mini"
                 type="primary"
@@ -563,6 +572,9 @@
               </el-button>
               <el-tag v-if="dataForm.outboundSummaryList && dataForm.outboundSummaryList.length" size="small" :type="outboundReceiptMatched ? 'success' : 'danger'">
                 {{ outboundReceiptMatched ? '整单箱数一致' : '整单待核对' }}
+              </el-tag>
+              <el-tag v-if="currentOutboundScan" size="small" type="success">
+                已绑定扫码：{{ currentOutboundScan.orderNum || '-' }} / {{ formatInteger(currentOutboundScan.totalBoxes) }}箱 / {{ formatNumber(currentOutboundScan.totalWeight, 3) }}KG
               </el-tag>
               <span v-if="dataForm.outboundSummaryList && dataForm.outboundSummaryList.length" class="sub-title-tip">{{ outboundReceiptMatchMessage }}</span>
             </div>
@@ -702,7 +714,7 @@
                   <span v-else class="sub-title-tip">无</span>
                 </template>
               </el-table-column>
-              <el-table-column v-if="attachmentEditable" label="操作" width="95" align="center" fixed="right">
+              <el-table-column v-if="attachmentEditable" label="操作" width="95" align="center">
                 <template slot-scope="scope">
                   <el-button type="text" size="small" @click="deleteOutboundBatch(scope.row)">删除批次</el-button>
                 </template>
@@ -1032,6 +1044,13 @@ export default {
       if (!batch || !batch.bankSlipFile) return []
       return [batch.bankSlipFile]
     },
+    currentOutboundScan () {
+      const batch = this.currentOutboundBatch
+      return batch ? batch.scan : null
+    },
+    currentOutboundHasReceiptFile () {
+      return this.currentOutboundReceiptFiles.length > 0
+    },
     confirmedOutboundReceiptItemList () {
       const list = this.dataForm.outboundBatchList || []
       const result = []
@@ -1099,7 +1118,7 @@ export default {
       const receipt = this.dataForm.outboundReceipt
       const hasReceipt = !!(receipt && receipt.itemList && receipt.itemList.length)
       const hasBankSlip = !!batch.bankSlipFileId || !!batch.bankSlipFile
-      return hasReceipt && hasBankSlip
+      return hasReceipt && hasBankSlip && this.currentOutboundHasReceiptFile
     }
   },
   methods: {
@@ -1990,6 +2009,43 @@ export default {
       if (fileType === 'OUTBOUND_RECEIPT') return '请先选择未完成的出库批次'
       if (fileType === 'OUTBOUND_BATCH_BANK_SLIP') return '当前批次不可上传二批来款水单'
       return '当前节点暂不可上传'
+    },
+    bindOutboundScanLink () {
+      if (!this.currentOutboundBatch) return
+      const currentUrl = this.currentOutboundScan && this.currentOutboundScan.scanUrl ? this.currentOutboundScan.scanUrl : ''
+      this.$prompt('请粘贴顺势云扫码链接，系统会抓取箱数和每箱重量，并覆盖当前批次出库明细。', '绑定扫码链接', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        inputValue: currentUrl,
+        inputPlaceholder: 'http://shunshiyun.com/pc/chamaDetails?orderNum=...&imei=...',
+        inputValidator: value => {
+          if (!value) return '请填写扫码链接'
+          if (String(value).indexOf('orderNum=') < 0 || String(value).indexOf('imei=') < 0) return '链接需包含orderNum和imei'
+          return true
+        }
+      }).then(({ value }) => {
+        this.outboundBatchLoading = true
+        this.withGlobalLoading(this.$http({
+          url: this.$http.adornUrl('/erp/saleorder/outbound/batch/scan-link/bind'),
+          method: 'post',
+          data: this.$http.adornData({
+            saleOrderId: this.dataForm.id,
+            batchId: this.currentOutboundBatch.id,
+            scanUrl: value
+          })
+        })).then(({ data }) => {
+          if (data && data.code === 0) {
+            this.$message.success('扫码链接绑定成功')
+            this.refreshDetail()
+            this.$emit('refreshDataList')
+          } else {
+            this.$message.error((data && data.msg) || '扫码链接绑定失败')
+          }
+          this.outboundBatchLoading = false
+        }).catch(() => {
+          this.outboundBatchLoading = false
+        })
+      }).catch(() => {})
     },
     createOutboundBatch () {
       if (!this.dataForm.id) return
