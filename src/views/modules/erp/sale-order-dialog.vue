@@ -500,9 +500,11 @@
                   type="primary"
                   plain
                   :loading="outboundBatchLoading"
+                  :disabled="hasOpenOutboundBatch"
                   @click="createOutboundBatch">
                   新增出库批次
                 </el-button>
+                <span v-if="hasOpenOutboundBatch" class="sub-title-tip">当前还有未完成批次，请先确认完成或作废后再新增。</span>
                 <el-select
                   v-if="dataForm.outboundBatchList && dataForm.outboundBatchList.length"
                   v-model="activeOutboundBatchId"
@@ -921,6 +923,13 @@ export default {
     currentOutboundBatch () {
       const list = this.dataForm.outboundBatchList || []
       return list.find(item => String(item.id) === String(this.activeOutboundBatchId)) || null
+    },
+    hasOpenOutboundBatch () {
+      const list = this.dataForm.outboundBatchList || []
+      return list.some(item => {
+        const status = Number(item.status || 0)
+        return status !== 3 && status !== 9
+      })
     },
     currentOutboundBatchEditable () {
       if (!this.currentOutboundBatch) return false
@@ -1861,6 +1870,10 @@ export default {
     },
     createOutboundBatch () {
       if (!this.dataForm.id) return
+      if (this.hasOpenOutboundBatch) {
+        this.$message.warning('当前还有未完成批次，请先确认完成或作废后再新增')
+        return
+      }
       this.outboundBatchLoading = true
       this.withGlobalLoading(this.$http({
         url: this.$http.adornUrl('/erp/saleorder/outbound/batch/create'),
