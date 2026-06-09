@@ -607,6 +607,7 @@
             </div>
             <el-table
               v-if="dataForm.outboundSummaryList && dataForm.outboundSummaryList.length"
+              ref="outboundSummaryTable"
               :data="dataForm.outboundSummaryList"
               border
               size="mini"
@@ -645,6 +646,7 @@
             </el-table>
             <el-table
               v-if="dataForm.outboundReceipt"
+              ref="outboundReceiptTable"
               :data="dataForm.outboundReceipt.itemList"
               border
               size="mini"
@@ -1274,6 +1276,17 @@ export default {
     setActiveOutboundBatch () {
       const batch = this.currentOutboundBatch
       this.dataForm.outboundReceipt = batch ? this.normalizeOutboundReceipt(batch.receipt) : null
+      this.layoutOutboundTables()
+    },
+    layoutOutboundTables () {
+      this.$nextTick(() => {
+        ;['outboundSummaryTable', 'outboundReceiptTable'].forEach(refName => {
+          const table = this.$refs[refName]
+          if (table && table.doLayout) {
+            table.doLayout()
+          }
+        })
+      })
     },
     formatOutboundBatchStatus (status) {
       const map = {
@@ -2173,6 +2186,7 @@ export default {
       this.detailLoading = true
       this.fetchDetail(this.dataForm.id).finally(() => {
         this.detailLoading = false
+        this.layoutOutboundTables()
       })
     },
     downloadFile (row) {
