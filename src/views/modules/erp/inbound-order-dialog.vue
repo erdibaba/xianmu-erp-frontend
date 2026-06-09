@@ -134,7 +134,7 @@
           <div class="sub-title">SKU明细</div>
           <el-button v-if="!readonly" size="mini" type="primary" @click="addItemRow()">新增明细</el-button>
         </div>
-        <el-table :data="dataForm.itemList" border size="mini" height="320" :fit="false" class="item-table">
+        <el-table :data="dataForm.itemList" border size="mini" :height="skuTableHeight" :fit="false" class="item-table">
           <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
           <el-table-column label="报损" width="90" align="center">
             <template slot-scope="scope">
@@ -380,6 +380,7 @@ export default {
       detailLoading: false,
       saveLoading: false,
       damageSaving: false,
+      skuTableHeight: 300,
       productList: [],
       warehouseList: [],
       currentDamageRow: null,
@@ -401,6 +402,13 @@ export default {
         damageReason: [{ max: 200, message: '报损原因最多200字', trigger: 'blur' }]
       }
     }
+  },
+  mounted () {
+    this.updateSkuTableHeight()
+    window.addEventListener('resize', this.updateSkuTableHeight)
+  },
+  beforeDestroy () {
+    window.removeEventListener('resize', this.updateSkuTableHeight)
   },
   methods: {
     defaultForm () {
@@ -431,6 +439,7 @@ export default {
     init (presaleOrderId, readonly) {
       this.visible = true
       this.readonly = readonly
+      this.$nextTick(this.updateSkuTableHeight)
       this.archiveDialogVisible = false
       this.damageDialogVisible = false
       this.dataForm = this.defaultForm()
@@ -442,6 +451,7 @@ export default {
     initFromRecognizedResult (presaleOrderId, result) {
       this.visible = true
       this.readonly = false
+      this.$nextTick(this.updateSkuTableHeight)
       this.archiveDialogVisible = false
       this.damageDialogVisible = false
       this.dataForm = this.defaultForm()
@@ -467,6 +477,10 @@ export default {
           this.$message.error((data && data.msg) || '加载失败')
         }
       })
+    },
+    updateSkuTableHeight () {
+      const viewportHeight = window.innerHeight || 900
+      this.skuTableHeight = Math.max(180, Math.min(320, viewportHeight - 575))
     },
     loadProductList () {
       return this.$http({
@@ -878,9 +892,8 @@ export default {
 .inbound-order-dialog {
   height: calc(100vh - 246px);
   max-height: calc(100vh - 246px);
-  overflow-x: hidden;
-  overflow-y: auto;
-  padding: 0 4px 14px 0;
+  overflow: hidden;
+  padding: 0 4px 0 0;
 }
 
 .inbound-order-dialog /deep/ .el-form-item {
