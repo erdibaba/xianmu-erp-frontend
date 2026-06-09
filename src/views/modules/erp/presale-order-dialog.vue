@@ -483,6 +483,15 @@
                 </el-table-column>
                 <el-table-column label="产品中文名" prop="productName" min-width="160"></el-table-column>
                 <el-table-column label="产品英文名" prop="productNameEn" min-width="260"></el-table-column>
+                <el-table-column label="厂号" min-width="120">
+                  <template slot-scope="scope">
+                    <el-input
+                      v-model.trim="scope.row.factoryNo"
+                      :disabled="readonly"
+                      placeholder="请输入厂号">
+                    </el-input>
+                  </template>
+                </el-table-column>
                 <el-table-column label="总箱数" prop="totalBoxes" min-width="90"></el-table-column>
                 <el-table-column label="总重量(KG)" min-width="110">
                   <template slot-scope="scope">
@@ -692,6 +701,7 @@ function defaultPackingItem () {
     productCode: '',
     productName: '',
     productNameEn: '',
+    factoryNo: '',
     totalBoxes: 0,
     totalWeight: 0,
     shelfLifeDays: 0,
@@ -1131,6 +1141,7 @@ export default {
       row.productCode = ''
       row.productName = item.productName || ''
       row.productNameEn = item.productNameEn || ''
+      row.factoryNo = item.factoryNo || ''
       row._recognizedProductName = row.productName
       row._recognizedProductNameEn = row.productNameEn
       row.totalBoxes = this.toNumber(item.totalBoxes)
@@ -1376,6 +1387,11 @@ export default {
       }
       for (let i = 0; i < packingInfo.itemList.length; i++) {
         const item = packingInfo.itemList[i]
+        if (!item.factoryNo) {
+          this.activeTab = 'packing'
+          this.$message.error(`装箱单第 ${i + 1} 行厂号不能为空`)
+          return false
+        }
         if (item.totalWeight === '' || item.totalWeight === null || item.totalWeight === undefined) {
           this.activeTab = 'packing'
           this.$message.error(`装箱单第 ${i + 1} 行总重量不能为空`)

@@ -166,6 +166,7 @@
         <template v-if="currentBatchType === 'spot'">
           <el-table-column prop="warehouseName" label="仓库" min-width="140" show-overflow-tooltip></el-table-column>
           <el-table-column prop="containerNo" label="柜号" min-width="130" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="factoryNo" label="厂号" width="100" align="center" header-align="center"></el-table-column>
           <el-table-column prop="contractNo" label="合同号" min-width="140" show-overflow-tooltip></el-table-column>
           <el-table-column prop="customerName" label="客户" min-width="160" show-overflow-tooltip></el-table-column>
           <el-table-column prop="temperatureZone" label="温区" width="90" align="center" header-align="center"></el-table-column>
@@ -175,6 +176,7 @@
           <el-table-column prop="presaleOrderNo" label="预销售单" min-width="150" show-overflow-tooltip></el-table-column>
           <el-table-column prop="contractNo" label="合同号" min-width="140" show-overflow-tooltip></el-table-column>
           <el-table-column prop="containerNo" label="柜号" min-width="130" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="factoryNo" label="厂号" width="100" align="center" header-align="center"></el-table-column>
           <el-table-column prop="customerReference" label="采购方" min-width="160" show-overflow-tooltip></el-table-column>
           <el-table-column prop="brandName" label="品牌方" min-width="160" show-overflow-tooltip></el-table-column>
           <el-table-column prop="expectedArrivalDate" label="预计到港" width="115" align="center" header-align="center">
