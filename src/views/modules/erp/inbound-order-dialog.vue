@@ -381,6 +381,7 @@ export default {
       saveLoading: false,
       damageSaving: false,
       skuTableHeight: 300,
+      packingBoxMap: {},
       productList: [],
       warehouseList: [],
       currentDamageRow: null,
@@ -444,7 +445,9 @@ export default {
       this.damageDialogVisible = false
       this.dataForm = this.defaultForm()
       this.detailLoading = true
-      Promise.all([this.loadProductList(), this.loadWarehouseList(), this.fetchDetail(presaleOrderId)]).finally(() => {
+      Promise.all([this.loadProductList(), this.loadWarehouseList(), this.loadPackingBoxMap(presaleOrderId)]).then(() => {
+        return this.fetchDetail(presaleOrderId)
+      }).finally(() => {
         this.detailLoading = false
       })
     },
@@ -456,7 +459,7 @@ export default {
       this.damageDialogVisible = false
       this.dataForm = this.defaultForm()
       this.detailLoading = true
-      Promise.all([this.loadProductList(), this.loadWarehouseList()]).then(() => {
+      Promise.all([this.loadProductList(), this.loadWarehouseList(), this.loadPackingBoxMap(presaleOrderId)]).then(() => {
         const draft = (result && result.inboundDraft) || {}
         this.dataForm = this.normalizeForm(Object.assign({}, draft, {
           presaleOrderId: presaleOrderId
@@ -498,6 +501,17 @@ export default {
         params: this.$http.adornParams()
       }).then(({ data }) => {
         this.warehouseList = (data && data.list) || []
+      })
+    },
+    loadPackingBoxMap (presaleOrderId) {
+      return this.$http({
+        url: this.$http.adornUrl(`/erp/inbound/packing-boxes/${presaleOrderId}`),
+        method: 'get',
+        params: this.$http.adornParams()
+      }).then(({ data }) => {
+        this.packingBoxMap = (data && data.packingBoxMap) || {}
+      }).catch(() => {
+        this.packingBoxMap = {}
       })
     },
     normalizeForm (form) {
@@ -555,6 +569,7 @@ export default {
         row.productCode = ''
         row.productSpec = ''
         row.unit = ''
+        row.packingBoxes = 0
         row.productName = row._recognizedProductName || row.productName
         row.productNameEn = row._recognizedProductNameEn || row.productNameEn
       })
@@ -617,6 +632,7 @@ export default {
       row.productCode = ''
       row.productSpec = ''
       row.unit = ''
+      row.packingBoxes = 0
       row.productName = row._recognizedProductName || row.productName
       row.productNameEn = row._recognizedProductNameEn || row.productNameEn
     },
@@ -627,6 +643,7 @@ export default {
       row.productNameEn = product.productNameEn || row._recognizedProductNameEn || ''
       row.productSpec = product.productSpec
       row.unit = product.unit
+      row.packingBoxes = this.packingBoxMap[String(product.productCode)] || 0
       if (!row._productOptions.find(item => String(item.id) === String(product.id))) {
         row._productOptions = [product].concat(row._productOptions)
       }
@@ -674,6 +691,7 @@ export default {
         row.productCode = ''
         row.productSpec = ''
         row.unit = ''
+        row.packingBoxes = 0
         row.productName = row._recognizedProductName || row.productName
         row.productNameEn = row._recognizedProductNameEn || row.productNameEn
         return
@@ -685,6 +703,7 @@ export default {
         row.productCode = ''
         row.productSpec = ''
         row.unit = ''
+        row.packingBoxes = 0
         row.productName = row._recognizedProductName || row.productName
         row.productNameEn = row._recognizedProductNameEn || row.productNameEn
         return
