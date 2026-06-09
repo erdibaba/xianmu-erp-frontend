@@ -569,10 +569,10 @@
                 @click="voidOutboundBatch">
                 作废批次
               </el-button>
-              <el-tag v-if="dataForm.outboundReceipt" size="small" :type="outboundReceiptMatched ? 'success' : 'danger'">
-                {{ outboundReceiptMatched ? '箱数一致' : '待核对' }}
+              <el-tag v-if="dataForm.outboundSummaryList && dataForm.outboundSummaryList.length" size="small" :type="outboundReceiptMatched ? 'success' : 'danger'">
+                {{ outboundReceiptMatched ? '整单箱数一致' : '整单待核对' }}
               </el-tag>
-              <span v-if="dataForm.outboundReceipt" class="sub-title-tip">{{ outboundReceiptMatchMessage }}</span>
+              <span v-if="dataForm.outboundSummaryList && dataForm.outboundSummaryList.length" class="sub-title-tip">{{ outboundReceiptMatchMessage }}</span>
             </div>
             <el-row v-if="dataForm.outboundReceipt" :gutter="20">
               <el-col :span="6">
@@ -596,13 +596,51 @@
                 </el-button>
               </el-col>
             </el-row>
-            <div v-if="dataForm.outboundReceipt" class="outbound-adjustment-summary">
-              <span>多退少补汇总：</span>
+            <div v-if="dataForm.outboundSummaryList && dataForm.outboundSummaryList.length" class="outbound-adjustment-summary">
+              <span>整单多退少补汇总：</span>
               <strong :class="outboundAdjustmentTotal >= 0 ? 'refund' : 'supplement'">
                 {{ outboundAdjustmentTotal >= 0 ? '应退款' : '应补款' }} ¥{{ Math.abs(outboundAdjustmentTotal).toFixed(2) }}
               </strong>
-              <span class="summary-tip">正数表示少出需退款，负数表示多出需补收。</span>
+              <span class="summary-tip">按所有未作废出库批次汇总计算；正数表示少出需退款，负数表示多出需补收。</span>
             </div>
+            <el-table
+              v-if="dataForm.outboundSummaryList && dataForm.outboundSummaryList.length"
+              :data="dataForm.outboundSummaryList"
+              border
+              size="mini"
+              class="attachment-table outbound-summary-table">
+              <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
+              <el-table-column prop="productCode" label="系统编码" width="110"></el-table-column>
+              <el-table-column prop="productName" label="品名" min-width="170" show-overflow-tooltip></el-table-column>
+              <el-table-column label="应出箱数" width="95" align="right">
+                <template slot-scope="scope">{{ formatInteger(scope.row.expectedBoxes) }}</template>
+              </el-table-column>
+              <el-table-column label="实际箱数" width="95" align="right">
+                <template slot-scope="scope">{{ formatInteger(scope.row.shippedQty) }}</template>
+              </el-table-column>
+              <el-table-column label="差异箱数" width="95" align="right">
+                <template slot-scope="scope">{{ formatInteger(scope.row.diffBoxes) }}</template>
+              </el-table-column>
+              <el-table-column label="应出重量(KG)" width="120" align="right">
+                <template slot-scope="scope">{{ formatNumber(scope.row.expectedWeight, 3) }}</template>
+              </el-table-column>
+              <el-table-column label="实际重量(KG)" width="120" align="right">
+                <template slot-scope="scope">{{ formatNumber(scope.row.totalWeight, 3) }}</template>
+              </el-table-column>
+              <el-table-column label="差异重量(KG)" width="120" align="right">
+                <template slot-scope="scope">{{ formatNumber(scope.row.diffWeight, 3) }}</template>
+              </el-table-column>
+              <el-table-column label="单价" width="95" align="right">
+                <template slot-scope="scope">{{ formatNumber(scope.row.salePriceKg, 2) }}</template>
+              </el-table-column>
+              <el-table-column label="应退/应补" width="115" align="right">
+                <template slot-scope="scope">
+                  <span :class="Number(scope.row.adjustmentAmount || 0) >= 0 ? 'refund' : 'supplement'">
+                    {{ formatNumber(scope.row.adjustmentAmount, 2) }}
+                  </span>
+                </template>
+              </el-table-column>
+            </el-table>
             <el-table
               v-if="dataForm.outboundReceipt"
               :data="dataForm.outboundReceipt.itemList"
@@ -916,9 +954,9 @@ export default {
       return this.detailLoading || this.globalRequestLoading
     },
     outboundReceiptMatched () {
-      const receipt = this.dataForm.outboundReceipt
-      if (!receipt) return false
-      return Number(receipt.saleTotalBoxes || 0) === Number(this.outboundShippedTotalBoxes || 0)
+      const summaryList = this.dataForm.outboundSummaryList || []
+      if (!summaryList.length) return false
+      return summaryList.every(item => this.toNumber(item.expectedBoxes) > 0 && this.toNumber(item.expectedBoxes) === this.toNumber(item.shippedQty))
     },
     outboundShippedTotalBoxes () {
       const receipt = this.dataForm.outboundReceipt
@@ -926,20 +964,19 @@ export default {
       return receipt.itemList.reduce((total, item) => total + Number(item.shippedQty || 0), 0)
     },
     outboundAdjustmentTotal () {
-      const receipt = this.dataForm.outboundReceipt
-      if (!receipt || !receipt.itemList) return 0
-      const total = receipt.itemList.reduce((sum, item) => sum + this.calcOutboundAdjustmentAmount(item), 0)
+      const summaryList = this.dataForm.outboundSummaryList || []
+      const total = summaryList.reduce((sum, item) => sum + this.toNumber(item.adjustmentAmount), 0)
       return Number(total.toFixed(2))
     },
     outboundReceiptMatchMessage () {
-      const receipt = this.dataForm.outboundReceipt
-      if (!receipt) return '-'
-      const saleBoxes = Number(receipt.saleTotalBoxes || 0)
-      const shippedBoxes = Number(this.outboundShippedTotalBoxes || 0)
-      if (saleBoxes === shippedBoxes) {
-        return '销售单箱数与出库回单发货数一致'
+      const summaryList = this.dataForm.outboundSummaryList || []
+      if (!summaryList.length) return '-'
+      const saleBoxes = summaryList.reduce((sum, item) => sum + this.toNumber(item.expectedBoxes), 0)
+      const shippedBoxes = summaryList.reduce((sum, item) => sum + this.toNumber(item.shippedQty), 0)
+      if (summaryList.every(item => this.toNumber(item.expectedBoxes) > 0 && this.toNumber(item.expectedBoxes) === this.toNumber(item.shippedQty))) {
+        return '销售单箱数与所有出库批次实际箱数一致'
       }
-      return `销售单箱数${saleBoxes}箱，出库回单发货数${shippedBoxes}箱，请核对`
+      return `销售单箱数${saleBoxes}箱，所有出库批次实际箱数${shippedBoxes}箱，请核对`
     },
     canConfirmOutboundBatch () {
       const batch = this.currentOutboundBatch
@@ -990,7 +1027,8 @@ export default {
         allocationItemList: [],
         fileList: [],
         outboundReceipt: null,
-        outboundBatchList: []
+        outboundBatchList: [],
+        outboundSummaryList: []
       }
     },
     defaultItemRow () {
@@ -1154,6 +1192,7 @@ export default {
       const result = Object.assign(this.defaultForm(), source)
       result.contractSignDate = this.normalizeDateValue(source.contractSignDate)
       result.fileList = source.fileList || []
+      result.outboundSummaryList = (source.outboundSummaryList || []).map(item => Object.assign(this.defaultOutboundReceiptItemRow(), item))
       result.outboundBatchList = (source.outboundBatchList || []).map(item => this.normalizeOutboundBatch(item))
       if (result.outboundBatchList.length) {
         const active = result.outboundBatchList.find(item => String(item.id) === String(this.activeOutboundBatchId)) || result.outboundBatchList[result.outboundBatchList.length - 1]
@@ -1970,10 +2009,27 @@ export default {
         }))
       })
     },
+    validateOutboundReceiptRequiredItems () {
+      const receipt = this.dataForm.outboundReceipt
+      const items = (receipt && receipt.itemList) || []
+      if (!items.length) return '出库回单明细不能为空'
+      for (let index = 0; index < items.length; index++) {
+        const item = items[index]
+        if (!item.productId) return `第${index + 1}行系统编码不能为空`
+        if (!item.shippedQty || Number(item.shippedQty) <= 0) return `第${index + 1}行实际箱数必须大于0`
+        if (!item.totalWeight || Number(item.totalWeight) <= 0) return `第${index + 1}行实际重量必须大于0`
+      }
+      return ''
+    },
     saveOutboundReceipt (options) {
       const opts = Object.assign({ silent: false, skipRefresh: false }, options || {})
       const receipt = this.buildOutboundReceiptPayload()
       if (!receipt) return Promise.resolve(false)
+      const requiredError = this.validateOutboundReceiptRequiredItems()
+      if (requiredError) {
+        this.$message.error(requiredError)
+        return Promise.resolve(false)
+      }
       if (!opts.silent) {
         this.outboundSaveLoading = true
       }
