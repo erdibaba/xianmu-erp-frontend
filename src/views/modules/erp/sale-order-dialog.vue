@@ -2292,9 +2292,9 @@ export default {
       })
     },
     refreshDetail () {
-      if (!this.dataForm.id) return
+      if (!this.dataForm.id) return Promise.resolve()
       this.detailLoading = true
-      this.fetchDetail(this.dataForm.id).finally(() => {
+      return this.withGlobalLoading(() => this.fetchDetail(this.dataForm.id)).finally(() => {
         this.detailLoading = false
         this.layoutOutboundTables()
       })
