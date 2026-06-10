@@ -13,6 +13,9 @@
             <el-input v-model="spotQuery.containerNo" placeholder="柜号" clearable @keyup.enter.native="getSpotList()"></el-input>
           </el-form-item>
           <el-form-item>
+            <el-input v-model="spotQuery.factoryNo" placeholder="厂号" clearable @keyup.enter.native="getSpotList()"></el-input>
+          </el-form-item>
+          <el-form-item>
             <el-checkbox v-model="spotQuery.onlyAvailable" true-label="1" false-label="0">只看可售库存</el-checkbox>
           </el-form-item>
           <el-form-item>
@@ -61,6 +64,9 @@
           </el-form-item>
           <el-form-item>
             <el-input v-model="futuresQuery.containerNo" placeholder="柜号" clearable @keyup.enter.native="getFuturesList()"></el-input>
+          </el-form-item>
+          <el-form-item>
+            <el-input v-model="futuresQuery.factoryNo" placeholder="厂号" clearable @keyup.enter.native="getFuturesList()"></el-input>
           </el-form-item>
           <el-form-item>
             <el-checkbox v-model="futuresQuery.onlyAvailable" true-label="1" false-label="0">只看期货可售</el-checkbox>
@@ -120,6 +126,9 @@
             <el-input v-model="recordQuery.containerNo" placeholder="柜号" clearable @keyup.enter.native="getRecordList()"></el-input>
           </el-form-item>
           <el-form-item>
+            <el-input v-model="recordQuery.factoryNo" placeholder="厂号" clearable @keyup.enter.native="getRecordList()"></el-input>
+          </el-form-item>
+          <el-form-item>
             <el-button type="primary" @click="getRecordList()">查询</el-button>
             <el-button @click="resetRecordQuery()">重置</el-button>
           </el-form-item>
@@ -140,6 +149,7 @@
           <el-table-column prop="customerName" label="客户" min-width="160" show-overflow-tooltip></el-table-column>
           <el-table-column prop="warehouseName" label="仓库" min-width="140" show-overflow-tooltip></el-table-column>
           <el-table-column prop="containerNo" label="柜号" min-width="130" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="factoryNo" label="厂号" width="100" align="center" header-align="center"></el-table-column>
           <el-table-column prop="productCode" label="产品编码" width="110" align="center" header-align="center"></el-table-column>
           <el-table-column prop="productName" label="中文名称" min-width="170" show-overflow-tooltip></el-table-column>
           <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
@@ -226,12 +236,14 @@
           keyword: '',
           warehouseName: '',
           containerNo: '',
+          factoryNo: '',
           onlyAvailable: '1'
         },
         futuresQuery: {
           keyword: '',
           contractNo: '',
           containerNo: '',
+          factoryNo: '',
           onlyAvailable: '0'
         },
         recordQuery: {
@@ -239,7 +251,8 @@
           recordType: '',
           contractNo: '',
           warehouseName: '',
-          containerNo: ''
+          containerNo: '',
+          factoryNo: ''
         },
         spotList: [],
         futuresList: [],
@@ -338,12 +351,14 @@
             productId: row.productId,
             contractNo: this.futuresQuery.contractNo,
             containerNo: this.futuresQuery.containerNo,
+            factoryNo: this.futuresQuery.factoryNo,
             onlyAvailable: this.futuresQuery.onlyAvailable
           }
           : {
             productId: row.productId,
             warehouseName: this.spotQuery.warehouseName,
             containerNo: this.spotQuery.containerNo,
+            factoryNo: this.spotQuery.factoryNo,
             onlyAvailable: this.spotQuery.onlyAvailable
           }
         this.$http({
@@ -367,6 +382,7 @@
           keyword: '',
           warehouseName: '',
           containerNo: '',
+          factoryNo: '',
           onlyAvailable: '1'
         }
         this.getSpotList()
@@ -376,6 +392,7 @@
           keyword: '',
           contractNo: '',
           containerNo: '',
+          factoryNo: '',
           onlyAvailable: '0'
         }
         this.getFuturesList()
@@ -386,7 +403,8 @@
           recordType: '',
           contractNo: '',
           warehouseName: '',
-          containerNo: ''
+          containerNo: '',
+          factoryNo: ''
         }
         this.getRecordList()
       },
