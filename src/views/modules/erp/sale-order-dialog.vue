@@ -798,6 +798,7 @@
               </el-table-column>
               <el-table-column label="水单" min-width="130">
                 <template slot-scope="scope">
+                  <el-button v-if="scope.row.bankSlipFile" type="text" size="small" @click="openBankSlipDetail(scope.row)">查看水单</el-button>
                   <el-button v-if="scope.row.bankSlipFile" type="text" size="small" @click="downloadFile(scope.row.bankSlipFile)">下载水单</el-button>
                   <span v-else class="sub-title-tip">无</span>
                 </template>
@@ -1019,6 +1020,80 @@
         保存
       </el-button>
     </span>
+    <el-dialog
+      title="二批来款水单详情"
+      :visible.sync="bankSlipDetailVisible"
+      width="760px"
+      append-to-body
+      custom-class="bank-slip-detail-dialog">
+      <div v-if="bankSlipDetailBatch" class="bank-slip-detail">
+        <div class="bank-slip-detail-header">
+          <span>批次号：{{ bankSlipDetailBatch.batchNo || '-' }}</span>
+          <span>模板：{{ bankSlipDetailBatch.bankVoucherTemplate || '-' }}</span>
+        </div>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <div class="bank-slip-card">
+              <div class="bank-slip-card-title">识别结果</div>
+              <el-form label-width="82px" size="mini">
+                <el-form-item label="付款人">
+                  <el-input :value="bankSlipDetailBatch.bankPayerNameRecognized || ''" disabled></el-input>
+                </el-form-item>
+                <el-form-item label="收款人">
+                  <el-input :value="bankSlipDetailBatch.bankPayeeNameRecognized || ''" disabled></el-input>
+                </el-form-item>
+                <el-form-item label="金额">
+                  <el-input :value="formatNumber(bankSlipDetailBatch.bankAmountRecognized, 2)" disabled></el-input>
+                </el-form-item>
+                <el-form-item label="付款日期">
+                  <el-input :value="formatDateOnly(bankSlipDetailBatch.bankPaymentDateRecognized)" disabled></el-input>
+                </el-form-item>
+                <el-form-item label="流水号">
+                  <el-input :value="bankSlipDetailBatch.bankSerialNoRecognized || ''" disabled></el-input>
+                </el-form-item>
+              </el-form>
+            </div>
+          </el-col>
+          <el-col :span="12">
+            <div class="bank-slip-card">
+              <div class="bank-slip-card-title">确认结果</div>
+              <el-form label-width="82px" size="mini">
+                <el-form-item label="付款人">
+                  <el-input :value="bankSlipDetailBatch.bankPayerNameModified || ''" disabled></el-input>
+                </el-form-item>
+                <el-form-item label="收款人">
+                  <el-input :value="bankSlipDetailBatch.bankPayeeNameModified || ''" disabled></el-input>
+                </el-form-item>
+                <el-form-item label="金额">
+                  <el-input :value="formatNumber(bankSlipDetailBatch.bankAmountModified, 2)" disabled></el-input>
+                </el-form-item>
+                <el-form-item label="付款日期">
+                  <el-input :value="formatDateOnly(bankSlipDetailBatch.bankPaymentDateModified)" disabled></el-input>
+                </el-form-item>
+                <el-form-item label="流水号">
+                  <el-input :value="bankSlipDetailBatch.bankSerialNoModified || ''" disabled></el-input>
+                </el-form-item>
+              </el-form>
+            </div>
+          </el-col>
+        </el-row>
+        <div class="bank-slip-detail-summary">
+          <span>本批次应收金额：¥{{ formatNumber(bankSlipDetailBatch.bankExpectedAmount, 2) }}</span>
+          <span>确认金额差异：¥{{ formatNumber(bankSlipDetailBatch.bankAmountDiff, 2) }}</span>
+        </div>
+        <div v-if="bankSlipDetailDiffVisible" class="bank-slip-diff-warning">
+          确认金额与本批次应收金额存在差异，请核对；该差异已保存，不影响批次完成状态。
+        </div>
+        <div class="bank-slip-detail-actions">
+          <el-button v-if="bankSlipDetailBatch.bankSlipFile" size="mini" type="primary" plain @click="downloadFile(bankSlipDetailBatch.bankSlipFile)">
+            下载水单原件
+          </el-button>
+        </div>
+      </div>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="bankSlipDetailVisible = false">关闭</el-button>
+      </span>
+    </el-dialog>
   </el-dialog>
 </template>
 
@@ -1036,6 +1111,8 @@ export default {
       outboundSaveLoading: false,
       outboundBatchLoading: false,
       bankSlipSaving: false,
+      bankSlipDetailVisible: false,
+      bankSlipDetailBatch: null,
       globalLoadingCount: 0,
       currentUploadType: '',
       currentConfirmType: '',
@@ -1140,6 +1217,10 @@ export default {
     },
     currentOutboundBankSlipDiffVisible () {
       const batch = this.currentOutboundBatch
+      return !!(batch && Math.abs(this.parseAmountValue(batch.bankAmountDiff)) >= 0.01)
+    },
+    bankSlipDetailDiffVisible () {
+      const batch = this.bankSlipDetailBatch
       return !!(batch && Math.abs(this.parseAmountValue(batch.bankAmountDiff)) >= 0.01)
     },
     currentOutboundScan () {
@@ -2328,6 +2409,10 @@ export default {
         this.bankSlipSaving = false
       })
     },
+    openBankSlipDetail (batch) {
+      this.bankSlipDetailBatch = batch ? Object.assign({}, batch) : null
+      this.bankSlipDetailVisible = true
+    },
     buildOutboundReceiptPayload () {
       if (!this.dataForm.id || !this.dataForm.outboundReceipt) return null
       return Object.assign({}, this.dataForm.outboundReceipt, {
@@ -2661,6 +2746,28 @@ export default {
   color: #e23b3b;
   font-size: 12px;
   line-height: 18px;
+}
+
+.bank-slip-detail-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  color: #303133;
+  font-weight: 600;
+}
+
+.bank-slip-detail-summary {
+  display: flex;
+  gap: 24px;
+  margin: 12px 0 6px;
+  color: #303133;
+  font-weight: 600;
+}
+
+.bank-slip-detail-actions {
+  margin-top: 10px;
+  text-align: right;
 }
 
 .summary-tip {
