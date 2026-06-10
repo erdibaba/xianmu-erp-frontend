@@ -248,6 +248,9 @@
 
               </div>
 
+              <div v-if="!readonly" class="confirm-item-toolbar">
+                <el-button type="primary" size="mini" @click="addConfirmItemRow()">新增By产品</el-button>
+              </div>
               <div class="confirm-table-wrap">
                 <div class="confirm-summary">
                   <template v-if="confirmAmountDiff">
@@ -341,6 +344,11 @@
               <el-table-column label="备注" min-width="180">
                 <template slot-scope="scope">
                   <el-input v-model="scope.row.remark" :disabled="readonly"></el-input>
+                </template>
+              </el-table-column>
+              <el-table-column v-if="!readonly" label="操作" width="90" align="center">
+                <template slot-scope="scope">
+                  <el-button type="text" size="small" @click="removeConfirmItemRow(scope.$index)">删除</el-button>
                 </template>
               </el-table-column>
                 </el-table>
@@ -1372,6 +1380,15 @@ export default {
       const itemList = this.dataForm.packingInfo.itemList || []
       itemList.splice(index, 1)
     },
+    addConfirmItemRow () {
+      const confirmInfo = this.dataForm.confirmInfo || (this.dataForm.confirmInfo = defaultConfirmInfo())
+      const itemList = confirmInfo.itemList || (confirmInfo.itemList = [])
+      itemList.push(defaultConfirmItem())
+    },
+    removeConfirmItemRow (index) {
+      const itemList = (this.dataForm.confirmInfo || {}).itemList || []
+      itemList.splice(index, 1)
+    },
     addPackingBatchRow (row) {
       const batchList = row.batchList || (row.batchList = [])
       const lastRow = batchList.length ? batchList[batchList.length - 1] : {}
@@ -1745,6 +1762,7 @@ export default {
 }
 
 .estimate-item-toolbar,
+.confirm-item-toolbar,
 .packing-item-toolbar {
   margin-bottom: 10px;
   text-align: right;
