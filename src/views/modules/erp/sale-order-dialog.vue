@@ -285,7 +285,7 @@
 
         <div v-if="showSpotAllocation" class="sub-title">
           <span>系统自动分配结果</span>
-          <span class="sub-title-tip">现货单需在每个柜号行录入数量/千克、厂号、港口/冷库</span>
+          <span class="sub-title-tip">现货单需在每个柜号行录入数量/千克，厂号、港口/冷库会自动带出，可核对修改</span>
         </div>
         <el-table
           v-if="showSpotAllocation"
