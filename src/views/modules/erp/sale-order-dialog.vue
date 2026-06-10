@@ -532,10 +532,10 @@
                 plain
                 :loading="uploadLoading && currentUploadType === 'OUTBOUND_BATCH_BANK_SLIP'"
                 @click="triggerUpload('OUTBOUND_BATCH_BANK_SLIP')">
-                上传二批来款水单
+                {{ currentOutboundBankSlipVisible ? '重新识别二批来款水单' : '上传二批来款水单' }}
               </el-button>
               <span
-                v-if="attachmentEditable && currentOutboundBatch && canUploadStep('OUTBOUND_BATCH_BANK_SLIP')"
+                v-if="attachmentEditable && currentOutboundBatch && currentOutboundBatchEditable"
                 class="sub-title-tip">
                 {{ bankVoucherSupportTip }}
               </span>
@@ -2097,7 +2097,7 @@ export default {
       if (fileType === 'FUNDER_PAYMENT_PROOF') return this.isStepConfirmed('BUYER_BANK_SLIP')
       if (fileType === 'OUTBOUND_RECEIPT') return !!this.currentOutboundBatch && this.currentOutboundBatchEditable
       if (fileType === 'OUTBOUND_BATCH_BANK_SLIP') {
-        return !!this.currentOutboundBatch && this.currentOutboundBatchEditable && !this.currentOutboundBatch.bankSlipFileId && !this.currentOutboundBatch.bankSlipFile
+        return !!this.currentOutboundBatch && this.currentOutboundBatchEditable
       }
       if (fileType === 'OUTBOUND_ATTACHMENT') return true
       return false
