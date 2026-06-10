@@ -136,6 +136,11 @@
         </div>
         <el-table :data="dataForm.itemList" border size="mini" :height="skuTableHeight" :fit="false" class="item-table">
           <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
+          <el-table-column v-if="!readonly" label="操作" width="80" align="center">
+            <template slot-scope="scope">
+              <el-button type="text" size="small" @click="removeItemRow(scope.$index)">删除</el-button>
+            </template>
+          </el-table-column>
           <el-table-column label="报损" width="90" align="center">
             <template slot-scope="scope">
               <el-button
@@ -283,11 +288,6 @@
                 size="mini"
                 style="width:100%;">
               </el-input-number>
-            </template>
-          </el-table-column>
-          <el-table-column v-if="!readonly" label="操作" width="80" align="center" fixed="right">
-            <template slot-scope="scope">
-              <el-button type="text" size="small" @click="removeItemRow(scope.$index)">删除</el-button>
             </template>
           </el-table-column>
         </el-table>
