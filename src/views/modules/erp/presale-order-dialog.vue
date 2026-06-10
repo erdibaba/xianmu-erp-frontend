@@ -6,7 +6,10 @@
     width="1300px"
     top="4vh"
     custom-class="presale-order-dialog-modal">
-    <div class="presale-order-dialog" v-loading="detailLoading">
+    <div
+      class="presale-order-dialog"
+      v-loading="detailLoading"
+      element-loading-text="数据加载中...">
       <el-tabs v-model="activeTab" class="presale-order-tabs">
         <el-tab-pane label="预售销售单" name="estimate">
           <div class="tab-pane-content">
@@ -920,14 +923,17 @@ export default {
       this.visible = true
       this.readonly = false
       this.activeTab = 'estimate'
+      this.detailLoading = true
       this.loadBaseOptions(() => {
         this.dataForm = this.buildEstimateForm(result)
+        this.detailLoading = false
       })
     },
     initFromConfirmResult (orderId, result) {
       this.visible = true
       this.readonly = false
       this.activeTab = 'confirm'
+      this.detailLoading = true
       this.loadBaseOptions(() => {
         this.fetchOrderDetail(orderId, (form) => {
           form.confirmInfo = this.buildConfirmInfo(result, form.confirmInfo)
@@ -939,6 +945,7 @@ export default {
       this.visible = true
       this.readonly = false
       this.activeTab = 'packing'
+      this.detailLoading = true
       this.loadBaseOptions(() => {
         this.fetchOrderDetail(orderId, (form) => {
           form.packingInfo = this.buildPackingInfo(result, form.packingInfo, form.confirmInfo)
