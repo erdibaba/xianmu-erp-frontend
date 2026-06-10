@@ -147,7 +147,7 @@ export default {
       repaymentVisible: false,
       activeLoan: {},
       repaymentForm: emptyRepayment(null),
-      bankVoucherSupportTip: '支持浦发银行、建设银行、工商银行、兴业银行电子回单样本，支持 PDF / JPG / PNG，识别后请核对金额和日期。',
+      bankVoucherSupportTip: '支持浦发银行、建设银行、工商银行、兴业银行、农发行电子回单样本，支持 PDF / JPG / PNG，识别后请核对金额和日期。',
       recognizeLoading: false,
       submitLoading: false,
       repaymentRules: {

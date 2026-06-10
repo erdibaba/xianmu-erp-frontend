@@ -236,7 +236,7 @@
                 </el-button>
               </el-upload>
               <div class="row-file-name">{{ scope.row.xianmuContributionFileName || '未上传' }}</div>
-              <div class="row-support-tip">支持浦发/建行/工行/兴业样本</div>
+              <div class="row-support-tip">支持浦发/建行/工行/兴业/农发行样本</div>
             </template>
           </el-table-column>
           <el-table-column v-if="isFunderPayment" label="出资识别金额" width="130" align="right">
@@ -283,7 +283,7 @@
                 </el-button>
               </el-upload>
               <div class="row-file-name">{{ scope.row.xianmuDepositFileName || '未上传' }}</div>
-              <div class="row-support-tip">支持浦发/建行/工行/兴业样本</div>
+              <div class="row-support-tip">支持浦发/建行/工行/兴业/农发行样本</div>
             </template>
           </el-table-column>
           <el-table-column v-if="!isFunderPayment" label="定金金额" width="150">
@@ -324,7 +324,7 @@
                 </el-button>
               </el-upload>
               <div class="row-file-name">{{ scope.row.xianmuBalanceFileName || '未上传' }}</div>
-              <div class="row-support-tip">支持浦发/建行/工行/兴业样本</div>
+              <div class="row-support-tip">支持浦发/建行/工行/兴业/农发行样本</div>
             </template>
           </el-table-column>
           <el-table-column v-if="!isFunderPayment" label="尾款金额" width="150">
@@ -514,7 +514,7 @@ export default {
       detailVisible: false,
       detailData: {},
       paymentForm: emptyPayment(),
-      bankVoucherSupportTip: '支持浦发银行、建设银行、工商银行、兴业银行电子回单样本，支持 PDF / JPG / PNG，识别后请核对金额和日期。',
+      bankVoucherSupportTip: '支持浦发银行、建设银行、工商银行、兴业银行、农发行电子回单样本，支持 PDF / JPG / PNG，识别后请核对金额和日期。',
       funderOptions: [],
       internalPayerOptions: [],
       presaleOptions: [],

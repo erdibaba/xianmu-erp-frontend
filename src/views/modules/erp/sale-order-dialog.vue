@@ -583,6 +583,89 @@
               </el-tag>
               <span v-if="dataForm.outboundSummaryList && dataForm.outboundSummaryList.length" class="sub-title-tip">{{ outboundReceiptMatchMessage }}</span>
             </div>
+            <div v-if="currentOutboundBankSlipVisible" class="bank-slip-panel">
+              <div class="outbound-section-title">
+                <strong>二批来款水单识别结果</strong>
+                <span class="sub-title-tip">识别结果只读，确认结果可修改；金额差异只提示并保存，不拦截批次完成。</span>
+              </div>
+              <el-row :gutter="16">
+                <el-col :span="12">
+                  <div class="bank-slip-card">
+                    <div class="bank-slip-card-title">识别结果</div>
+                    <el-form-item label="付款人">
+                      <el-input :value="currentOutboundBatch.bankPayerNameRecognized || ''" disabled></el-input>
+                    </el-form-item>
+                    <el-form-item label="收款人">
+                      <el-input :value="currentOutboundBatch.bankPayeeNameRecognized || ''" disabled></el-input>
+                    </el-form-item>
+                    <el-row :gutter="10">
+                      <el-col :span="12">
+                        <el-form-item label="金额">
+                          <el-input :value="formatNumber(currentOutboundBatch.bankAmountRecognized, 2)" disabled></el-input>
+                        </el-form-item>
+                      </el-col>
+                      <el-col :span="12">
+                        <el-form-item label="付款日期">
+                          <el-input :value="formatDateOnly(currentOutboundBatch.bankPaymentDateRecognized)" disabled></el-input>
+                        </el-form-item>
+                      </el-col>
+                    </el-row>
+                    <el-form-item label="流水号">
+                      <el-input :value="currentOutboundBatch.bankSerialNoRecognized || ''" disabled></el-input>
+                    </el-form-item>
+                  </div>
+                </el-col>
+                <el-col :span="12">
+                  <div class="bank-slip-card">
+                    <div class="bank-slip-card-title">确认结果</div>
+                    <el-form-item label="付款人">
+                      <el-input v-model="currentOutboundBatch.bankPayerNameModified" :disabled="!currentOutboundBatchEditable"></el-input>
+                    </el-form-item>
+                    <el-form-item label="收款人">
+                      <el-input v-model="currentOutboundBatch.bankPayeeNameModified" :disabled="!currentOutboundBatchEditable"></el-input>
+                    </el-form-item>
+                    <el-row :gutter="10">
+                      <el-col :span="12">
+                        <el-form-item label="金额">
+                          <el-input v-model="currentOutboundBatch.bankAmountModified" :disabled="!currentOutboundBatchEditable" placeholder="可粘贴155,794.12"></el-input>
+                        </el-form-item>
+                      </el-col>
+                      <el-col :span="12">
+                        <el-form-item label="付款日期">
+                          <el-date-picker
+                            v-model="currentOutboundBatch.bankPaymentDateModified"
+                            type="date"
+                            value-format="yyyy-MM-dd HH:mm:ss"
+                            :disabled="!currentOutboundBatchEditable"
+                            placeholder="选择付款日期"
+                            style="width: 100%;">
+                          </el-date-picker>
+                        </el-form-item>
+                      </el-col>
+                    </el-row>
+                    <el-form-item label="流水号">
+                      <el-input v-model="currentOutboundBatch.bankSerialNoModified" :disabled="!currentOutboundBatchEditable"></el-input>
+                    </el-form-item>
+                    <div class="bank-slip-diff">
+                      <span>本批次应收金额：¥{{ formatNumber(currentOutboundBatch.bankExpectedAmount, 2) }}</span>
+                      <span>确认金额差异：¥{{ formatNumber(currentOutboundBatch.bankAmountDiff, 2) }}</span>
+                    </div>
+                    <div v-if="currentOutboundBankSlipDiffVisible" class="bank-slip-diff-warning">
+                      确认金额与本批次应收金额存在差异，请核对；该差异会保存，但不会阻止确认批次完成。
+                    </div>
+                    <el-button
+                      v-if="attachmentEditable && currentOutboundBatchEditable"
+                      size="mini"
+                      type="primary"
+                      plain
+                      :loading="bankSlipSaving"
+                      @click="saveOutboundBatchBankSlip">
+                      保存水单确认结果
+                    </el-button>
+                  </div>
+                </el-col>
+              </el-row>
+            </div>
             <el-row v-if="dataForm.outboundReceipt" :gutter="20">
               <el-col :span="6">
                 <el-form-item label="销售单箱数">
@@ -952,10 +1035,11 @@ export default {
       confirmLoading: false,
       outboundSaveLoading: false,
       outboundBatchLoading: false,
+      bankSlipSaving: false,
       globalLoadingCount: 0,
       currentUploadType: '',
       currentConfirmType: '',
-      bankVoucherSupportTip: '支持浦发银行、建设银行、工商银行、兴业银行电子回单样本，支持 PDF / JPG / PNG。',
+      bankVoucherSupportTip: '支持浦发银行、建设银行、工商银行、兴业银行、农发行电子回单样本，支持 PDF / JPG / PNG。',
       activeOutboundBatchId: '',
       outboundTableVersion: 0,
       secondaryPartnerList: [],
@@ -1049,6 +1133,14 @@ export default {
       const batch = this.currentOutboundBatch
       if (!batch || !batch.bankSlipFile) return []
       return [batch.bankSlipFile]
+    },
+    currentOutboundBankSlipVisible () {
+      const batch = this.currentOutboundBatch
+      return !!(batch && (batch.bankSlipFileId || batch.bankSlipFile))
+    },
+    currentOutboundBankSlipDiffVisible () {
+      const batch = this.currentOutboundBatch
+      return !!(batch && Math.abs(this.parseAmountValue(batch.bankAmountDiff)) >= 0.01)
     },
     currentOutboundScan () {
       const batch = this.currentOutboundBatch
@@ -1398,6 +1490,19 @@ export default {
         receiptCount: 0,
         shippedTotalBoxes: 0,
         shippedTotalWeight: 0,
+        bankVoucherTemplate: '',
+        bankPayerNameRecognized: '',
+        bankPayerNameModified: '',
+        bankPayeeNameRecognized: '',
+        bankPayeeNameModified: '',
+        bankAmountRecognized: '',
+        bankAmountModified: '',
+        bankPaymentDateRecognized: '',
+        bankPaymentDateModified: '',
+        bankSerialNoRecognized: '',
+        bankSerialNoModified: '',
+        bankExpectedAmount: 0,
+        bankAmountDiff: 0,
         receipt: null,
         bankSlipFile: null,
         receiptFileList: []
@@ -2183,6 +2288,46 @@ export default {
         this.currentConfirmType = ''
       })
     },
+    parseAmountValue (value) {
+      const text = String(value == null ? '' : value).replace(/,/g, '').trim()
+      const numberValue = Number(text)
+      return Number.isFinite(numberValue) ? numberValue : 0
+    },
+    saveOutboundBatchBankSlip () {
+      const batch = this.currentOutboundBatch
+      if (!batch || !batch.id) return
+      this.bankSlipSaving = true
+      const payload = {
+        id: batch.id,
+        saleOrderId: this.dataForm.id,
+        bankPayerNameModified: batch.bankPayerNameModified,
+        bankPayeeNameModified: batch.bankPayeeNameModified,
+        bankAmountModified: this.parseAmountValue(batch.bankAmountModified),
+        bankPaymentDateModified: batch.bankPaymentDateModified,
+        bankSerialNoModified: batch.bankSerialNoModified
+      }
+      this.withGlobalLoading(this.$http({
+        url: this.$http.adornUrl('/erp/saleorder/outbound/batch/bank-slip/save'),
+        method: 'post',
+        data: this.$http.adornData(payload)
+      })).then(({ data }) => {
+        if (data && data.code === 0) {
+          const savedBatch = this.normalizeOutboundBatch(data.batch)
+          const list = this.dataForm.outboundBatchList || []
+          const index = list.findIndex(item => String(item.id) === String(savedBatch.id))
+          if (index >= 0) {
+            this.$set(this.dataForm.outboundBatchList, index, savedBatch)
+          }
+          this.$message.success('水单确认结果已保存')
+          this.refreshDetail()
+          this.$emit('refreshDataList')
+        } else {
+          this.$message.error((data && data.msg) || '水单确认结果保存失败')
+        }
+      }).catch(() => {}).then(() => {
+        this.bankSlipSaving = false
+      })
+    },
     buildOutboundReceiptPayload () {
       if (!this.dataForm.id || !this.dataForm.outboundReceipt) return null
       return Object.assign({}, this.dataForm.outboundReceipt, {
@@ -2484,6 +2629,38 @@ export default {
   padding-left: 8px;
   border-left: 3px solid #1f6fbf;
   color: #303133;
+}
+
+.bank-slip-panel {
+  margin: 8px 0 12px;
+}
+
+.bank-slip-card {
+  min-height: 260px;
+  padding: 12px 14px;
+  border: 1px solid #dbe7f3;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.bank-slip-card-title {
+  margin-bottom: 10px;
+  font-weight: 600;
+  color: #1f6fbf;
+}
+
+.bank-slip-diff {
+  display: flex;
+  gap: 18px;
+  margin: 2px 0 6px;
+  color: #606266;
+}
+
+.bank-slip-diff-warning {
+  margin-bottom: 8px;
+  color: #e23b3b;
+  font-size: 12px;
+  line-height: 18px;
 }
 
 .summary-tip {
