@@ -20,7 +20,7 @@
                 @click="downloadFile(`/erp/presale/download/estimate/${dataForm.id}`)">下载预售销售单原件</el-button>
             </div>
             <div class="tab-scroll-area">
-              <el-form :model="dataForm" label-width="120px">
+              <el-form :model="dataForm" :rules="estimateRules" label-width="120px">
                 <el-row :gutter="20">
                   <el-col :span="8">
                     <el-form-item label="预销售单号">
@@ -28,12 +28,12 @@
                     </el-form-item>
                   </el-col>
                   <el-col :span="8">
-                    <el-form-item label="合同号">
+                    <el-form-item label="合同号" prop="sellerContractNo">
                       <el-input v-model="dataForm.sellerContractNo" :disabled="readonly"></el-input>
                     </el-form-item>
                   </el-col>
                   <el-col :span="8">
-                    <el-form-item label="采购方">
+                    <el-form-item label="采购方" prop="customerPartnerId">
                       <el-select
                         v-model="dataForm.customerPartnerId"
                         filterable
@@ -51,7 +51,7 @@
                     </el-form-item>
                   </el-col>
                   <el-col :span="8">
-                    <el-form-item label="品牌方">
+                    <el-form-item label="品牌方" prop="brandId">
                       <el-select v-model="dataForm.brandId" filterable clearable :disabled="readonly" style="width: 100%;">
                         <el-option
                           v-for="item in brandPartnerList"
@@ -70,7 +70,7 @@
                     </el-form-item>
                   </el-col>
                   <el-col :span="8">
-                    <el-form-item label="下单日期">
+                    <el-form-item label="下单日期" prop="orderDate">
                       <el-date-picker v-model="dataForm.orderDate" type="datetime" :disabled="readonly" style="width: 100%;"></el-date-picker>
                     </el-form-item>
                   </el-col>
@@ -96,6 +96,9 @@
               <template slot-scope="scope">{{ scope.$index + 1 }}</template>
             </el-table-column>
             <el-table-column label="产品代码" min-width="170">
+              <template slot="header">
+                <span class="required-column-label">产品代码</span>
+              </template>
               <template slot-scope="scope">
                 <el-input
                   v-model="scope.row.productCode"
@@ -803,6 +806,20 @@ export default {
       productList: [],
       currencyOptions: ['CNY', 'USD'],
       measureUnitOptions: ['KG', 'TON', '箱', '件'],
+      estimateRules: {
+        brandId: [
+          { required: true, message: '请选择预售销售单品牌方', trigger: 'change' }
+        ],
+        sellerContractNo: [
+          { required: true, message: '预售销售单合同号不能为空', trigger: 'blur' }
+        ],
+        customerPartnerId: [
+          { required: true, message: '请选择预售销售单采购方', trigger: 'change' }
+        ],
+        orderDate: [
+          { required: true, message: '预售销售单下单日期不能为空', trigger: 'change' }
+        ]
+      },
       confirmRules: {
         brandId: [
           { required: true, message: '请选择卖方/品牌方', trigger: 'change' }
@@ -1739,6 +1756,12 @@ export default {
 
 .packing-summary-form /deep/ .el-input {
   width: calc(100% - 12px);
+}
+
+.required-column-label::before {
+  content: '*';
+  color: #f56c6c;
+  margin-right: 4px;
 }
 
 .product-option-code {
