@@ -85,6 +85,9 @@
               </el-form>
             </div>
 
+            <div v-if="!readonly" class="estimate-item-toolbar">
+              <el-button type="primary" size="mini" @click="addEstimateItemRow()">新增By产品</el-button>
+            </div>
             <el-table :data="dataForm.itemList" border size="mini" height="420">
             <el-table-column label="#" width="50" align="center">
               <template slot-scope="scope">{{ scope.$index + 1 }}</template>
@@ -134,6 +137,11 @@
             <el-table-column label="备注" min-width="180">
               <template slot-scope="scope">
                 <el-input v-model="scope.row.remark" :disabled="readonly"></el-input>
+              </template>
+            </el-table-column>
+            <el-table-column v-if="!readonly" label="操作" width="90" align="center">
+              <template slot-scope="scope">
+                <el-button type="text" size="small" @click="removeEstimateItemRow(scope.$index)">删除</el-button>
               </template>
             </el-table-column>
             </el-table>
@@ -1437,6 +1445,49 @@ export default {
     handleConfirmProductChange (row) {
       this.fillConfirmProductByCode(row)
     },
+    addEstimateItemRow () {
+      const itemList = this.dataForm.itemList || (this.dataForm.itemList = [])
+      itemList.push(defaultEstimateItem())
+    },
+    removeEstimateItemRow (index) {
+      const itemList = this.dataForm.itemList || []
+      itemList.splice(index, 1)
+    },
+    validateEstimateRequired (payload) {
+      if (!payload.brandId) {
+        this.activeTab = 'estimate'
+        this.$message.error('请选择预售销售单品牌方')
+        return false
+      }
+      if (!payload.sellerContractNo) {
+        this.activeTab = 'estimate'
+        this.$message.error('预售销售单合同号不能为空')
+        return false
+      }
+      if (!payload.customerPartnerId) {
+        this.activeTab = 'estimate'
+        this.$message.error('请选择预售销售单采购方')
+        return false
+      }
+      if (!payload.orderDate) {
+        this.activeTab = 'estimate'
+        this.$message.error('预售销售单下单日期不能为空')
+        return false
+      }
+      const itemList = payload.itemList || []
+      if (!itemList.length) {
+        this.activeTab = 'estimate'
+        this.$message.error('预售销售单明细至少需要一行')
+        return false
+      }
+      const invalidIndex = itemList.findIndex(item => !String(item.productCode || item.sourceProductCode || '').trim())
+      if (invalidIndex !== -1) {
+        this.activeTab = 'estimate'
+        this.$message.error(`预售销售单第 ${invalidIndex + 1} 行产品代码不能为空`)
+        return false
+      }
+      return true
+    },
     calcLineTotalExclTax (row) {
       const total = this.toNumber(row.lineTotalInclTax)
       const taxRate = this.toNumber(row.taxRate || 9)
@@ -1522,6 +1573,9 @@ export default {
       }
       const url = this.dataForm.id ? '/erp/presale/update' : '/erp/presale/save'
       const payload = JSON.parse(JSON.stringify(this.dataForm))
+      if (!this.validateEstimateRequired(payload)) {
+        return
+      }
       if (!payload.confirmInfo || !this.hasConfirmData) {
         payload.confirmInfo = null
       }
@@ -1666,6 +1720,7 @@ export default {
   font-size: 12px;
 }
 
+.estimate-item-toolbar,
 .packing-item-toolbar {
   margin-bottom: 10px;
   text-align: right;
