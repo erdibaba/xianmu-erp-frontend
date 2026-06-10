@@ -367,20 +367,20 @@
             <el-empty v-if="!hasPackingData" description="暂未上传装箱单"></el-empty>
             <div v-else class="tab-pane-content-body">
               <div class="tab-scroll-area">
-                <el-form :model="dataForm.packingInfo" label-width="150px" class="packing-summary-form">
+                <el-form :model="dataForm.packingInfo" :rules="packingRules" label-width="150px" class="packing-summary-form">
                   <el-row :gutter="20">
                     <el-col :span="8">
-                      <el-form-item label="合同号">
+                      <el-form-item label="合同号" prop="contractNo">
                         <el-input v-model="dataForm.packingInfo.contractNo" :disabled="readonly"></el-input>
                       </el-form-item>
                     </el-col>
                     <el-col :span="8">
-                      <el-form-item label="集装箱号">
+                      <el-form-item label="集装箱号" prop="containerNo">
                         <el-input v-model="dataForm.packingInfo.containerNo" :disabled="readonly"></el-input>
                       </el-form-item>
                     </el-col>
                     <el-col :span="8">
-                      <el-form-item label="保质期天数">
+                      <el-form-item label="保质期天数" prop="shelfLifeDays">
                         <el-input v-model.number="dataForm.packingInfo.shelfLifeDays" :disabled="readonly"></el-input>
                       </el-form-item>
                     </el-col>
@@ -849,6 +849,17 @@ export default {
         ],
         totalAmount: [
           { required: true, message: '请输入总金额', trigger: 'blur' }
+        ]
+      },
+      packingRules: {
+        contractNo: [
+          { required: true, message: '装箱单合同号不能为空', trigger: 'blur' }
+        ],
+        containerNo: [
+          { required: true, message: '装箱单集装箱号不能为空', trigger: 'blur' }
+        ],
+        shelfLifeDays: [
+          { required: true, message: '装箱单保质期天数不能为空', trigger: 'blur' }
         ]
       }
     }
