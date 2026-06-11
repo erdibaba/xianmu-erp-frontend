@@ -247,10 +247,20 @@
       },
       applyRecognizedResult (result) {
         this.recognizedFileList = this.recognizedFileList.concat(result.fileList || [])
+        let unmatchedCount = 0
+        let addedCount = 0
         ;(result.itemList || []).forEach(item => {
+          if (!item || !item.matched) {
+            unmatchedCount++
+            return
+          }
           const row = this.buildRecognizedRow(item)
           this.upsertAdjustRow(row)
+          addedCount++
         })
+        if (unmatchedCount > 0) {
+          this.$message.warning(`已加入${addedCount}条匹配明细，${unmatchedCount}条未匹配明细未加入调整列表`)
+        }
       },
       buildRecognizedRow (item) {
         const matched = !!item.matched
