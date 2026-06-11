@@ -369,7 +369,7 @@
             this.extendDays = ''
             this.adjustList = []
             this.selectedRows = []
-            this.getDataList()
+            this.dataList = []
           } else {
             this.$message.error((data && data.msg) || '库存调整失败')
           }
