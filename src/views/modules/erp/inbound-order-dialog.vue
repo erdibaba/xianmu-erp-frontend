@@ -795,7 +795,8 @@ export default {
         this.$message.error('缺少归档文件ID')
         return
       }
-      window.open(this.$http.adornUrl(`/erp/inbound/download/file/${row.id}`), '_blank')
+      const token = this.$cookie.get('token') || ''
+      window.open(this.$http.adornUrl(`/erp/inbound/download/file/${row.id}?token=${encodeURIComponent(token)}`), '_blank')
     },
     dataFormSubmit () {
       if (this.readonly) {
