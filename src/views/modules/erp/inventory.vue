@@ -7,10 +7,25 @@
             <el-input v-model="spotQuery.keyword" placeholder="产品编码/中文名/英文名" clearable @keyup.enter.native="getSpotList()"></el-input>
           </el-form-item>
           <el-form-item>
-            <el-input v-model="spotQuery.warehouseName" placeholder="仓库" clearable @keyup.enter.native="getSpotList()"></el-input>
+            <el-select v-model="spotQuery.warehouseId" filterable clearable placeholder="请选择仓库" style="width: 190px;" @change="spotWarehouseChange">
+              <el-option v-for="item in warehouseList" :key="item.id" :label="item.warehouseName" :value="item.id"></el-option>
+            </el-select>
           </el-form-item>
           <el-form-item>
-            <el-input v-model="spotQuery.containerNo" placeholder="柜号" clearable @keyup.enter.native="getSpotList()"></el-input>
+            <el-select
+              v-model="spotQuery.containerNos"
+              multiple
+              filterable
+              remote
+              clearable
+              reserve-keyword
+              :disabled="!spotQuery.warehouseId"
+              :loading="spotContainerLoading"
+              :remote-method="remoteSearchSpotContainers"
+              placeholder="请选择柜号"
+              style="width: 260px;">
+              <el-option v-for="item in spotContainerOptions" :key="item" :label="item" :value="item"></el-option>
+            </el-select>
           </el-form-item>
           <el-form-item>
             <el-input v-model="spotQuery.factoryNo" placeholder="厂号" clearable @keyup.enter.native="getSpotList()"></el-input>
@@ -63,7 +78,25 @@
             <el-input v-model="futuresQuery.contractNo" placeholder="合同号" clearable @keyup.enter.native="getFuturesList()"></el-input>
           </el-form-item>
           <el-form-item>
-            <el-input v-model="futuresQuery.containerNo" placeholder="柜号" clearable @keyup.enter.native="getFuturesList()"></el-input>
+            <el-select v-model="futuresQuery.warehouseId" filterable clearable placeholder="请选择仓库" style="width: 190px;" @change="futuresWarehouseChange">
+              <el-option v-for="item in warehouseList" :key="item.id" :label="item.warehouseName" :value="item.id"></el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-select
+              v-model="futuresQuery.containerNos"
+              multiple
+              filterable
+              remote
+              clearable
+              reserve-keyword
+              :disabled="!futuresQuery.warehouseId"
+              :loading="futuresContainerLoading"
+              :remote-method="remoteSearchFuturesContainers"
+              placeholder="请选择柜号"
+              style="width: 260px;">
+              <el-option v-for="item in futuresContainerOptions" :key="item" :label="item" :value="item"></el-option>
+            </el-select>
           </el-form-item>
           <el-form-item>
             <el-input v-model="futuresQuery.factoryNo" placeholder="厂号" clearable @keyup.enter.native="getFuturesList()"></el-input>
@@ -232,17 +265,21 @@
     data () {
       return {
         activeTab: 'spot',
+        warehouseList: [],
+        spotContainerOptions: [],
+        futuresContainerOptions: [],
         spotQuery: {
           keyword: '',
-          warehouseName: '',
-          containerNo: '',
+          warehouseId: '',
+          containerNos: [],
           factoryNo: '',
           onlyAvailable: '1'
         },
         futuresQuery: {
           keyword: '',
+          warehouseId: '',
           contractNo: '',
-          containerNo: '',
+          containerNos: [],
           factoryNo: '',
           onlyAvailable: '0'
         },
@@ -260,6 +297,8 @@
         batchList: [],
         spotLoading: false,
         futuresLoading: false,
+        spotContainerLoading: false,
+        futuresContainerLoading: false,
         recordLoading: false,
         batchLoading: false,
         batchDialogVisible: false,
@@ -269,11 +308,13 @@
       }
     },
     activated () {
-      this.getDataList()
+      this.loadWarehouses()
     },
     methods: {
       handleTabChange () {
-        this.getDataList()
+        if (this.activeTab === 'records') {
+          this.getRecordList()
+        }
       },
       getDataList () {
         if (this.activeTab === 'futures') {
@@ -285,11 +326,22 @@
         }
       },
       getSpotList () {
+        if (!this.spotQuery.warehouseId) {
+          this.$message.warning('请先选择仓库')
+          return
+        }
+        if (!this.spotQuery.containerNos || this.spotQuery.containerNos.length === 0) {
+          this.$message.warning('请先选择柜号')
+          return
+        }
         this.spotLoading = true
+        const params = Object.assign({}, this.spotQuery, {
+          containerNos: this.spotQuery.containerNos.join(',')
+        })
         this.$http({
           url: this.$http.adornUrl('/erp/inventory/spot'),
           method: 'get',
-          params: this.$http.adornParams(this.spotQuery)
+          params: this.$http.adornParams(params)
         }).then(({data}) => {
           if (data && data.code === 0) {
             this.spotList = data.list || []
@@ -303,11 +355,22 @@
         })
       },
       getFuturesList () {
+        if (!this.futuresQuery.warehouseId) {
+          this.$message.warning('请先选择仓库')
+          return
+        }
+        if (!this.futuresQuery.containerNos || this.futuresQuery.containerNos.length === 0) {
+          this.$message.warning('请先选择柜号')
+          return
+        }
         this.futuresLoading = true
+        const params = Object.assign({}, this.futuresQuery, {
+          containerNos: this.futuresQuery.containerNos.join(',')
+        })
         this.$http({
           url: this.$http.adornUrl('/erp/inventory/futures'),
           method: 'get',
-          params: this.$http.adornParams(this.futuresQuery)
+          params: this.$http.adornParams(params)
         }).then(({data}) => {
           if (data && data.code === 0) {
             this.futuresList = data.list || []
@@ -349,15 +412,16 @@
         const params = type === 'futures'
           ? {
             productId: row.productId,
+            warehouseId: this.futuresQuery.warehouseId,
             contractNo: this.futuresQuery.contractNo,
-            containerNo: this.futuresQuery.containerNo,
+            containerNos: (this.futuresQuery.containerNos || []).join(','),
             factoryNo: this.futuresQuery.factoryNo,
             onlyAvailable: this.futuresQuery.onlyAvailable
           }
           : {
             productId: row.productId,
-            warehouseName: this.spotQuery.warehouseName,
-            containerNo: this.spotQuery.containerNo,
+            warehouseId: this.spotQuery.warehouseId,
+            containerNos: (this.spotQuery.containerNos || []).join(','),
             factoryNo: this.spotQuery.factoryNo,
             onlyAvailable: this.spotQuery.onlyAvailable
           }
@@ -380,22 +444,25 @@
       resetSpotQuery () {
         this.spotQuery = {
           keyword: '',
-          warehouseName: '',
-          containerNo: '',
+          warehouseId: '',
+          containerNos: [],
           factoryNo: '',
           onlyAvailable: '1'
         }
-        this.getSpotList()
+        this.spotContainerOptions = []
+        this.spotList = []
       },
       resetFuturesQuery () {
         this.futuresQuery = {
           keyword: '',
+          warehouseId: '',
           contractNo: '',
-          containerNo: '',
+          containerNos: [],
           factoryNo: '',
           onlyAvailable: '0'
         }
-        this.getFuturesList()
+        this.futuresContainerOptions = []
+        this.futuresList = []
       },
       resetRecordQuery () {
         this.recordQuery = {
@@ -407,6 +474,76 @@
           factoryNo: ''
         }
         this.getRecordList()
+      },
+      loadWarehouses () {
+        this.$http({
+          url: this.$http.adornUrl('/erp/warehouse/select'),
+          method: 'get',
+          params: this.$http.adornParams()
+        }).then(({data}) => {
+          this.warehouseList = (data && data.list) || []
+        })
+      },
+      spotWarehouseChange () {
+        this.spotQuery.containerNos = []
+        this.spotContainerOptions = []
+        this.spotList = []
+        this.remoteSearchSpotContainers('')
+      },
+      futuresWarehouseChange () {
+        this.futuresQuery.containerNos = []
+        this.futuresContainerOptions = []
+        this.futuresList = []
+        this.remoteSearchFuturesContainers('')
+      },
+      remoteSearchSpotContainers (keyword) {
+        this.remoteSearchContainers('spot', keyword)
+      },
+      remoteSearchFuturesContainers (keyword) {
+        this.remoteSearchContainers('futures', keyword)
+      },
+      remoteSearchContainers (inventoryType, keyword) {
+        const isFutures = inventoryType === 'futures'
+        const query = isFutures ? this.futuresQuery : this.spotQuery
+        if (!query.warehouseId) {
+          if (isFutures) {
+            this.futuresContainerOptions = []
+          } else {
+            this.spotContainerOptions = []
+          }
+          return
+        }
+        if (isFutures) {
+          this.futuresContainerLoading = true
+        } else {
+          this.spotContainerLoading = true
+        }
+        this.$http({
+          url: this.$http.adornUrl('/erp/inventory/containers'),
+          method: 'get',
+          params: this.$http.adornParams({
+            inventoryType: inventoryType,
+            warehouseId: query.warehouseId,
+            keyword: keyword || ''
+          })
+        }).then(({data}) => {
+          const list = (data && data.list) || []
+          const selected = query.containerNos || []
+          const options = Array.from(new Set(selected.concat(list)))
+          if (isFutures) {
+            this.futuresContainerOptions = options
+            this.futuresContainerLoading = false
+          } else {
+            this.spotContainerOptions = options
+            this.spotContainerLoading = false
+          }
+        }).catch(() => {
+          if (isFutures) {
+            this.futuresContainerLoading = false
+          } else {
+            this.spotContainerLoading = false
+          }
+        })
       },
       formatDate (value) {
         if (!value) return ''
