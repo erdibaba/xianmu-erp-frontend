@@ -309,12 +309,11 @@
     },
     activated () {
       this.loadWarehouses()
+      this.getDataList()
     },
     methods: {
       handleTabChange () {
-        if (this.activeTab === 'records') {
-          this.getRecordList()
-        }
+        this.getDataList()
       },
       getDataList () {
         if (this.activeTab === 'futures') {
@@ -326,14 +325,6 @@
         }
       },
       getSpotList () {
-        if (!this.spotQuery.warehouseId) {
-          this.$message.warning('请先选择仓库')
-          return
-        }
-        if (!this.spotQuery.containerNos || this.spotQuery.containerNos.length === 0) {
-          this.$message.warning('请先选择柜号')
-          return
-        }
         this.spotLoading = true
         const params = Object.assign({}, this.spotQuery, {
           containerNos: this.spotQuery.containerNos.join(',')
@@ -355,14 +346,6 @@
         })
       },
       getFuturesList () {
-        if (!this.futuresQuery.warehouseId) {
-          this.$message.warning('请先选择仓库')
-          return
-        }
-        if (!this.futuresQuery.containerNos || this.futuresQuery.containerNos.length === 0) {
-          this.$message.warning('请先选择柜号')
-          return
-        }
         this.futuresLoading = true
         const params = Object.assign({}, this.futuresQuery, {
           containerNos: this.futuresQuery.containerNos.join(',')
@@ -451,6 +434,7 @@
         }
         this.spotContainerOptions = []
         this.spotList = []
+        this.getSpotList()
       },
       resetFuturesQuery () {
         this.futuresQuery = {
@@ -463,6 +447,7 @@
         }
         this.futuresContainerOptions = []
         this.futuresList = []
+        this.getFuturesList()
       },
       resetRecordQuery () {
         this.recordQuery = {
