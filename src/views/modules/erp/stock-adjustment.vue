@@ -410,9 +410,15 @@
               <el-date-picker v-model="scope.row.targetExpiryDate" type="date" value-format="yyyy-MM-dd" size="small" style="width: 145px;"></el-date-picker>
             </template>
           </el-table-column>
-          <el-table-column v-if="isFreshToFrozen" prop="matchMessage" label="匹配状态" width="130" align="center" header-align="center">
+          <el-table-column v-if="isFreshToFrozen" prop="matchMessage" label="匹配状态" min-width="230" align="center" header-align="center">
             <template slot-scope="scope">
-              <el-tag :type="scope.row._unmatched ? 'danger' : 'success'" size="small">{{ scope.row.matchMessage || (scope.row._unmatched ? '未匹配' : '已匹配') }}</el-tag>
+              <el-tag
+                :type="scope.row._unmatched ? 'danger' : 'success'"
+                size="small"
+                class="match-status-tag"
+                :title="scope.row.matchMessage || (scope.row._unmatched ? '未匹配' : '已匹配')">
+                {{ scope.row.matchMessage || (scope.row._unmatched ? '未匹配' : '已匹配') }}
+              </el-tag>
             </template>
           </el-table-column>
           <el-table-column prop="lotType" label="来源" width="90" align="center" header-align="center">
@@ -474,5 +480,13 @@
 
   .adjust-panel .el-form {
     margin-bottom: 12px;
+  }
+
+  .adjust-panel .match-status-tag {
+    max-width: 100%;
+    height: auto;
+    line-height: 20px;
+    white-space: normal;
+    word-break: break-all;
   }
 </style>
