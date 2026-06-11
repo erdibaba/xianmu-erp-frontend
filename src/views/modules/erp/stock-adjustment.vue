@@ -38,18 +38,20 @@
       return {
         query: {
           keyword: '',
-          warehouseName: '',
-          containerNo: '',
+          warehouseId: '',
+          containerNos: [],
           factoryNo: ''
         },
         dataList: [],
         selectedRows: [],
         adjustList: [],
+        containerOptions: [],
         recognizedFileList: [],
         defaultTargetWarehouseId: '',
         defaultTargetWarehouseName: '',
         extendDays: '',
         loading: false,
+        containerLoading: false,
         uploadLoading: false
       }
     },
@@ -76,16 +78,22 @@
         return this.isWarehouseTransfer ? '目标仓库' : '转入仓库'
       }
     },
-    activated () {
-      this.getDataList()
-    },
     methods: {
       getDataList () {
+        if (!this.query.warehouseId) {
+          this.$message.warning('请先选择仓库')
+          return
+        }
+        if (!this.query.containerNos || !this.query.containerNos.length) {
+          this.$message.warning('请至少选择一个柜号')
+          return
+        }
         this.loading = true
         this.$http({
           url: this.$http.adornUrl('/erp/inventory-adjustment/lots'),
           method: 'get',
           params: this.$http.adornParams(Object.assign({}, this.query, {
+            containerNos: this.query.containerNos.join(','),
             adjustmentType: this.adjustmentType
           }))
         }).then(({data}) => {
@@ -111,14 +119,46 @@
       resetQuery () {
         this.query = {
           keyword: '',
-          warehouseName: '',
-          containerNo: '',
+          warehouseId: '',
+          containerNos: [],
           factoryNo: ''
         }
-        this.getDataList()
+        this.dataList = []
+        this.selectedRows = []
+        this.containerOptions = []
       },
       selectionChangeHandle (rows) {
         this.selectedRows = rows || []
+      },
+      sourceWarehouseChange () {
+        this.query.containerNos = []
+        this.containerOptions = []
+        this.dataList = []
+        this.selectedRows = []
+        this.remoteSearchContainers('')
+      },
+      remoteSearchContainers (keyword) {
+        if (!this.query.warehouseId) {
+          this.containerOptions = []
+          return
+        }
+        this.containerLoading = true
+        this.$http({
+          url: this.$http.adornUrl('/erp/inventory-adjustment/containers'),
+          method: 'get',
+          params: this.$http.adornParams({
+            adjustmentType: this.adjustmentType,
+            warehouseId: this.query.warehouseId,
+            keyword: keyword || ''
+          })
+        }).then(({data}) => {
+          const list = (data && data.list) || []
+          const selected = this.query.containerNos || []
+          this.containerOptions = Array.from(new Set(selected.concat(list)))
+          this.containerLoading = false
+        }).catch(() => {
+          this.containerLoading = false
+        })
       },
       targetWarehouseChange (row) {
         const warehouse = this.warehouseList.find(item => String(item.id) === String(row.targetWarehouseId))
@@ -400,11 +440,26 @@
           <el-form-item>
             <el-input v-model="query.keyword" placeholder="产品编码/中文名/英文名" clearable @keyup.enter.native="getDataList()"></el-input>
           </el-form-item>
-          <el-form-item>
-            <el-input v-model="query.warehouseName" placeholder="仓库" clearable @keyup.enter.native="getDataList()"></el-input>
+          <el-form-item label="仓库">
+            <el-select v-model="query.warehouseId" filterable clearable placeholder="请选择仓库" style="width: 190px;" @change="sourceWarehouseChange">
+              <el-option v-for="item in warehouseList" :key="item.id" :label="item.warehouseName" :value="item.id"></el-option>
+            </el-select>
           </el-form-item>
-          <el-form-item>
-            <el-input v-model="query.containerNo" placeholder="柜号" clearable @keyup.enter.native="getDataList()"></el-input>
+          <el-form-item label="柜号">
+            <el-select
+              v-model="query.containerNos"
+              multiple
+              filterable
+              remote
+              clearable
+              reserve-keyword
+              :disabled="!query.warehouseId"
+              :loading="containerLoading"
+              :remote-method="remoteSearchContainers"
+              placeholder="请选择柜号"
+              style="width: 260px;">
+              <el-option v-for="item in containerOptions" :key="item" :label="item" :value="item"></el-option>
+            </el-select>
           </el-form-item>
           <el-form-item>
             <el-input v-model="query.factoryNo" placeholder="厂号" clearable @keyup.enter.native="getDataList()"></el-input>
@@ -521,16 +576,9 @@
     },
     activated () {
       this.loadWarehouses()
-      this.$nextTick(() => {
-        this.currentPanel() && this.currentPanel().getDataList()
-      })
     },
     methods: {
-      handleTabChange () {
-        this.$nextTick(() => {
-          this.currentPanel() && this.currentPanel().getDataList()
-        })
-      },
+      handleTabChange () {},
       currentPanel () {
         return this.activeTab === 'FRESH_TO_FROZEN' ? this.$refs.freshPanel : this.$refs.warehousePanel
       },
