@@ -44,6 +44,7 @@
         },
         dataList: [],
         selectedRows: [],
+        adjustList: [],
         recognizedFileList: [],
         defaultTargetWarehouseId: '',
         defaultTargetWarehouseName: '',
@@ -81,8 +82,10 @@
               targetWarehouseName: '',
               targetExpiryDate: this.isWarehouseTransfer ? item.expiryDate : ''
             }))
+            this.selectedRows = []
           } else {
             this.dataList = []
+            this.selectedRows = []
             this.$message.error((data && data.msg) || '获取库存明细失败')
           }
           this.loading = false
@@ -115,7 +118,11 @@
           this.$message.warning('请先选择转入仓库')
           return
         }
-        const rows = this.selectedRows.length ? this.selectedRows : this.dataList
+        const rows = this.adjustList
+        if (!rows.length) {
+          this.$message.warning('请先加入待调整列表')
+          return
+        }
         rows.forEach(row => {
           this.$set(row, 'targetWarehouseId', this.defaultTargetWarehouseId)
           this.$set(row, 'targetWarehouseName', this.defaultTargetWarehouseName)
@@ -127,7 +134,11 @@
           this.$message.warning('请输入大于0的延长天数')
           return
         }
-        const rows = this.selectedRows.length ? this.selectedRows : this.dataList
+        const rows = this.adjustList
+        if (!rows.length) {
+          this.$message.warning('请先加入待调整列表')
+          return
+        }
         let skipped = 0
         rows.forEach(row => {
           const baseDate = this.formatDate(row.expiryDate)
@@ -180,17 +191,10 @@
         })
       },
       applyRecognizedResult (result) {
-        this.recognizedFileList = result.fileList || []
-        const rowsToSelect = []
+        this.recognizedFileList = this.recognizedFileList.concat(result.fileList || [])
         ;(result.itemList || []).forEach(item => {
           const row = this.buildRecognizedRow(item)
-          const savedRow = this.upsertRecognizedRow(row)
-          if (!savedRow._unmatched) rowsToSelect.push(savedRow)
-        })
-        this.$nextTick(() => {
-          if (!this.$refs.adjustTable) return
-          this.$refs.adjustTable.clearSelection()
-          rowsToSelect.forEach(row => this.$refs.adjustTable.toggleRowSelection(row, true))
+          this.upsertAdjustRow(row)
         })
       },
       buildRecognizedRow (item) {
@@ -213,15 +217,37 @@
           lotType: matched ? item.lotType : 'UNMATCHED'
         })
       },
-      upsertRecognizedRow (row) {
-        const index = this.dataList.findIndex(item => this.sameLot(item, row))
+      addSelectedToAdjustList () {
+        if (!this.selectedRows.length) {
+          this.$message.warning('请先勾选候选库存')
+          return
+        }
+        this.selectedRows.forEach(row => {
+          this.upsertAdjustRow(this.buildAdjustRow(row))
+        })
+        this.$message.success('已加入待调整列表')
+      },
+      buildAdjustRow (row) {
+        return Object.assign({}, row, {
+          transferBoxes: row.transferBoxes || '',
+          transferWeightKg: row.transferWeightKg || '',
+          targetWarehouseId: row.targetWarehouseId || this.defaultTargetWarehouseId || '',
+          targetWarehouseName: row.targetWarehouseName || this.defaultTargetWarehouseName || '',
+          targetExpiryDate: this.isWarehouseTransfer ? (row.targetExpiryDate || row.expiryDate) : (row.targetExpiryDate || '')
+        })
+      },
+      upsertAdjustRow (row) {
+        const index = this.adjustList.findIndex(item => this.sameLot(item, row))
         if (index >= 0) {
-          const merged = Object.assign({}, this.dataList[index], row)
-          this.$set(this.dataList, index, merged)
+          const merged = Object.assign({}, this.adjustList[index], row)
+          this.$set(this.adjustList, index, merged)
           return merged
         }
-        this.dataList.unshift(row)
+        this.adjustList.push(row)
         return row
+      },
+      removeAdjustRow (index) {
+        this.adjustList.splice(index, 1)
       },
       sameLot (left, right) {
         return String(left.sourceAdjustmentItemId || '') === String(right.sourceAdjustmentItemId || '') &&
@@ -230,11 +256,13 @@
           String(left.batchId || '') === String(right.batchId || '') &&
           String(left.productCode || '') === String(right.productCode || '') &&
           String(left.containerNo || '') === String(right.containerNo || '') &&
-          String(left.factoryNo || '') === String(right.factoryNo || '')
+          String(left.factoryNo || '') === String(right.factoryNo || '') &&
+          this.formatDate(left.productionDate) === this.formatDate(right.productionDate) &&
+          this.formatDate(left.expiryDate) === this.formatDate(right.expiryDate)
       },
       submitHandle () {
-        if (!this.selectedRows.length) {
-          this.$message.warning('请先勾选需要调整的库存明细')
+        if (!this.adjustList.length) {
+          this.$message.warning('请先加入待调整列表')
           return
         }
         const message = this.validateRows()
@@ -254,7 +282,7 @@
           data: this.$http.adornData({
             adjustmentType: this.adjustmentType,
             fileList: this.isFreshToFrozen ? this.recognizedFileList : [],
-            itemList: this.selectedRows.map(row => ({
+            itemList: this.adjustList.map(row => ({
               sourceAdjustmentItemId: row.sourceAdjustmentItemId,
               sourceInboundOrderId: row.inboundOrderId,
               sourceInboundItemId: row.inboundItemId,
@@ -274,6 +302,8 @@
             this.$message.success('库存调整已确认')
             this.recognizedFileList = []
             this.extendDays = ''
+            this.adjustList = []
+            this.selectedRows = []
             this.getDataList()
           } else {
             this.$message.error((data && data.msg) || '库存调整失败')
@@ -283,8 +313,8 @@
         })
       },
       validateRows () {
-        for (let i = 0; i < this.selectedRows.length; i++) {
-          const row = this.selectedRows[i]
+        for (let i = 0; i < this.adjustList.length; i++) {
+          const row = this.adjustList[i]
           const rowNo = i + 1
           const boxes = Number(row.transferBoxes)
           const weight = Number(this.normalizeAmount(row.transferWeightKg))
@@ -365,11 +395,39 @@
           <el-form-item>
             <el-button type="primary" @click="getDataList()">查询</el-button>
             <el-button @click="resetQuery()">重置</el-button>
+            <el-button type="warning" plain @click="addSelectedToAdjustList()">加入调整列表</el-button>
             <el-button v-if="isAuth('erp:inventory-adjustment:save')" type="success" @click="submitHandle()">确认调整</el-button>
           </el-form-item>
         </el-form>
-        <el-table ref="adjustTable" :data="dataList" border stripe height="620" v-loading="loading" @selection-change="selectionChangeHandle">
+        <div class="adjust-section-title">候选库存列表</div>
+        <el-table ref="candidateTable" :data="dataList" border stripe height="300" v-loading="loading" @selection-change="selectionChangeHandle">
           <el-table-column type="selection" width="45" align="center" header-align="center"></el-table-column>
+          <el-table-column type="index" label="序号" width="60" align="center" header-align="center"></el-table-column>
+          <el-table-column prop="productCode" label="产品编码" width="110" align="center" header-align="center"></el-table-column>
+          <el-table-column prop="productName" label="中文名称" min-width="150" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="warehouseName" label="当前仓库" min-width="150" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="containerNo" label="柜号" min-width="130" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="factoryNo" label="厂号" width="100" align="center" header-align="center"></el-table-column>
+          <el-table-column prop="temperatureZone" label="冷冻/冷鲜" width="100" align="center" header-align="center"></el-table-column>
+          <el-table-column prop="productionDate" label="生产日期" width="115" align="center" header-align="center">
+            <template slot-scope="scope">{{ formatDate(scope.row.productionDate) }}</template>
+          </el-table-column>
+          <el-table-column prop="expiryDate" label="当前过期日期" width="120" align="center" header-align="center">
+            <template slot-scope="scope">{{ formatDate(scope.row.expiryDate) }}</template>
+          </el-table-column>
+          <el-table-column prop="availableBoxes" label="可售箱数" width="95" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="availableWeightKg" label="可售重量KG" width="115" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="lotType" label="来源" width="90" align="center" header-align="center">
+            <template slot-scope="scope">{{ scope.row.lotType === 'ADJUSTMENT' ? '调整后' : '入库' }}</template>
+          </el-table-column>
+        </el-table>
+
+        <div class="adjust-section-title adjust-list-title">
+          待调整列表
+          <span class="adjust-section-subtitle">确认调整只提交这里的数据，可从列表中移除。</span>
+        </div>
+        <el-table ref="adjustTable" :data="adjustList" border stripe height="360" empty-text="请先查询勾选库存或上传识别单据后加入调整列表">
           <el-table-column type="index" label="序号" width="60" align="center" header-align="center"></el-table-column>
           <el-table-column prop="productCode" label="产品编码" width="110" align="center" header-align="center"></el-table-column>
           <el-table-column prop="productName" label="中文名称" min-width="150" show-overflow-tooltip></el-table-column>
@@ -423,6 +481,11 @@
           </el-table-column>
           <el-table-column prop="lotType" label="来源" width="90" align="center" header-align="center">
             <template slot-scope="scope">{{ scope.row.lotType === 'ADJUSTMENT' ? '调整后' : '入库' }}</template>
+          </el-table-column>
+          <el-table-column label="操作" width="90" fixed="right" align="center" header-align="center">
+            <template slot-scope="scope">
+              <el-button type="text" size="small" @click="removeAdjustRow(scope.$index)">移除</el-button>
+            </template>
           </el-table-column>
         </el-table>
       </div>
@@ -480,6 +543,24 @@
 
   .adjust-panel .el-form {
     margin-bottom: 12px;
+  }
+
+  .adjust-panel .adjust-section-title {
+    margin: 12px 0 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #204f74;
+  }
+
+  .adjust-panel .adjust-list-title {
+    margin-top: 16px;
+  }
+
+  .adjust-panel .adjust-section-subtitle {
+    margin-left: 10px;
+    font-size: 12px;
+    font-weight: normal;
+    color: #909399;
   }
 
   .adjust-panel .match-status-tag {
