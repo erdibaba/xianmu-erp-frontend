@@ -59,6 +59,8 @@
         <el-table-column prop="loanDays" label="贷款天数" width="100" align="right"></el-table-column>
         <el-table-column label="归还本金" width="140" align="right"><template slot-scope="scope">{{ money(scope.row.repaymentPrincipal) }}</template></el-table-column>
         <el-table-column label="利息金额" width="180" align="right"><template slot-scope="scope">{{ decimal10(scope.row.interestAmount) }}</template></el-table-column>
+        <el-table-column label="手续费" width="130" align="right"><template slot-scope="scope">{{ money(scope.row.handlingFeeAmount) }}</template></el-table-column>
+        <el-table-column prop="handlingFeeReason" label="手续费原因" min-width="180" show-overflow-tooltip></el-table-column>
         <el-table-column label="预计打款金额" width="180" align="right"><template slot-scope="scope">{{ decimal10(scope.row.expectedPaymentAmount) }}</template></el-table-column>
         <el-table-column label="实际打款金额" width="150" align="right"><template slot-scope="scope">{{ money(scope.row.modifiedAmount) }}</template></el-table-column>
         <el-table-column label="金额核对" width="100" align="center">
@@ -89,6 +91,16 @@
           <el-col :span="12"><el-form-item label="贷款天数"><el-input :value="repaymentForm.loanDays" disabled></el-input></el-form-item></el-col>
           <el-col :span="12"><el-form-item label="年利率（%）"><el-input :value="rate(activeLoan.annualInterestRate)" disabled></el-input></el-form-item></el-col>
           <el-col :span="12"><el-form-item label="利息金额"><el-input :value="decimal10(repaymentForm.interestAmount)" disabled></el-input></el-form-item></el-col>
+          <el-col :span="12">
+            <el-form-item label="手续费金额">
+              <el-input-number v-model="repaymentForm.handlingFeeAmount" :min="0" :precision="2" :controls="false" style="width:100%" @change="calculateRepayment"></el-input-number>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="手续费原因" prop="handlingFeeReason">
+              <el-input v-model="repaymentForm.handlingFeeReason" maxlength="200" placeholder="填写手续费时必填" @blur="calculateRepayment"></el-input>
+            </el-form-item>
+          </el-col>
           <el-col :span="12"><el-form-item label="预计打款金额"><el-input :value="decimal10(repaymentForm.expectedPaymentAmount)" disabled></el-input></el-form-item></el-col>
           <el-col :span="24">
             <el-form-item label="还款凭证" prop="filePath">
@@ -125,6 +137,8 @@ const emptyRepayment = loanId => ({
   repaymentDate: '',
   loanDays: 0,
   interestAmount: 0,
+  handlingFeeAmount: 0,
+  handlingFeeReason: '',
   expectedPaymentAmount: 0,
   recognizedAmount: 0,
   modifiedAmount: 0,
@@ -154,7 +168,17 @@ export default {
         repaymentPrincipal: [{ required: true, message: '请输入本次归还本金', trigger: 'blur' }],
         repaymentDate: [{ required: true, message: '请选择还款日期', trigger: 'change' }],
         filePath: [{ required: true, message: '请上传还款凭证', trigger: 'change' }],
-        modifiedAmount: [{ required: true, message: '请输入修改金额', trigger: 'blur' }]
+        modifiedAmount: [{ required: true, message: '请输入修改金额', trigger: 'blur' }],
+        handlingFeeReason: [{
+          validator: (rule, value, callback) => {
+            if (Number(this.repaymentForm.handlingFeeAmount || 0) > 0 && !value) {
+              callback(new Error('填写手续费时必须填写手续费原因'))
+              return
+            }
+            callback()
+          },
+          trigger: 'blur'
+        }]
       }
     }
   },
@@ -258,6 +282,10 @@ export default {
         if (!valid) return
         if (Number(this.repaymentForm.repaymentPrincipal || 0) <= 0) {
           this.$message.error('本次归还本金必须大于0')
+          return
+        }
+        if (Number(this.repaymentForm.handlingFeeAmount || 0) > 0 && !this.repaymentForm.handlingFeeReason) {
+          this.$message.error('填写手续费时必须填写手续费原因')
           return
         }
         this.submitLoading = true
