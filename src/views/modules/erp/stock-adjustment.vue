@@ -44,12 +44,20 @@
         },
         dataList: [],
         selectedRows: [],
-        loading: false
+        recognizedFileList: [],
+        defaultTargetWarehouseId: '',
+        defaultTargetWarehouseName: '',
+        extendDays: '',
+        loading: false,
+        uploadLoading: false
       }
     },
     computed: {
       isWarehouseTransfer () {
         return this.adjustmentType === 'WAREHOUSE_TRANSFER'
+      },
+      isFreshToFrozen () {
+        return this.adjustmentType === 'FRESH_TO_FROZEN'
       }
     },
     activated () {
@@ -98,6 +106,132 @@
         const warehouse = this.warehouseList.find(item => String(item.id) === String(row.targetWarehouseId))
         row.targetWarehouseName = warehouse ? warehouse.warehouseName : ''
       },
+      defaultTargetWarehouseChange () {
+        const warehouse = this.warehouseList.find(item => String(item.id) === String(this.defaultTargetWarehouseId))
+        this.defaultTargetWarehouseName = warehouse ? warehouse.warehouseName : ''
+      },
+      applyDefaultWarehouse () {
+        if (!this.defaultTargetWarehouseId) {
+          this.$message.warning('请先选择转入仓库')
+          return
+        }
+        const rows = this.selectedRows.length ? this.selectedRows : this.dataList
+        rows.forEach(row => {
+          this.$set(row, 'targetWarehouseId', this.defaultTargetWarehouseId)
+          this.$set(row, 'targetWarehouseName', this.defaultTargetWarehouseName)
+        })
+      },
+      extendExpiryDaysHandle () {
+        const days = Number(this.extendDays)
+        if (!days || days <= 0) {
+          this.$message.warning('请输入大于0的延长天数')
+          return
+        }
+        const rows = this.selectedRows.length ? this.selectedRows : this.dataList
+        let skipped = 0
+        rows.forEach(row => {
+          const baseDate = this.formatDate(row.expiryDate)
+          if (!baseDate) {
+            skipped++
+            return
+          }
+          this.$set(row, 'targetExpiryDate', this.addDays(baseDate, days))
+        })
+        if (skipped > 0) {
+          this.$message.warning(`已处理可计算行，${skipped}行缺少原过期日期，请手动填写`)
+        }
+      },
+      beforeUpload (file) {
+        const name = String(file.name || '').toLowerCase()
+        const valid = ['.jpg', '.jpeg', '.png', '.jfif', '.bmp', '.pdf'].some(ext => name.endsWith(ext))
+        if (!valid) {
+          this.$message.error('仅支持 JPG / PNG / JFIF / BMP / PDF')
+        }
+        return valid
+      },
+      recognizeFreshToFrozenRequest (request) {
+        if (!this.isFreshToFrozen) return
+        const formData = new FormData()
+        formData.append('files', request.file)
+        this.uploadLoading = true
+        const loading = this.$loading({
+          lock: true,
+          text: '正在识别并归档鲜转冻单据...',
+          spinner: 'el-icon-loading',
+          background: 'rgba(255, 255, 255, 0.65)'
+        })
+        this.$http({
+          url: this.$http.adornUrl('/erp/inventory-adjustment/fresh-to-frozen/recognize'),
+          method: 'post',
+          data: formData,
+          headers: { 'Content-Type': 'multipart/form-data' }
+        }).then(({data}) => {
+          loading.close()
+          this.uploadLoading = false
+          if (data && data.code === 0) {
+            this.applyRecognizedResult(data.result || {})
+            this.$message.success('鲜转冻单据识别完成')
+          } else {
+            this.$message.error((data && data.msg) || '鲜转冻单据识别失败')
+          }
+        }).catch(() => {
+          loading.close()
+          this.uploadLoading = false
+        })
+      },
+      applyRecognizedResult (result) {
+        this.recognizedFileList = result.fileList || []
+        const rowsToSelect = []
+        ;(result.itemList || []).forEach(item => {
+          const row = this.buildRecognizedRow(item)
+          const savedRow = this.upsertRecognizedRow(row)
+          if (!savedRow._unmatched) rowsToSelect.push(savedRow)
+        })
+        this.$nextTick(() => {
+          if (!this.$refs.adjustTable) return
+          this.$refs.adjustTable.clearSelection()
+          rowsToSelect.forEach(row => this.$refs.adjustTable.toggleRowSelection(row, true))
+        })
+      },
+      buildRecognizedRow (item) {
+        const matched = !!item.matched
+        return Object.assign({}, item, {
+          _unmatched: !matched,
+          _recognized: true,
+          productCode: matched ? item.productCode : item.recognizedProductCode,
+          productName: matched ? item.productName : item.recognizedProductName,
+          productNameEn: item.productNameEn || '',
+          warehouseName: item.warehouseName || '',
+          containerNo: item.containerNo || item.recognizedContainerNo || '',
+          factoryNo: item.factoryNo || item.recognizedFactoryNo || '',
+          temperatureZone: item.temperatureZone || '冷鲜',
+          transferBoxes: item.recognizedActualQty || '',
+          transferWeightKg: item.recognizedTotalWeightKg || '',
+          targetWarehouseId: this.defaultTargetWarehouseId || '',
+          targetWarehouseName: this.defaultTargetWarehouseName || '',
+          targetExpiryDate: '',
+          lotType: matched ? item.lotType : 'UNMATCHED'
+        })
+      },
+      upsertRecognizedRow (row) {
+        const index = this.dataList.findIndex(item => this.sameLot(item, row))
+        if (index >= 0) {
+          const merged = Object.assign({}, this.dataList[index], row)
+          this.$set(this.dataList, index, merged)
+          return merged
+        }
+        this.dataList.unshift(row)
+        return row
+      },
+      sameLot (left, right) {
+        return String(left.sourceAdjustmentItemId || '') === String(right.sourceAdjustmentItemId || '') &&
+          String(left.inboundItemId || '') === String(right.inboundItemId || '') &&
+          String(left.packingItemId || '') === String(right.packingItemId || '') &&
+          String(left.batchId || '') === String(right.batchId || '') &&
+          String(left.productCode || '') === String(right.productCode || '') &&
+          String(left.containerNo || '') === String(right.containerNo || '') &&
+          String(left.factoryNo || '') === String(right.factoryNo || '')
+      },
       submitHandle () {
         if (!this.selectedRows.length) {
           this.$message.warning('请先勾选需要调整的库存明细')
@@ -119,6 +253,7 @@
           method: 'post',
           data: this.$http.adornData({
             adjustmentType: this.adjustmentType,
+            fileList: this.isFreshToFrozen ? this.recognizedFileList : [],
             itemList: this.selectedRows.map(row => ({
               sourceAdjustmentItemId: row.sourceAdjustmentItemId,
               sourceInboundOrderId: row.inboundOrderId,
@@ -137,6 +272,8 @@
           loading.close()
           if (data && data.code === 0) {
             this.$message.success('库存调整已确认')
+            this.recognizedFileList = []
+            this.extendDays = ''
             this.getDataList()
           } else {
             this.$message.error((data && data.msg) || '库存调整失败')
@@ -151,15 +288,17 @@
           const rowNo = i + 1
           const boxes = Number(row.transferBoxes)
           const weight = Number(this.normalizeAmount(row.transferWeightKg))
+          if (row._unmatched) return `第${rowNo}行未匹配到冷鲜库存，不能确认调整`
           if (!boxes || boxes <= 0) return `第${rowNo}行调整箱数必须大于0`
           if (boxes > Number(row.availableBoxes || 0)) return `第${rowNo}行调整箱数不能大于可售箱数`
           if (!weight || weight <= 0) return `第${rowNo}行调整重量必须大于0`
-          if (weight > Number(row.availableWeightKg || 0)) return `第${rowNo}行调整重量不能大于可售重量`
+          if (this.isWarehouseTransfer && weight > Number(row.availableWeightKg || 0)) return `第${rowNo}行调整重量不能大于可售重量`
           if (this.isWarehouseTransfer) {
             if (!row.targetWarehouseId) return `第${rowNo}行请选择目标仓库`
             if (String(row.targetWarehouseId) === String(row.warehouseId)) return `第${rowNo}行目标仓库不能和原仓库相同`
-          } else if (!row.targetExpiryDate) {
-            return `第${rowNo}行请输入转冷冻后的过期日期`
+          } else {
+            if (!row.targetWarehouseId) return `第${rowNo}行请选择转入仓库`
+            if (!row.targetExpiryDate) return `第${rowNo}行请输入转冷冻后的过期日期`
           }
         }
         return ''
@@ -172,11 +311,45 @@
         if (!value) return ''
         const text = String(value)
         return text.length >= 10 ? text.substring(0, 10) : text
+      },
+      addDays (dateText, days) {
+        const date = new Date(`${dateText}T00:00:00`)
+        date.setDate(date.getDate() + days)
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const day = String(date.getDate()).padStart(2, '0')
+        return `${year}-${month}-${day}`
       }
     },
     template: `
       <div class="adjust-panel">
         <el-form :inline="true" :model="query" size="small">
+          <template v-if="isFreshToFrozen">
+            <el-form-item>
+              <el-upload
+                action="#"
+                :show-file-list="false"
+                :http-request="recognizeFreshToFrozenRequest"
+                :before-upload="beforeUpload"
+                accept=".jpg,.jpeg,.png,.jfif,.bmp,.pdf">
+                <el-button type="warning" :loading="uploadLoading">上传识别鲜转冻单据</el-button>
+              </el-upload>
+            </el-form-item>
+            <el-form-item label="转入仓库">
+              <el-select v-model="defaultTargetWarehouseId" filterable clearable placeholder="选择后可应用到行" style="width: 180px;" @change="defaultTargetWarehouseChange">
+                <el-option v-for="item in warehouseList" :key="item.id" :label="item.warehouseName" :value="item.id"></el-option>
+              </el-select>
+            </el-form-item>
+            <el-form-item>
+              <el-button plain @click="applyDefaultWarehouse()">应用转入仓库</el-button>
+            </el-form-item>
+            <el-form-item label="延长天数">
+              <el-input-number v-model="extendDays" :min="1" :precision="0" :controls="false" style="width: 90px;"></el-input-number>
+            </el-form-item>
+            <el-form-item>
+              <el-button plain @click="extendExpiryDaysHandle()">批量延长过期天数</el-button>
+            </el-form-item>
+          </template>
           <el-form-item>
             <el-input v-model="query.keyword" placeholder="产品编码/中文名/英文名" clearable @keyup.enter.native="getDataList()"></el-input>
           </el-form-item>
@@ -195,7 +368,7 @@
             <el-button v-if="isAuth('erp:inventory-adjustment:save')" type="success" @click="submitHandle()">确认调整</el-button>
           </el-form-item>
         </el-form>
-        <el-table :data="dataList" border stripe height="620" v-loading="loading" @selection-change="selectionChangeHandle">
+        <el-table ref="adjustTable" :data="dataList" border stripe height="620" v-loading="loading" @selection-change="selectionChangeHandle">
           <el-table-column type="selection" width="45" align="center" header-align="center"></el-table-column>
           <el-table-column type="index" label="序号" width="60" align="center" header-align="center"></el-table-column>
           <el-table-column prop="productCode" label="产品编码" width="110" align="center" header-align="center"></el-table-column>
@@ -213,6 +386,8 @@
           </el-table-column>
           <el-table-column prop="availableBoxes" label="可售箱数" width="95" align="right" header-align="center"></el-table-column>
           <el-table-column prop="availableWeightKg" label="可售重量KG" width="115" align="right" header-align="center"></el-table-column>
+          <el-table-column v-if="isFreshToFrozen" prop="recognizedActualQty" label="识别箱数" width="95" align="right" header-align="center"></el-table-column>
+          <el-table-column v-if="isFreshToFrozen" prop="recognizedTotalWeightKg" label="识别重量KG" width="115" align="right" header-align="center"></el-table-column>
           <el-table-column label="调整箱数" width="120" align="center" header-align="center">
             <template slot-scope="scope">
               <el-input-number v-model="scope.row.transferBoxes" :min="0" :precision="0" :controls="false" size="small" style="width: 96px;"></el-input-number>
@@ -223,16 +398,21 @@
               <el-input v-model="scope.row.transferWeightKg" size="small"></el-input>
             </template>
           </el-table-column>
-          <el-table-column v-if="isWarehouseTransfer" label="目标仓库" min-width="170" align="center" header-align="center">
+          <el-table-column v-if="isWarehouseTransfer || isFreshToFrozen" :label="isFreshToFrozen ? '转入仓库' : '目标仓库'" min-width="170" align="center" header-align="center">
             <template slot-scope="scope">
               <el-select v-model="scope.row.targetWarehouseId" filterable clearable size="small" style="width: 150px;" @change="targetWarehouseChange(scope.row)">
                 <el-option v-for="item in warehouseList" :key="item.id" :label="item.warehouseName" :value="item.id"></el-option>
               </el-select>
             </template>
           </el-table-column>
-          <el-table-column v-else label="转冷冻后过期日期" width="170" align="center" header-align="center">
+          <el-table-column v-if="isFreshToFrozen" label="转冷冻后过期日期" width="170" align="center" header-align="center">
             <template slot-scope="scope">
               <el-date-picker v-model="scope.row.targetExpiryDate" type="date" value-format="yyyy-MM-dd" size="small" style="width: 145px;"></el-date-picker>
+            </template>
+          </el-table-column>
+          <el-table-column v-if="isFreshToFrozen" prop="matchMessage" label="匹配状态" width="130" align="center" header-align="center">
+            <template slot-scope="scope">
+              <el-tag :type="scope.row._unmatched ? 'danger' : 'success'" size="small">{{ scope.row.matchMessage || (scope.row._unmatched ? '未匹配' : '已匹配') }}</el-tag>
             </template>
           </el-table-column>
           <el-table-column prop="lotType" label="来源" width="90" align="center" header-align="center">
