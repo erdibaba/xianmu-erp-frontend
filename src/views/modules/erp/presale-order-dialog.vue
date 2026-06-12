@@ -1599,8 +1599,8 @@ export default {
       return String(value).replace('T', ' ').slice(0, 19)
     },
     downloadFile (url) {
-      const token = this.$cookie.get('token')
-      const link = `${window.SITE_CONFIG.baseUrl}${url}?token=${token}`
+      const token = this.$cookie.get('token') || ''
+      const link = `${window.SITE_CONFIG.baseUrl}${url}?token=${encodeURIComponent(token)}`
       window.open(link, '_blank')
     },
     reuploadAttachment (type) {
