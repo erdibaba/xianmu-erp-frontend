@@ -131,6 +131,28 @@
         </div>
 
         <div class="sku-title-row">
+          <div class="sub-title">关联支出费用</div>
+        </div>
+        <el-table :data="dataForm.expenseList || []" border size="mini" class="expense-table">
+          <el-table-column prop="expenseName" label="费用名称" width="120"></el-table-column>
+          <el-table-column prop="warehouseName" label="仓库" min-width="150" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="temperatureZone" label="温区" width="80" align="center"></el-table-column>
+          <el-table-column label="业务日期" width="110" align="center">
+            <template slot-scope="scope">{{ formatDate(scope.row.businessStartDate) }}</template>
+          </el-table-column>
+          <el-table-column label="重量(吨)" width="100" align="right">
+            <template slot-scope="scope">{{ formatNumber(scope.row.weightTon, 3) }}</template>
+          </el-table-column>
+          <el-table-column label="费率" width="90" align="right">
+            <template slot-scope="scope">{{ formatNumber(scope.row.rate, 2) }}</template>
+          </el-table-column>
+          <el-table-column label="金额" width="110" align="right">
+            <template slot-scope="scope">{{ formatMoney(scope.row.totalAmount) }}</template>
+          </el-table-column>
+          <el-table-column prop="remark" label="备注" min-width="220" show-overflow-tooltip></el-table-column>
+        </el-table>
+
+        <div class="sku-title-row">
           <div class="sub-title">SKU明细</div>
           <el-button v-if="!readonly" size="mini" type="primary" @click="addItemRow()">新增明细</el-button>
         </div>
@@ -434,6 +456,7 @@ export default {
         rawText: '',
         remark: '',
         fileList: [],
+        expenseList: [],
         itemList: []
       }
     },
@@ -522,6 +545,7 @@ export default {
         filePath: '',
         fileName: ''
       }, item))
+      result.expenseList = source.expenseList || []
       result.itemList = (source.itemList || []).map(item => Object.assign({
         id: 0,
         productId: '',
@@ -726,6 +750,19 @@ export default {
       }
       const parsed = Number(value)
       return isNaN(parsed) ? '-' : parsed.toFixed(2)
+    },
+    formatDate (value) {
+      if (!value) return '-'
+      return String(value).substring(0, 10)
+    },
+    formatNumber (value, precision) {
+      const parsed = Number(value || 0)
+      return isNaN(parsed) ? '-' : parsed.toFixed(precision)
+    },
+    formatMoney (value) {
+      const parsed = Number(value || 0)
+      if (isNaN(parsed)) return '-'
+      return parsed.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     },
     openDamageDialog (row) {
       if (this.readonly) {

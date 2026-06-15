@@ -666,6 +666,34 @@
                 </el-col>
               </el-row>
             </div>
+            <div v-if="currentOutboundBatch && currentOutboundBatch.expenseList && currentOutboundBatch.expenseList.length" class="outbound-section-title">
+              <strong>本批次支出费用</strong>
+              <span class="sub-title-tip">批次确认完成后自动生成冷库费。</span>
+            </div>
+            <el-table
+              v-if="currentOutboundBatch && currentOutboundBatch.expenseList && currentOutboundBatch.expenseList.length"
+              :data="currentOutboundBatch.expenseList"
+              border
+              size="mini"
+              class="attachment-table outbound-expense-table">
+              <el-table-column prop="expenseName" label="费用名称" width="120"></el-table-column>
+              <el-table-column prop="warehouseName" label="仓库" min-width="150" show-overflow-tooltip></el-table-column>
+              <el-table-column prop="temperatureZone" label="温区" width="80" align="center"></el-table-column>
+              <el-table-column label="计费期间" min-width="180">
+                <template slot-scope="scope">{{ formatDateOnly(scope.row.businessStartDate) }} 至 {{ formatDateOnly(scope.row.businessEndDate) }}</template>
+              </el-table-column>
+              <el-table-column prop="freeDays" label="免费天数" width="90" align="right"></el-table-column>
+              <el-table-column prop="chargeDays" label="计费天数" width="90" align="right"></el-table-column>
+              <el-table-column label="重量(吨)" width="100" align="right">
+                <template slot-scope="scope">{{ formatNumber(scope.row.weightTon, 3) }}</template>
+              </el-table-column>
+              <el-table-column label="费率" width="90" align="right">
+                <template slot-scope="scope">{{ formatNumber(scope.row.rate, 2) }}</template>
+              </el-table-column>
+              <el-table-column label="金额" width="110" align="right">
+                <template slot-scope="scope">¥{{ formatNumber(scope.row.totalAmount, 2) }}</template>
+              </el-table-column>
+            </el-table>
             <el-row v-if="dataForm.outboundReceipt" :gutter="20">
               <el-col :span="6">
                 <el-form-item label="销售单箱数">
@@ -782,6 +810,9 @@
               </el-table-column>
               <el-table-column label="实际重量(KG)" width="125" align="right">
                 <template slot-scope="scope">{{ formatNumber(scope.row.shippedTotalWeight, 3) }}</template>
+              </el-table-column>
+              <el-table-column label="费用金额" width="110" align="right">
+                <template slot-scope="scope">¥{{ formatBatchExpenseAmount(scope.row) }}</template>
               </el-table-column>
               <el-table-column label="归档原件" min-width="180">
                 <template slot-scope="scope">
@@ -1586,10 +1617,12 @@ export default {
         bankAmountDiff: 0,
         receipt: null,
         bankSlipFile: null,
-        receiptFileList: []
+        receiptFileList: [],
+        expenseList: []
       }, batch || {})
       result.receipt = this.normalizeOutboundReceipt(result.receipt)
       result.receiptFileList = result.receiptFileList || []
+      result.expenseList = result.expenseList || []
       return result
     },
     setActiveOutboundBatch () {
@@ -1625,6 +1658,12 @@ export default {
     },
     formatNumber (value, precision) {
       return this.toNumber(value).toFixed(precision)
+    },
+    formatBatchExpenseAmount (batch) {
+      const total = (batch && batch.expenseList ? batch.expenseList : []).reduce((sum, item) => {
+        return sum + this.toNumber(item.totalAmount)
+      }, 0)
+      return total.toFixed(2)
     },
     formatInteger (value) {
       return String(Math.trunc(this.toNumber(value)))
