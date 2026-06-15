@@ -112,7 +112,6 @@
               <div class="bank-voucher-tip">{{ bankVoucherSupportTip }}</div>
             </el-form-item>
           </el-col>
-          <el-col :span="12"><el-form-item label="识别金额"><el-input :value="money(repaymentForm.recognizedAmount)" disabled></el-input></el-form-item></el-col>
           <el-col :span="12">
             <el-form-item label="修改金额" prop="modifiedAmount">
               <el-input-number v-model="repaymentForm.modifiedAmount" :min="0" :precision="2" :controls="false" style="width:100%"></el-input-number>

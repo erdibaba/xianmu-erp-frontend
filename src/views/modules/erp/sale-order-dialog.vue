@@ -585,37 +585,11 @@
             </div>
             <div v-if="currentOutboundBankSlipVisible" class="bank-slip-panel">
               <div class="outbound-section-title">
-                <strong>二批来款水单识别结果</strong>
-                <span class="sub-title-tip">识别结果只读，确认结果可修改；金额差异只提示并保存，不拦截批次完成。</span>
+                <strong>二批来款水单确认结果</strong>
+                <span class="sub-title-tip">系统已自动带入识别内容，用户只需核对和修改确认结果；金额差异只提示并保存，不拦截批次完成。</span>
               </div>
               <el-row :gutter="16">
-                <el-col :span="12">
-                  <div class="bank-slip-card">
-                    <div class="bank-slip-card-title">识别结果</div>
-                    <el-form-item label="付款人">
-                      <el-input :value="currentOutboundBatch.bankPayerNameRecognized || ''" disabled></el-input>
-                    </el-form-item>
-                    <el-form-item label="收款人">
-                      <el-input :value="currentOutboundBatch.bankPayeeNameRecognized || ''" disabled></el-input>
-                    </el-form-item>
-                    <el-row :gutter="10">
-                      <el-col :span="12">
-                        <el-form-item label="金额">
-                          <el-input :value="formatNumber(currentOutboundBatch.bankAmountRecognized, 2)" disabled></el-input>
-                        </el-form-item>
-                      </el-col>
-                      <el-col :span="12">
-                        <el-form-item label="付款日期">
-                          <el-input :value="formatDateOnly(currentOutboundBatch.bankPaymentDateRecognized)" disabled></el-input>
-                        </el-form-item>
-                      </el-col>
-                    </el-row>
-                    <el-form-item label="流水号">
-                      <el-input :value="currentOutboundBatch.bankSerialNoRecognized || ''" disabled></el-input>
-                    </el-form-item>
-                  </div>
-                </el-col>
-                <el-col :span="12">
+                <el-col :span="24">
                   <div class="bank-slip-card">
                     <div class="bank-slip-card-title">确认结果</div>
                     <el-form-item label="付款人">
@@ -1063,29 +1037,7 @@
           <span>模板：{{ bankSlipDetailBatch.bankVoucherTemplate || '-' }}</span>
         </div>
         <el-row :gutter="16">
-          <el-col :span="12">
-            <div class="bank-slip-card">
-              <div class="bank-slip-card-title">识别结果</div>
-              <el-form label-width="82px" size="mini">
-                <el-form-item label="付款人">
-                  <el-input :value="bankSlipDetailBatch.bankPayerNameRecognized || ''" disabled></el-input>
-                </el-form-item>
-                <el-form-item label="收款人">
-                  <el-input :value="bankSlipDetailBatch.bankPayeeNameRecognized || ''" disabled></el-input>
-                </el-form-item>
-                <el-form-item label="金额">
-                  <el-input :value="formatNumber(bankSlipDetailBatch.bankAmountRecognized, 2)" disabled></el-input>
-                </el-form-item>
-                <el-form-item label="付款日期">
-                  <el-input :value="formatDateOnly(bankSlipDetailBatch.bankPaymentDateRecognized)" disabled></el-input>
-                </el-form-item>
-                <el-form-item label="流水号">
-                  <el-input :value="bankSlipDetailBatch.bankSerialNoRecognized || ''" disabled></el-input>
-                </el-form-item>
-              </el-form>
-            </div>
-          </el-col>
-          <el-col :span="12">
+          <el-col :span="24">
             <div class="bank-slip-card">
               <div class="bank-slip-card-title">确认结果</div>
               <el-form label-width="82px" size="mini">

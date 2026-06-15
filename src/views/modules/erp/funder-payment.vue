@@ -36,9 +36,6 @@
         <template slot-scope="scope">{{ scope.row.funderName || '-' }}</template>
       </el-table-column>
       <el-table-column prop="paymentDate" label="打款日期" width="120" align="center"></el-table-column>
-      <el-table-column label="识别金额" width="140" align="right">
-        <template slot-scope="scope">{{ money(scope.row.recognizedAmount) }}</template>
-      </el-table-column>
       <el-table-column label="确认金额" width="140" align="right">
         <template slot-scope="scope"><strong>{{ money(scope.row.modifiedAmount) }}</strong></template>
       </el-table-column>
@@ -125,11 +122,6 @@
             </el-form-item>
           </el-col>
           <el-col v-if="isFunderPayment" :span="12">
-            <el-form-item label="识别金额">
-              <el-input :value="money(paymentForm.recognizedAmount)" disabled></el-input>
-            </el-form-item>
-          </el-col>
-          <el-col v-if="isFunderPayment" :span="12">
             <el-form-item label="修改金额" prop="modifiedAmount">
               <el-input-number
                 v-model="paymentForm.modifiedAmount"
@@ -148,22 +140,6 @@
               </el-upload>
               <span class="file-name">{{ paymentForm.fileName || '尚未上传' }}</span>
               <div class="bank-voucher-tip">{{ bankVoucherSupportTip }}</div>
-            </el-form-item>
-          </el-col>
-          <el-col :span="24" v-if="isFunderPayment && paymentForm.recognizedReceipt && paymentForm.recognizedReceipt.voucherTemplate">
-            <el-form-item label="凭证识别结果">
-              <el-descriptions :column="2" border size="small" class="receipt-result">
-                <el-descriptions-item label="凭证模板">{{ paymentForm.recognizedReceipt.voucherTemplate }}</el-descriptions-item>
-                <el-descriptions-item label="凭证号">{{ paymentForm.recognizedReceipt.voucherNo || '-' }}</el-descriptions-item>
-                <el-descriptions-item label="付款人">{{ paymentForm.recognizedReceipt.payerName || '-' }}</el-descriptions-item>
-                <el-descriptions-item label="付款账号">{{ paymentForm.recognizedReceipt.payerAccount || '-' }}</el-descriptions-item>
-                <el-descriptions-item label="收款人">{{ paymentForm.recognizedReceipt.payeeName || '-' }}</el-descriptions-item>
-                <el-descriptions-item label="收款账号">{{ paymentForm.recognizedReceipt.payeeAccount || '-' }}</el-descriptions-item>
-                <el-descriptions-item label="付款开户行">{{ paymentForm.recognizedReceipt.payerBank || '-' }}</el-descriptions-item>
-                <el-descriptions-item label="收款开户行">{{ paymentForm.recognizedReceipt.payeeBank || '-' }}</el-descriptions-item>
-                <el-descriptions-item label="用途">{{ paymentForm.recognizedReceipt.purpose || '-' }}</el-descriptions-item>
-                <el-descriptions-item label="摘要">{{ paymentForm.recognizedReceipt.summary || '-' }}</el-descriptions-item>
-              </el-descriptions>
             </el-form-item>
           </el-col>
           <el-col v-if="isFunderPayment" :span="24">
@@ -241,9 +217,6 @@
               <div class="row-file-name">{{ scope.row.xianmuContributionFileName || '未上传' }}</div>
               <div class="row-support-tip">支持浦发/建行/工行/兴业/农发行样本</div>
             </template>
-          </el-table-column>
-          <el-table-column v-if="isFunderPayment" label="出资识别金额" width="130" align="right">
-            <template slot-scope="scope">{{ money(scope.row.xianmuContributionRecognizedAmount) }}</template>
           </el-table-column>
           <el-table-column v-if="isFunderPayment" label="出资确认金额" width="160">
             <template slot-scope="scope">
@@ -435,7 +408,6 @@
         <el-descriptions-item label="付款主体">{{ detailData.payerName || '-' }}</el-descriptions-item>
         <el-descriptions-item label="资方">{{ detailData.funderName || '-' }}</el-descriptions-item>
         <el-descriptions-item label="打款日期">{{ detailData.paymentDate }}</el-descriptions-item>
-        <el-descriptions-item label="识别金额">{{ money(detailData.recognizedAmount) }}</el-descriptions-item>
         <el-descriptions-item label="确认金额">{{ money(detailData.modifiedAmount) }}</el-descriptions-item>
         <el-descriptions-item label="状态">{{ paymentStatusName(detailData.status) }}</el-descriptions-item>
         <el-descriptions-item label="归档原件">
