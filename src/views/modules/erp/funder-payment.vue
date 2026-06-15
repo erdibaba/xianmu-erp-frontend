@@ -446,6 +446,9 @@
         <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
         <el-table-column prop="presaleOrderNo" label="预销售单号" min-width="180"></el-table-column>
         <el-table-column prop="sellerContractNo" label="合同号" min-width="180"></el-table-column>
+        <el-table-column label="订单合同金额" width="160" align="right">
+          <template slot-scope="scope">{{ money(detailOrderContractAmount(scope.row)) }}</template>
+        </el-table-column>
         <el-table-column label="分摊打款金额" width="180" align="right">
           <template slot-scope="scope">{{ money(scope.row.allocationAmount) }}</template>
         </el-table-column>
@@ -581,6 +584,11 @@ export default {
     },
     roundMoney (value) {
       return Math.round(Number(value || 0) * 100) / 100
+    },
+    detailOrderContractAmount (row) {
+      return row && row.orderContractAmount !== undefined && row.orderContractAmount !== null
+        ? row.orderContractAmount
+        : (row ? row.allocationAmount : 0)
     },
     loanPrincipal (row) {
       return this.roundMoney(Number(row.allocationAmount || 0) - Number(row.xianmuContributionModifiedAmount || 0))
