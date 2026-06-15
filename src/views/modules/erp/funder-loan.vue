@@ -77,6 +77,7 @@
       <el-form ref="repaymentForm" :model="repaymentForm" :rules="repaymentRules" label-width="150px">
         <el-row :gutter="18">
           <el-col :span="12"><el-form-item label="贷款编号"><el-input :value="activeLoan.loanNo" disabled></el-input></el-form-item></el-col>
+          <el-col :span="12"><el-form-item label="贷款日期"><el-input :value="activeLoan.loanDate" disabled></el-input></el-form-item></el-col>
           <el-col :span="12"><el-form-item label="剩余待还本金"><el-input :value="money(activeLoan.remainingPrincipal)" disabled></el-input></el-form-item></el-col>
           <el-col :span="12">
             <el-form-item label="本次归还本金" prop="repaymentPrincipal">
