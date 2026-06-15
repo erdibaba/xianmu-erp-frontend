@@ -44,6 +44,7 @@
           <el-table-column prop="productCode" label="产品编码" min-width="110" align="center" header-align="center"></el-table-column>
           <el-table-column prop="productName" label="中文名称" min-width="170" show-overflow-tooltip></el-table-column>
           <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="ownershipName" label="货权" min-width="170" show-overflow-tooltip></el-table-column>
           <el-table-column prop="packingBoxes" label="装箱单箱数" width="110" align="right" header-align="center"></el-table-column>
           <el-table-column prop="inboundBoxes" label="入库箱数" width="100" align="right" header-align="center"></el-table-column>
           <el-table-column prop="allocatedBoxes" label="已占用箱数" width="110" align="right" header-align="center"></el-table-column>
@@ -115,6 +116,7 @@
           <el-table-column prop="productCode" label="产品编码" min-width="110" align="center" header-align="center"></el-table-column>
           <el-table-column prop="productName" label="中文名称" min-width="170" show-overflow-tooltip></el-table-column>
           <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="ownershipName" label="货权" min-width="170" show-overflow-tooltip></el-table-column>
           <el-table-column prop="futuresBoxes" label="期货总箱数" width="110" align="right" header-align="center"></el-table-column>
           <el-table-column prop="futuresSoldBoxes" label="已占用箱数" width="110" align="right" header-align="center"></el-table-column>
           <el-table-column prop="futuresAvailableBoxes" label="期货可售箱数" width="120" align="right" header-align="center">
@@ -203,6 +205,7 @@
       <div v-if="currentInventoryRow" class="batch-summary">
         <span>产品编码：{{ currentInventoryRow.productCode || '-' }}</span>
         <span>产品名称：{{ currentInventoryRow.productName || '-' }}</span>
+        <span>货权：{{ currentInventoryRow.ownershipName || '-' }}</span>
       </div>
       <el-table :data="batchList" border stripe v-loading="batchLoading" height="430">
         <el-table-column type="index" label="序号" width="60" align="center" header-align="center"></el-table-column>
@@ -210,6 +213,7 @@
           <el-table-column prop="warehouseName" label="仓库" min-width="140" show-overflow-tooltip></el-table-column>
           <el-table-column prop="containerNo" label="柜号" min-width="130" show-overflow-tooltip></el-table-column>
           <el-table-column prop="factoryNo" label="厂号" width="100" align="center" header-align="center"></el-table-column>
+          <el-table-column prop="ownershipName" label="货权" min-width="170" show-overflow-tooltip></el-table-column>
           <el-table-column prop="contractNo" label="合同号" min-width="140" show-overflow-tooltip></el-table-column>
           <el-table-column prop="customerName" label="客户" min-width="160" show-overflow-tooltip></el-table-column>
           <el-table-column prop="temperatureZone" label="温区" width="90" align="center" header-align="center"></el-table-column>
@@ -220,6 +224,7 @@
           <el-table-column prop="contractNo" label="合同号" min-width="140" show-overflow-tooltip></el-table-column>
           <el-table-column prop="containerNo" label="柜号" min-width="130" show-overflow-tooltip></el-table-column>
           <el-table-column prop="factoryNo" label="厂号" width="100" align="center" header-align="center"></el-table-column>
+          <el-table-column prop="ownershipName" label="货权" min-width="170" show-overflow-tooltip></el-table-column>
           <el-table-column prop="customerReference" label="采购方" min-width="160" show-overflow-tooltip></el-table-column>
           <el-table-column prop="brandName" label="品牌方" min-width="160" show-overflow-tooltip></el-table-column>
           <el-table-column prop="expectedArrivalDate" label="预计到港" width="115" align="center" header-align="center">
@@ -398,6 +403,7 @@
             warehouseId: this.futuresQuery.warehouseId,
             contractNo: this.futuresQuery.contractNo,
             containerNos: (this.futuresQuery.containerNos || []).join(','),
+            ownershipName: row.ownershipName || '',
             factoryNo: this.futuresQuery.factoryNo,
             onlyAvailable: this.futuresQuery.onlyAvailable
           }
@@ -405,6 +411,7 @@
             productId: row.productId,
             warehouseId: this.spotQuery.warehouseId,
             containerNos: (this.spotQuery.containerNos || []).join(','),
+            ownershipName: row.ownershipName || '',
             factoryNo: this.spotQuery.factoryNo,
             onlyAvailable: this.spotQuery.onlyAvailable
           }
