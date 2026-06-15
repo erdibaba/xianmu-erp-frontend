@@ -208,6 +208,9 @@
           <el-table-column prop="presaleOrderNo" label="预销售单号" min-width="170"></el-table-column>
           <el-table-column prop="sellerContractNo" label="合同号" min-width="160"></el-table-column>
           <el-table-column prop="customerReference" label="采购方" min-width="180" show-overflow-tooltip></el-table-column>
+          <el-table-column label="订单合同金额" width="160" align="right">
+            <template slot-scope="scope">{{ money(scope.row.orderContractAmount) }}</template>
+          </el-table-column>
           <el-table-column label="分摊打款金额" width="190">
             <template slot-scope="scope">
               <el-input
@@ -685,7 +688,8 @@ export default {
           id: row.presaleOrderId,
           orderNo: row.presaleOrderNo,
           sellerContractNo: row.sellerContractNo,
-          customerReference: row.customerReference
+          customerReference: row.customerReference,
+          confirmInfo: { totalAmount: row.orderContractAmount }
         }))
         const result = (data && data.list) || []
         this.presaleOptions = selectedRows.concat(result.filter(item => !selectedRows.some(selected => selected.id === item.id)))
@@ -697,12 +701,14 @@ export default {
         const old = oldRows.find(item => item.presaleOrderId === id)
         if (old) return old
         const option = this.presaleOptions.find(item => item.id === id) || {}
+        const confirmAmount = Number(option.confirmInfo && option.confirmInfo.totalAmount ? option.confirmInfo.totalAmount : 0)
         return {
           presaleOrderId: id,
           presaleOrderNo: option.orderNo,
           sellerContractNo: option.sellerContractNo,
           customerReference: option.customerReference,
-          allocationAmount: 0,
+          orderContractAmount: this.roundMoney(confirmAmount),
+          allocationAmount: this.roundMoney(confirmAmount),
           xianmuContributionRecognizedAmount: 0,
           xianmuContributionModifiedAmount: 0,
           xianmuContributionDate: '',
@@ -723,7 +729,6 @@ export default {
           xianmuBalanceRawText: ''
         }
       })
-      this.$nextTick(() => this.recalculateLastAllocation())
     },
     xianmuPresaleChange (id) {
       if (!id) {
@@ -744,6 +749,7 @@ export default {
         presaleOrderNo: option.orderNo,
         sellerContractNo: option.sellerContractNo,
         customerReference: option.customerReference,
+        orderContractAmount: this.roundMoney(confirmAmount),
         allocationAmount: this.roundMoney(confirmAmount),
         xianmuDepositRecognizedAmount: 0,
         xianmuDepositModifiedAmount: 0,
@@ -771,18 +777,12 @@ export default {
           normalized.substring(decimalIndex + 1).replace(/\./g, '').substring(0, 2)
       }
       this.$set(rows[index], 'allocationAmount', normalized)
-      if (index < rows.length - 1) {
-        this.recalculateLastAllocation()
-      }
     },
     allocationAmountBlur (index) {
       const rows = this.paymentForm.allocationList || []
       if (!rows[index]) return
       const value = rows[index].allocationAmount
       this.$set(rows[index], 'allocationAmount', value === '' ? '' : this.roundMoney(value))
-      if (index < rows.length - 1) {
-        this.recalculateLastAllocation()
-      }
     },
     recalculateLastAllocation () {
       const rows = this.paymentForm.allocationList || []
