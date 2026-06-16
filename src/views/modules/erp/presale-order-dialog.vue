@@ -423,6 +423,9 @@
                 size="mini">
                 <el-table-column type="expand">
                   <template slot-scope="scope">
+                    <div v-if="!readonly" class="packing-batch-toolbar">
+                      <el-button type="primary" size="mini" @click="addPackingBatchRow(scope.row)">新增明细</el-button>
+                    </div>
                     <el-table :data="scope.row.batchList || []" border size="mini">
                       <el-table-column label="生产日期" min-width="120">
                         <template slot-scope="batchScope">
@@ -1770,6 +1773,11 @@ export default {
   margin-bottom: 10px;
   color: #f56c6c;
   font-size: 12px;
+}
+
+.packing-batch-toolbar {
+  margin-bottom: 8px;
+  text-align: right;
 }
 
 .estimate-item-toolbar,
