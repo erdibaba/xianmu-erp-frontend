@@ -439,9 +439,16 @@
         <el-table-column v-if="detailData.paymentType === 1" label="贷款本金" width="150" align="right">
           <template slot-scope="scope">{{ money(loanPrincipal(scope.row)) }}</template>
         </el-table-column>
-        <el-table-column v-if="detailData.paymentType === 1" label="出资凭证" width="100" align="center">
+        <el-table-column v-if="detailData.paymentType === 1" label="出资凭证" width="120" align="center">
           <template slot-scope="scope">
-            <span>{{ scope.row.xianmuContributionFileName ? '已归档' : '-' }}</span>
+            <el-button
+              v-if="scope.row.xianmuContributionFileName"
+              type="text"
+              size="small"
+              @click="downloadContributionVoucher(scope.row.id, scope.row.xianmuContributionFileName)">
+              下载
+            </el-button>
+            <span v-else>-</span>
           </template>
         </el-table-column>
         <el-table-column v-if="detailData.paymentType === 2" label="定金" width="130" align="right">
@@ -1040,6 +1047,21 @@ export default {
         const link = document.createElement('a')
         link.href = url
         link.download = fileName || '预销售单打款凭证'
+        link.click()
+        URL.revokeObjectURL(url)
+      }).finally(() => loading.close())
+    },
+    downloadContributionVoucher (allocationId, fileName) {
+      const loading = this.$loading({ lock: true, text: '正在下载鲜牧出资款凭证...' })
+      this.$http({
+        url: this.$http.adornUrl(`/erp/funder-finance/allocation/download/contribution/${allocationId}`),
+        method: 'get',
+        responseType: 'blob'
+      }).then(response => {
+        const url = URL.createObjectURL(response.data)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = fileName || '鲜牧出资款凭证'
         link.click()
         URL.revokeObjectURL(url)
       }).finally(() => loading.close())
