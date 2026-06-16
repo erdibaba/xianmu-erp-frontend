@@ -23,7 +23,8 @@
         :on-change="handleChange"
         :on-remove="handleRemove"
         :file-list="fileList"
-        :limit="1"
+        :multiple="allowMultipleFiles"
+        :limit="uploadLimit"
         :accept="acceptTypes">
         <i class="el-icon-upload"></i>
         <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
@@ -98,6 +99,12 @@ export default {
     isArchiveUpload () {
       return this.uploadType === 'customs' || this.uploadType === 'quarantine'
     },
+    allowMultipleFiles () {
+      return this.uploadType === 'quarantine'
+    },
+    uploadLimit () {
+      return this.allowMultipleFiles ? 20 : 1
+    },
     dialogTitle () {
       if (this.uploadType === 'confirm') return '上传客户订单确认函'
       if (this.uploadType === 'packing') return '上传装箱单'
@@ -168,7 +175,7 @@ export default {
       return allow
     },
     handleChange (file, fileList) {
-      this.fileList = fileList.slice(-1)
+      this.fileList = this.allowMultipleFiles ? fileList : fileList.slice(-1)
     },
     handleRemove (file, fileList) {
       this.fileList = fileList
@@ -178,10 +185,11 @@ export default {
         this.$message.error('请先选择文件')
         return
       }
-      const file = this.fileList[0].raw || this.fileList[0]
       if (this.isArchiveUpload) {
-        this.uploadArchiveRequest({ file })
+        const files = this.fileList.map(item => item.raw || item).filter(Boolean)
+        this.uploadArchiveRequest({ files })
       } else {
+        const file = this.fileList[0].raw || this.fileList[0]
         this.recognizeRequest({ file })
       }
     },
@@ -214,32 +222,37 @@ export default {
       })
     },
     uploadArchiveRequest (option) {
-      const file = option.file
-      if (!file) return
+      const files = (option.files || [option.file]).filter(Boolean)
+      if (!files.length) return
       if (!this.orderId) {
         this.$message.error('请先保存预销售单后再上传附件')
         return
       }
       this.loading = true
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('presaleOrderId', this.orderId)
-      formData.append('attachmentType', this.uploadType === 'customs' ? 'CUSTOMS' : 'QUARANTINE')
-      this.$http({
-        url: this.$http.adornUrl('/erp/presale/upload-attachment'),
-        method: 'post',
-        data: formData,
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      }).then(({ data }) => {
-        if (data && data.code === 0) {
-          this.resultData = data.attachment || {}
-          this.$message.success(this.uploadType === 'customs' ? '报关单上传成功' : '检疫证明上传成功')
+      const requests = files.map(file => {
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('presaleOrderId', this.orderId)
+        formData.append('attachmentType', this.uploadType === 'customs' ? 'CUSTOMS' : 'QUARANTINE')
+        return this.$http({
+          url: this.$http.adornUrl('/erp/presale/upload-attachment'),
+          method: 'post',
+          data: formData,
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        })
+      })
+      Promise.all(requests).then(responses => {
+        const failed = responses.find(({ data }) => !data || data.code !== 0)
+        if (!failed) {
+          const attachments = responses.map(({ data }) => data.attachment || {})
+          this.resultData = this.allowMultipleFiles ? attachments : (attachments[0] || {})
+          this.$message.success(this.allowMultipleFiles ? `已上传 ${attachments.length} 个检疫证明` : (this.uploadType === 'customs' ? '报关单上传成功' : '检疫证明上传成功'))
           this.$emit('uploaded', this.resultData)
           this.visible = false
         } else {
-          this.$message.error((data && data.msg) || '上传失败')
+          this.$message.error((failed.data && failed.data.msg) || '上传失败')
         }
         this.loading = false
       }).catch(() => {

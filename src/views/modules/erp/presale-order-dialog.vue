@@ -588,36 +588,35 @@
           <div class="tab-pane-content">
             <div class="tab-tools">
               <el-button
-                v-if="dataForm.id && dataForm.quarantineInfo && dataForm.quarantineInfo.filePath"
-                type="text"
-                @click="downloadFile(`/erp/presale/download/quarantine/${dataForm.id}`)">下载检疫证明原件</el-button>
-              <el-button
                 v-if="!readonly && dataForm.id"
                 type="text"
-                @click="reuploadAttachment('quarantine')">重新上传</el-button>
+                @click="reuploadAttachment('quarantine')">上传检疫证明</el-button>
             </div>
             <el-empty v-if="!hasQuarantineData" description="暂未上传检疫证明"></el-empty>
             <div v-else class="tab-pane-content-body">
               <div class="tab-scroll-area">
-                <el-form :model="dataForm.quarantineInfo" label-width="120px">
-                  <el-row :gutter="20">
-                    <el-col :span="12">
-                      <el-form-item label="文件名称">
-                        <el-input :value="dataForm.quarantineInfo.fileName" :disabled="true"></el-input>
-                      </el-form-item>
-                    </el-col>
-                    <el-col :span="12">
-                      <el-form-item label="上传时间">
-                        <el-input :value="formatDateTime(dataForm.quarantineInfo.updateTime || dataForm.quarantineInfo.createTime)" :disabled="true"></el-input>
-                      </el-form-item>
-                    </el-col>
-                    <el-col :span="24">
-                      <el-form-item label="归档路径">
-                        <el-input :value="dataForm.quarantineInfo.filePath" :disabled="true"></el-input>
-                      </el-form-item>
-                    </el-col>
-                  </el-row>
-                </el-form>
+                <el-table
+                  :data="dataForm.quarantineList"
+                  border
+                  height="260"
+                  size="small">
+                  <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
+                  <el-table-column prop="fileName" label="文件名称" min-width="220"></el-table-column>
+                  <el-table-column label="上传时间" width="180">
+                    <template slot-scope="scope">
+                      {{ formatDateTime(scope.row.updateTime || scope.row.createTime) }}
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="filePath" label="归档路径" min-width="260"></el-table-column>
+                  <el-table-column label="操作" width="100" align="center" fixed="right">
+                    <template slot-scope="scope">
+                      <el-button
+                        type="text"
+                        size="small"
+                        @click="downloadFile(`/erp/presale/download/attachment/${scope.row.id}`)">下载</el-button>
+                    </template>
+                  </el-table-column>
+                </el-table>
               </div>
             </div>
           </div>
@@ -785,7 +784,8 @@ function defaultForm () {
     confirmInfo: defaultConfirmInfo(),
     packingInfo: defaultPackingInfo(),
     customsInfo: defaultAttachmentInfo(),
-    quarantineInfo: defaultAttachmentInfo()
+    quarantineInfo: defaultAttachmentInfo(),
+    quarantineList: []
   }
 }
 
@@ -903,8 +903,7 @@ export default {
       return !!(customs.filePath || customs.fileName)
     },
     hasQuarantineData () {
-      const quarantine = this.dataForm.quarantineInfo || {}
-      return !!(quarantine.filePath || quarantine.fileName)
+      return (this.dataForm.quarantineList || []).length > 0
     },
     buyerPartnerRoleLabel () {
       return this.getBusinessRoleLabel(this.dataForm.confirmInfo.buyerPartnerRole)
@@ -1077,6 +1076,7 @@ export default {
       result.packingInfo = Object.assign(defaultPackingInfo(), form.packingInfo || {})
       result.customsInfo = Object.assign(defaultAttachmentInfo(), form.customsInfo || {})
       result.quarantineInfo = Object.assign(defaultAttachmentInfo(), form.quarantineInfo || {})
+      result.quarantineList = (form.quarantineList || (form.quarantineInfo && form.quarantineInfo.filePath ? [form.quarantineInfo] : [])).map(item => Object.assign(defaultAttachmentInfo(), item))
       result.packingInfo.itemList = ((form.packingInfo || {}).itemList || []).map(item => {
         const row = Object.assign(defaultPackingItem(), item)
         row._recognizedProductName = row.productName || ''
