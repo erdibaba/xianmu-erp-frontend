@@ -218,6 +218,9 @@
               <div class="row-support-tip">支持浦发/建行/工行/兴业/农发行样本</div>
             </template>
           </el-table-column>
+          <el-table-column v-if="isFunderPayment" label="出资识别金额" width="150" align="right">
+            <template slot-scope="scope">{{ money(scope.row.xianmuContributionRecognizedAmount) }}</template>
+          </el-table-column>
           <el-table-column v-if="isFunderPayment" label="出资确认金额" width="160">
             <template slot-scope="scope">
               <el-input-number
@@ -423,6 +426,9 @@
         </el-table-column>
         <el-table-column label="分摊打款金额" width="180" align="right">
           <template slot-scope="scope">{{ money(scope.row.allocationAmount) }}</template>
+        </el-table-column>
+        <el-table-column v-if="detailData.paymentType === 1" label="出资识别金额" width="150" align="right">
+          <template slot-scope="scope">{{ money(scope.row.xianmuContributionRecognizedAmount) }}</template>
         </el-table-column>
         <el-table-column v-if="detailData.paymentType === 1" label="鲜牧出资款" width="150" align="right">
           <template slot-scope="scope">{{ money(scope.row.xianmuContributionModifiedAmount) }}</template>
