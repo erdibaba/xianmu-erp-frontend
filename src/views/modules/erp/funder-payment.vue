@@ -35,6 +35,9 @@
       <el-table-column prop="funderName" label="资方" min-width="190" show-overflow-tooltip>
         <template slot-scope="scope">{{ scope.row.funderName || '-' }}</template>
       </el-table-column>
+      <el-table-column prop="sellerContractNos" label="涉及合同号" min-width="230" show-overflow-tooltip>
+        <template slot-scope="scope">{{ scope.row.sellerContractNos || '-' }}</template>
+      </el-table-column>
       <el-table-column prop="paymentDate" label="打款日期" width="120" align="center"></el-table-column>
       <el-table-column label="确认金额" width="140" align="right">
         <template slot-scope="scope"><strong>{{ money(scope.row.modifiedAmount) }}</strong></template>
