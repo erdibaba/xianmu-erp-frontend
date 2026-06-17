@@ -59,6 +59,10 @@ export default {
     presaleOrderId: {
       type: [Number, String],
       default: 0
+    },
+    confirmId: {
+      type: [Number, String],
+      default: 0
     }
   },
   data () {
@@ -102,6 +106,7 @@ export default {
       this.loading = true
       const formData = new FormData()
       formData.append('presaleOrderId', this.presaleOrderId)
+      formData.append('confirmId', this.confirmId || 0)
       this.fileList.forEach(item => {
         formData.append('files', item.raw || item)
       })

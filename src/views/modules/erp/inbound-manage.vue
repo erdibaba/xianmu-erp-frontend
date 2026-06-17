@@ -41,12 +41,12 @@
       <el-table-column fixed="right" label="操作" width="230" align="center">
         <template slot-scope="scope">
           <div class="action-wrap">
-            <el-button type="text" size="small" @click="viewHandle(scope.row.presaleOrderId)">详情</el-button>
+            <el-button type="text" size="small" @click="viewHandle(scope.row)">详情</el-button>
             <el-button
               v-if="isAuth('erp:tradeorder:update')"
               type="text"
               size="small"
-              @click="editHandle(scope.row.presaleOrderId)">修改</el-button>
+              @click="editHandle(scope.row)">修改</el-button>
             <el-button
               v-if="isAuth('erp:tradeorder:save') && !scope.row.uploadStatus"
               type="text"
@@ -77,6 +77,7 @@
       v-if="uploadVisible"
       ref="uploadDialog"
       :presale-order-id="currentPresaleOrderId"
+      :confirm-id="currentConfirmId"
       @recognized="recognizedHandle">
     </inbound-upload-dialog>
   </div>
@@ -103,7 +104,8 @@ export default {
       dataListLoading: false,
       dialogVisible: false,
       uploadVisible: false,
-      currentPresaleOrderId: 0
+      currentPresaleOrderId: 0,
+      currentConfirmId: 0
     }
   },
   activated () {
@@ -151,6 +153,7 @@ export default {
     },
     uploadHandle (row) {
       this.currentPresaleOrderId = row.presaleOrderId
+      this.currentConfirmId = row.confirmId || 0
       this.uploadVisible = true
       this.$nextTick(() => {
         this.$refs.uploadDialog.init()
@@ -159,19 +162,19 @@ export default {
     recognizedHandle (result) {
       this.dialogVisible = true
       this.$nextTick(() => {
-        this.$refs.dialog.initFromRecognizedResult(this.currentPresaleOrderId, result)
+        this.$refs.dialog.initFromRecognizedResult(this.currentPresaleOrderId, this.currentConfirmId, result)
       })
     },
-    viewHandle (presaleOrderId) {
+    viewHandle (row) {
       this.dialogVisible = true
       this.$nextTick(() => {
-        this.$refs.dialog.init(presaleOrderId, true)
+        this.$refs.dialog.init(row.presaleOrderId, row.confirmId || 0, true)
       })
     },
-    editHandle (presaleOrderId) {
+    editHandle (row) {
       this.dialogVisible = true
       this.$nextTick(() => {
-        this.$refs.dialog.init(presaleOrderId, false)
+        this.$refs.dialog.init(row.presaleOrderId, row.confirmId || 0, false)
       })
     }
   }

@@ -17,7 +17,8 @@
       <el-table-column prop="loanNo" label="贷款编号" min-width="190"></el-table-column>
       <el-table-column prop="funderName" label="资方" min-width="190" show-overflow-tooltip></el-table-column>
       <el-table-column prop="presaleOrderNo" label="预销售单号" min-width="170"></el-table-column>
-      <el-table-column prop="sellerContractNo" label="合同号" min-width="160"></el-table-column>
+      <el-table-column prop="sellerContractNo" label="预售合同号" min-width="160"></el-table-column>
+      <el-table-column prop="confirmContractNo" label="确认函合同号" min-width="160"></el-table-column>
       <el-table-column prop="loanDate" label="首次打款日期" width="120" align="center"></el-table-column>
       <el-table-column label="贷款本金" width="140" align="right"><template slot-scope="scope">{{ money(scope.row.loanAmount) }}</template></el-table-column>
       <el-table-column label="年利率（%）" width="150" align="right"><template slot-scope="scope">{{ rate(scope.row.annualInterestRate) }}</template></el-table-column>
@@ -46,7 +47,8 @@
         <el-descriptions-item label="贷款编号">{{ detailData.loanNo }}</el-descriptions-item>
         <el-descriptions-item label="资方">{{ detailData.funderName }}</el-descriptions-item>
         <el-descriptions-item label="预销售单号">{{ detailData.presaleOrderNo }}</el-descriptions-item>
-        <el-descriptions-item label="合同号">{{ detailData.sellerContractNo }}</el-descriptions-item>
+        <el-descriptions-item label="预售合同号">{{ detailData.sellerContractNo }}</el-descriptions-item>
+        <el-descriptions-item label="确认函合同号">{{ detailData.confirmContractNo }}</el-descriptions-item>
         <el-descriptions-item label="贷款本金">{{ money(detailData.loanAmount) }}</el-descriptions-item>
         <el-descriptions-item label="年利率">{{ rate(detailData.annualInterestRate) }}%</el-descriptions-item>
         <el-descriptions-item label="已还本金">{{ money(detailData.repaidPrincipal) }}</el-descriptions-item>

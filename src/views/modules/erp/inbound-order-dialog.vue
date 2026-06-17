@@ -438,6 +438,7 @@ export default {
       return {
         id: 0,
         presaleOrderId: 0,
+        confirmId: 0,
         brandId: '',
         brandName: '',
         contractNo: '',
@@ -460,7 +461,11 @@ export default {
         itemList: []
       }
     },
-    init (presaleOrderId, readonly) {
+    init (presaleOrderId, confirmId, readonly) {
+      if (typeof confirmId === 'boolean') {
+        readonly = confirmId
+        confirmId = 0
+      }
       this.visible = true
       this.readonly = readonly
       this.$nextTick(this.updateSkuTableHeight)
@@ -468,13 +473,17 @@ export default {
       this.damageDialogVisible = false
       this.dataForm = this.defaultForm()
       this.detailLoading = true
-      Promise.all([this.loadProductList(), this.loadWarehouseList(), this.loadPackingBoxMap(presaleOrderId)]).then(() => {
-        return this.fetchDetail(presaleOrderId)
+      Promise.all([this.loadProductList(), this.loadWarehouseList(), this.loadPackingBoxMap(presaleOrderId, confirmId)]).then(() => {
+        return this.fetchDetail(presaleOrderId, confirmId)
       }).finally(() => {
         this.detailLoading = false
       })
     },
-    initFromRecognizedResult (presaleOrderId, result) {
+    initFromRecognizedResult (presaleOrderId, confirmId, result) {
+      if (result === undefined) {
+        result = confirmId
+        confirmId = 0
+      }
       this.visible = true
       this.readonly = false
       this.$nextTick(this.updateSkuTableHeight)
@@ -482,20 +491,23 @@ export default {
       this.damageDialogVisible = false
       this.dataForm = this.defaultForm()
       this.detailLoading = true
-      Promise.all([this.loadProductList(), this.loadWarehouseList(), this.loadPackingBoxMap(presaleOrderId)]).then(() => {
+      Promise.all([this.loadProductList(), this.loadWarehouseList(), this.loadPackingBoxMap(presaleOrderId, confirmId)]).then(() => {
         const draft = (result && result.inboundDraft) || {}
         this.dataForm = this.normalizeForm(Object.assign({}, draft, {
-          presaleOrderId: presaleOrderId
+          presaleOrderId: presaleOrderId,
+          confirmId: confirmId || draft.confirmId || 0
         }))
       }).finally(() => {
         this.detailLoading = false
       })
     },
-    fetchDetail (presaleOrderId) {
+    fetchDetail (presaleOrderId, confirmId) {
       return this.$http({
         url: this.$http.adornUrl(`/erp/inbound/info/${presaleOrderId}`),
         method: 'get',
-        params: this.$http.adornParams()
+        params: this.$http.adornParams({
+          confirmId: confirmId || 0
+        })
       }).then(({ data }) => {
         if (data && data.code === 0) {
           this.dataForm = this.normalizeForm(data.inboundOrder || {})
@@ -526,11 +538,13 @@ export default {
         this.warehouseList = (data && data.list) || []
       })
     },
-    loadPackingBoxMap (presaleOrderId) {
+    loadPackingBoxMap (presaleOrderId, confirmId) {
       return this.$http({
         url: this.$http.adornUrl(`/erp/inbound/packing-boxes/${presaleOrderId}`),
         method: 'get',
-        params: this.$http.adornParams()
+        params: this.$http.adornParams({
+          confirmId: confirmId || 0
+        })
       }).then(({ data }) => {
         this.packingBoxMap = (data && data.packingBoxMap) || {}
       }).catch(() => {

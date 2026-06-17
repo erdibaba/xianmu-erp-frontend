@@ -162,6 +162,29 @@
                 type="text"
                 @click="downloadFile(`/erp/presale/download/confirm/${dataForm.id}`)">下载客户订单确认函原件</el-button>
             </div>
+            <el-table
+              v-if="(dataForm.confirmList || []).length"
+              :data="dataForm.confirmList"
+              border
+              size="mini"
+              class="confirm-list-table">
+              <el-table-column label="序号" width="60" align="center">
+                <template slot-scope="scope">{{ scope.$index + 1 }}</template>
+              </el-table-column>
+              <el-table-column prop="contractNo" label="确认函合同号" min-width="160" show-overflow-tooltip></el-table-column>
+              <el-table-column prop="containerNo" label="柜号" min-width="150" show-overflow-tooltip></el-table-column>
+              <el-table-column label="预计到港" width="120" align="center">
+                <template slot-scope="scope">{{ formatDateOnly(scope.row.expectedArrivalDate) }}</template>
+              </el-table-column>
+              <el-table-column label="总金额" width="130" align="right">
+                <template slot-scope="scope">{{ toNumber(scope.row.totalAmount).toFixed(2) }}</template>
+              </el-table-column>
+              <el-table-column label="操作" width="100" align="center">
+                <template slot-scope="scope">
+                  <el-button type="text" size="small" @click="setActiveConfirm(scope.row)">查看/修改</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
             <el-empty v-if="!hasConfirmData" description="暂未上传客户订单确认函"></el-empty>
             <div v-else class="tab-pane-content-body">
               <div class="tab-scroll-area">
@@ -785,6 +808,7 @@ function defaultForm () {
     remark: '',
     itemList: [],
     confirmInfo: defaultConfirmInfo(),
+    confirmList: [],
     packingInfo: defaultPackingInfo(),
     customsInfo: defaultAttachmentInfo(),
     quarantineInfo: defaultAttachmentInfo(),
@@ -974,7 +998,7 @@ export default {
       this.detailLoading = true
       this.loadBaseOptions(() => {
         this.fetchOrderDetail(orderId, (form) => {
-          form.confirmInfo = this.buildConfirmInfo(result, form.confirmInfo)
+          form.confirmInfo = this.buildConfirmInfo(result, defaultConfirmInfo())
           this.dataForm = form
         })
       })
@@ -1069,6 +1093,7 @@ export default {
         return row
       })
       result.confirmInfo = Object.assign(defaultConfirmInfo(), form.confirmInfo || {})
+      result.confirmList = (form.confirmList || []).map(item => Object.assign(defaultConfirmInfo(), item))
       result.confirmInfo.itemList = ((form.confirmInfo || {}).itemList || []).map(item => {
         const row = Object.assign(defaultConfirmItem(), item)
         row._recognizedProductName = row.productName || ''
@@ -1500,6 +1525,15 @@ export default {
     handleConfirmProductChange (row) {
       this.fillConfirmProductByCode(row)
     },
+    setActiveConfirm (row) {
+      const confirm = Object.assign(defaultConfirmInfo(), row || {})
+      confirm.itemList = ((row || {}).itemList || []).map(item => {
+        const itemRow = Object.assign(defaultConfirmItem(), item)
+        this.fillConfirmProductByCode(itemRow)
+        return itemRow
+      })
+      this.dataForm.confirmInfo = confirm
+    },
     addEstimateItemRow () {
       const itemList = this.dataForm.itemList || (this.dataForm.itemList = [])
       itemList.push(defaultEstimateItem())
@@ -1572,6 +1606,9 @@ export default {
     toNumber (value) {
       const num = Number(value)
       return Number.isFinite(num) ? num : 0
+    },
+    formatDateOnly (value) {
+      return value ? String(value).slice(0, 10) : ''
     },
     money (value, digits = 2) {
       return this.toNumber(value).toFixed(digits)

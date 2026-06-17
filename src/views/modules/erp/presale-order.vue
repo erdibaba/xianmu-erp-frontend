@@ -40,7 +40,7 @@
       <el-table-column label="确认函状态" width="120" align="center">
         <template slot-scope="scope">
           <el-tag size="small" :type="scope.row.confirmUploaded ? 'success' : 'info'">
-            {{ scope.row.confirmUploaded ? '已上传' : '未上传' }}
+            {{ scope.row.confirmUploaded ? `已上传${scope.row.confirmCount || 1}张` : '未上传' }}
           </el-tag>
         </template>
       </el-table-column>
@@ -75,7 +75,7 @@
             size="small"
             @click="editHandle(scope.row.id)">修改</el-button>
           <el-button
-            v-if="isAuth('erp:tradeorder:save') && !scope.row.confirmUploaded"
+            v-if="isAuth('erp:tradeorder:save')"
             type="text"
             size="small"
             @click="uploadConfirmHandle(scope.row)">上传客户订单确认函</el-button>

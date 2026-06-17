@@ -146,46 +146,46 @@
             </el-form-item>
           </el-col>
           <el-col v-if="isFunderPayment" :span="24">
-            <el-form-item label="选择预销售单" prop="selectedPresaleIds">
+            <el-form-item label="选择确认函" prop="selectedConfirmIds">
               <el-select
-                v-model="paymentForm.selectedPresaleIds"
+                v-model="paymentForm.selectedConfirmIds"
                 multiple
                 filterable
                 remote
                 :remote-method="searchPresales"
                 :loading="presaleLoading"
-                placeholder="输入预销售单号、合同号或采购方搜索，最多返回15条"
+                placeholder="输入确认函合同号、柜号或采购方搜索，最多返回15条"
                 style="width: 100%"
                 @change="presaleSelectionChange">
-                <el-option v-for="item in presaleOptions" :key="item.id" :label="presaleLabel(item)" :value="item.id"></el-option>
+                <el-option v-for="item in presaleOptions" :key="confirmOptionId(item)" :label="presaleLabel(item)" :value="confirmOptionId(item)"></el-option>
               </el-select>
             </el-form-item>
           </el-col>
           <el-col v-else :span="24">
-            <el-form-item label="选择预销售单" prop="selectedPresaleId">
+            <el-form-item label="选择确认函" prop="selectedConfirmId">
               <el-select
-                v-model="paymentForm.selectedPresaleId"
+                v-model="paymentForm.selectedConfirmId"
                 filterable
                 remote
                 clearable
                 :disabled="!!paymentForm.id"
                 :remote-method="searchPresales"
                 :loading="presaleLoading"
-                placeholder="输入预销售单号、合同号或采购方搜索，最多返回15条"
+                placeholder="输入确认函合同号、柜号或采购方搜索，最多返回15条"
                 style="width: 100%"
                 @change="xianmuPresaleChange">
-                <el-option v-for="item in presaleOptions" :key="item.id" :label="presaleLabel(item)" :value="item.id"></el-option>
+                <el-option v-for="item in presaleOptions" :key="confirmOptionId(item)" :label="presaleLabel(item)" :value="confirmOptionId(item)"></el-option>
               </el-select>
             </el-form-item>
           </el-col>
         </el-row>
 
         <template v-if="isFunderPayment">
-        <div class="section-title">预销售单金额分摊</div>
+        <div class="section-title">确认函金额分摊</div>
         <el-table :data="paymentForm.allocationList" border height="360">
           <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
           <el-table-column prop="presaleOrderNo" label="预销售单号" min-width="170"></el-table-column>
-          <el-table-column prop="sellerContractNo" label="合同号" min-width="160"></el-table-column>
+          <el-table-column prop="confirmContractNo" label="确认函合同号" min-width="160"></el-table-column>
           <el-table-column prop="customerReference" label="采购方" min-width="180" show-overflow-tooltip></el-table-column>
           <el-table-column label="订单合同金额" width="160" align="right">
             <template slot-scope="scope">{{ money(scope.row.orderContractAmount) }}</template>
@@ -346,15 +346,15 @@
         <div v-else class="xianmu-single-payment">
           <div class="section-title">鲜牧全款打款</div>
           <el-alert
-            v-if="!xianmuAllocation.presaleOrderId"
+            v-if="!xianmuAllocation.confirmId"
             type="info"
-            title="请先选择一张已上传客户订单确认函的预销售单"
+            title="请先选择一张客户订单确认函"
             :closable="false">
           </el-alert>
           <template v-else>
             <el-descriptions :column="3" border size="small" class="xianmu-summary">
               <el-descriptions-item label="预销售单号">{{ xianmuAllocation.presaleOrderNo || '-' }}</el-descriptions-item>
-              <el-descriptions-item label="合同号">{{ xianmuAllocation.sellerContractNo || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="确认函合同号">{{ xianmuAllocation.confirmContractNo || '-' }}</el-descriptions-item>
               <el-descriptions-item label="采购方">{{ xianmuAllocation.customerReference || '-' }}</el-descriptions-item>
               <el-descriptions-item label="确认函总金额">{{ money(xianmuAllocation.allocationAmount) }}</el-descriptions-item>
               <el-descriptions-item label="尾款已付">{{ money(xianmuPaidAmount(xianmuAllocation)) }}</el-descriptions-item>
@@ -423,7 +423,7 @@
       <el-table :data="detailData.allocationList || []" border style="margin-top: 16px">
         <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
         <el-table-column prop="presaleOrderNo" label="预销售单号" min-width="180"></el-table-column>
-        <el-table-column prop="sellerContractNo" label="合同号" min-width="180"></el-table-column>
+        <el-table-column prop="confirmContractNo" label="确认函合同号" min-width="180"></el-table-column>
         <el-table-column label="订单合同金额" width="160" align="right">
           <template slot-scope="scope">{{ money(detailOrderContractAmount(scope.row)) }}</template>
         </el-table-column>
@@ -490,8 +490,8 @@ const emptyPayment = (paymentType = PAYMENT_TYPE_FUNDER) => ({
   fileName: '',
   rawText: '',
   recognizedReceipt: {},
-  selectedPresaleId: null,
-  selectedPresaleIds: [],
+  selectedConfirmId: null,
+  selectedConfirmIds: [],
   allocationList: []
 })
 
@@ -525,8 +525,8 @@ export default {
         paymentDate: [{ required: true, message: '请选择打款日期', trigger: 'change' }],
         modifiedAmount: [{ required: true, message: '请输入修改金额', trigger: 'blur' }],
         filePath: [{ required: true, message: '请上传打款凭证', trigger: 'change' }],
-        selectedPresaleId: [{ required: true, message: '请选择一张预销售单', trigger: 'change' }],
-        selectedPresaleIds: [{ type: 'array', required: true, min: 1, message: '请至少选择一张预销售单', trigger: 'change' }]
+        selectedConfirmId: [{ required: true, message: '请选择一张确认函', trigger: 'change' }],
+        selectedConfirmIds: [{ type: 'array', required: true, min: 1, message: '请至少选择一张确认函', trigger: 'change' }]
       }
     }
   },
@@ -587,6 +587,9 @@ export default {
     paymentStatusName (value) {
       return Number(value || 0) === 0 ? '待尾款' : '已确认'
     },
+    confirmOptionId (item) {
+      return item && item.confirmInfo ? item.confirmInfo.id : null
+    },
     installmentLoadingKey (index, kind) {
       return `${index}-${kind}`
     },
@@ -600,7 +603,8 @@ export default {
       return item.annualInterestRate === null || item.annualInterestRate === undefined ? '未维护' : item.annualInterestRate + '%'
     },
     presaleLabel (item) {
-      return `${item.orderNo || '-'} / ${item.sellerContractNo || '无合同号'} / ${item.customerReference || '无采购方'}`
+      const confirm = (item && item.confirmInfo) || {}
+      return `${item.orderNo || '-'} / ${confirm.contractNo || '无确认函合同号'} / ${confirm.containerNo || '无柜号'} / ${item.customerReference || confirm.buyerPartnerName || '无采购方'}`
     },
     getDataList () {
       this.dataListLoading = true
@@ -685,24 +689,31 @@ export default {
           orderNo: row.presaleOrderNo,
           sellerContractNo: row.sellerContractNo,
           customerReference: row.customerReference,
-          confirmInfo: { totalAmount: row.orderContractAmount }
+          confirmInfo: {
+            id: row.confirmId,
+            contractNo: row.confirmContractNo,
+            totalAmount: row.orderContractAmount
+          }
         }))
         const result = (data && data.list) || []
-        this.presaleOptions = selectedRows.concat(result.filter(item => !selectedRows.some(selected => selected.id === item.id)))
+        this.presaleOptions = selectedRows.concat(result.filter(item => !selectedRows.some(selected => this.confirmOptionId(selected) === this.confirmOptionId(item))))
       }).catch(() => { this.presaleLoading = false })
     },
     presaleSelectionChange (ids) {
       const oldRows = this.paymentForm.allocationList || []
-      this.paymentForm.allocationList = ids.map(id => {
-        const old = oldRows.find(item => item.presaleOrderId === id)
+      this.paymentForm.allocationList = ids.map(confirmId => {
+        const old = oldRows.find(item => item.confirmId === confirmId)
         if (old) return old
-        const option = this.presaleOptions.find(item => item.id === id) || {}
+        const option = this.presaleOptions.find(item => this.confirmOptionId(item) === confirmId) || {}
+        const confirm = option.confirmInfo || {}
         const confirmAmount = Number(option.confirmInfo && option.confirmInfo.totalAmount ? option.confirmInfo.totalAmount : 0)
         return {
-          presaleOrderId: id,
+          presaleOrderId: option.id,
+          confirmId: confirmId,
           presaleOrderNo: option.orderNo,
           sellerContractNo: option.sellerContractNo,
-          customerReference: option.customerReference,
+          confirmContractNo: confirm.contractNo,
+          customerReference: option.customerReference || confirm.buyerPartnerName,
           orderContractAmount: this.roundMoney(confirmAmount),
           allocationAmount: this.roundMoney(confirmAmount),
           xianmuContributionRecognizedAmount: 0,
@@ -731,20 +742,23 @@ export default {
         this.paymentForm.allocationList = []
         return
       }
-      const option = this.presaleOptions.find(item => item.id === id) || {}
+      const option = this.presaleOptions.find(item => this.confirmOptionId(item) === id) || {}
+      const confirm = option.confirmInfo || {}
       const confirmAmount = Number(option.confirmInfo && option.confirmInfo.totalAmount ? option.confirmInfo.totalAmount : 0)
       if (confirmAmount <= 0) {
-        this.$message.error('所选预销售单尚未上传客户订单确认函，或确认函总金额为空，不能进行鲜牧全款打款')
-        this.paymentForm.selectedPresaleId = null
+        this.$message.error('所选确认函总金额为空，不能进行鲜牧全款打款')
+        this.paymentForm.selectedConfirmId = null
         this.paymentForm.allocationList = []
         return
       }
       this.paymentForm.modifiedAmount = this.roundMoney(confirmAmount)
       this.paymentForm.allocationList = [{
-        presaleOrderId: id,
+        presaleOrderId: option.id,
+        confirmId: id,
         presaleOrderNo: option.orderNo,
         sellerContractNo: option.sellerContractNo,
-        customerReference: option.customerReference,
+        confirmContractNo: confirm.contractNo,
+        customerReference: option.customerReference || confirm.buyerPartnerName,
         orderContractAmount: this.roundMoney(confirmAmount),
         allocationAmount: this.roundMoney(confirmAmount),
         xianmuDepositRecognizedAmount: 0,
@@ -1006,15 +1020,20 @@ export default {
         if (data && data.code === 0) {
           const payment = data.payment || {}
           payment.paymentType = PAYMENT_TYPE_XIANMU
-          payment.selectedPresaleIds = (payment.allocationList || []).map(item => item.presaleOrderId)
-          payment.selectedPresaleId = payment.selectedPresaleIds[0] || null
+          payment.selectedConfirmIds = (payment.allocationList || []).map(item => item.confirmId)
+          payment.selectedConfirmId = payment.selectedConfirmIds[0] || null
           payment.recognizedReceipt = {}
           this.paymentForm = Object.assign(emptyPayment(PAYMENT_TYPE_XIANMU), payment)
           this.presaleOptions = (payment.allocationList || []).map(item => ({
             id: item.presaleOrderId,
             orderNo: item.presaleOrderNo,
             sellerContractNo: item.sellerContractNo,
-            customerReference: item.customerReference
+            customerReference: item.customerReference,
+            confirmInfo: {
+              id: item.confirmId,
+              contractNo: item.confirmContractNo,
+              totalAmount: item.orderContractAmount || item.allocationAmount
+            }
           }))
           this.createVisible = true
           this.searchInternalPayers('')
