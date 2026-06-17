@@ -298,6 +298,9 @@
           <el-table-column prop="productName" label="中文名称" min-width="140" show-overflow-tooltip></el-table-column>
           <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
           <el-table-column prop="boxes" label="分配箱数" width="90" align="center"></el-table-column>
+          <el-table-column prop="ownershipName" label="货权" min-width="120" show-overflow-tooltip>
+            <template slot-scope="scope">{{ scope.row.ownershipName || '-' }}</template>
+          </el-table-column>
           <el-table-column prop="sourceContainerNo" label="柜号" min-width="120"></el-table-column>
           <el-table-column label="销售价（元/千克）" width="150">
             <template slot-scope="scope">
@@ -1374,6 +1377,7 @@ export default {
         warehouseName: '',
         brandId: '',
         brandName: '',
+        ownershipName: '',
         inboundDate: '',
         productionDate: '',
         expiryDate: '',
