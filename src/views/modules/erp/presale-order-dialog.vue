@@ -162,6 +162,11 @@
                 type="text"
                 @click="downloadFile(`/erp/presale/download/confirm/${dataForm.id}`)">下载客户订单确认函原件</el-button>
             </div>
+            <div class="confirm-list-panel">
+              <div class="confirm-list-title">
+                <span>已上传确认函列表</span>
+                <el-tag size="mini" type="success">{{ (dataForm.confirmList || []).length }} 张</el-tag>
+              </div>
             <el-table
               v-if="(dataForm.confirmList || []).length"
               :data="dataForm.confirmList"
@@ -181,10 +186,19 @@
               </el-table-column>
               <el-table-column label="操作" width="100" align="center">
                 <template slot-scope="scope">
+                  <el-tag v-if="isActiveConfirm(scope.row)" size="mini" type="success">当前查看</el-tag>
                   <el-button type="text" size="small" @click="setActiveConfirm(scope.row)">查看/修改</el-button>
                 </template>
               </el-table-column>
             </el-table>
+              <el-alert
+                v-else
+                title="当前还没有保存过客户订单确认函。上传识别后需要点击保存，才会出现在这里。"
+                type="info"
+                :closable="false"
+                show-icon>
+              </el-alert>
+            </div>
             <el-empty v-if="!hasConfirmData" description="暂未上传客户订单确认函"></el-empty>
             <div v-else class="tab-pane-content-body">
               <div class="tab-scroll-area">
@@ -1094,6 +1108,9 @@ export default {
       })
       result.confirmInfo = Object.assign(defaultConfirmInfo(), form.confirmInfo || {})
       result.confirmList = (form.confirmList || []).map(item => Object.assign(defaultConfirmInfo(), item))
+      if (!result.confirmList.length && (result.confirmInfo.contractNo || result.confirmInfo.filePath || (result.confirmInfo.itemList || []).length)) {
+        result.confirmList = [Object.assign(defaultConfirmInfo(), result.confirmInfo)]
+      }
       result.confirmInfo.itemList = ((form.confirmInfo || {}).itemList || []).map(item => {
         const row = Object.assign(defaultConfirmItem(), item)
         row._recognizedProductName = row.productName || ''
@@ -1534,6 +1551,13 @@ export default {
       })
       this.dataForm.confirmInfo = confirm
     },
+    isActiveConfirm (row) {
+      const active = this.dataForm.confirmInfo || {}
+      if (active.id && row && row.id) {
+        return String(active.id) === String(row.id)
+      }
+      return !!(row && active.contractNo && row.contractNo && String(active.contractNo) === String(row.contractNo))
+    },
     addEstimateItemRow () {
       const itemList = this.dataForm.itemList || (this.dataForm.itemList = [])
       itemList.push(defaultEstimateItem())
@@ -1761,6 +1785,32 @@ export default {
 .tab-tools {
   margin-bottom: 10px;
   flex: 0 0 auto;
+}
+
+.confirm-list-panel {
+  flex: 0 0 auto;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid #d7ebe8;
+  border-radius: 8px;
+  background: #f5fbfa;
+}
+
+.confirm-list-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  color: #1f5f73;
+  font-weight: 700;
+}
+
+.confirm-list-table {
+  width: 100%;
+}
+
+.confirm-list-table /deep/ .el-tag {
+  margin-right: 6px;
 }
 
 .confirm-summary {

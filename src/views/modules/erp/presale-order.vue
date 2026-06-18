@@ -68,12 +68,12 @@
       <el-table-column fixed="right" label="操作" width="300" align="center">
         <template slot-scope="scope">
           <div class="action-wrap">
-          <el-button type="text" size="small" @click="viewHandle(scope.row.id)">详情</el-button>
+          <el-button type="text" size="small" @click="viewHandle(scope.row)">详情</el-button>
           <el-button
             v-if="isAuth('erp:tradeorder:update')"
             type="text"
             size="small"
-            @click="editHandle(scope.row.id)">修改</el-button>
+            @click="editHandle(scope.row)">修改</el-button>
           <el-button
             v-if="isAuth('erp:tradeorder:save')"
             type="text"
@@ -660,16 +660,16 @@ export default {
     attachmentUploadedHandle () {
       this.getDataList()
     },
-    viewHandle (id) {
+    viewHandle (row) {
       this.dialogVisible = true
       this.$nextTick(() => {
-        this.$refs.dialog.init(id, true, 'estimate')
+        this.$refs.dialog.init(row.id, true, row.confirmUploaded ? 'confirm' : 'estimate')
       })
     },
-    editHandle (id) {
+    editHandle (row) {
       this.dialogVisible = true
       this.$nextTick(() => {
-        this.$refs.dialog.init(id, false, 'estimate')
+        this.$refs.dialog.init(row.id, false, row.confirmUploaded ? 'confirm' : 'estimate')
       })
     },
     shipNoticeHandle (row) {
