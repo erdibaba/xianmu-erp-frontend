@@ -504,7 +504,7 @@
                   plain
                   :loading="outboundBatchLoading"
                   :disabled="hasOpenOutboundBatch"
-                  @click="createOutboundBatch">
+                  @click="openOutboundBatchDialog">
                   新增出库批次
                 </el-button>
                 <span v-if="hasOpenOutboundBatch" class="sub-title-tip">当前还有未完成批次，请先确认完成或删除后再新增。</span>
@@ -518,6 +518,46 @@
                 <span v-if="outboundCompleted" class="sub-title-tip">整单出库已完成。</span>
               </div>
             </div>
+            <div v-if="currentOutboundBatch" class="outbound-batch-info">
+              <span><strong>货权：</strong>{{ currentOutboundBatch.ownershipName || '-' }}</span>
+              <span><strong>司机：</strong>{{ currentOutboundBatch.driverName || '-' }}</span>
+              <span><strong>车牌号：</strong>{{ currentOutboundBatch.plateNo || '-' }}</span>
+              <span><strong>手机号：</strong>{{ currentOutboundBatch.driverMobile || '-' }}</span>
+            </div>
+            <div v-if="currentOutboundBatch && currentOutboundBatch.planItemList && currentOutboundBatch.planItemList.length" class="outbound-section-title">
+              <strong>本批次计划及实际核对</strong>
+              <span class="sub-title-tip">应出数据取本批次保存的计划；实际数据取已保存的出库回单。</span>
+            </div>
+            <el-table
+              v-if="currentOutboundBatch && currentOutboundBatch.planItemList && currentOutboundBatch.planItemList.length"
+              :data="currentOutboundBatch.planItemList"
+              border
+              size="mini"
+              class="attachment-table outbound-plan-table">
+              <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
+              <el-table-column prop="productCode" label="产品编码" width="105"></el-table-column>
+              <el-table-column prop="productName" label="品名" min-width="160" show-overflow-tooltip></el-table-column>
+              <el-table-column prop="containerNo" label="柜号" width="130" show-overflow-tooltip></el-table-column>
+              <el-table-column prop="factoryNo" label="厂号" width="90" show-overflow-tooltip></el-table-column>
+              <el-table-column label="计划箱数" width="90" align="right">
+                <template slot-scope="scope">{{ formatInteger(scope.row.plannedBoxes) }}</template>
+              </el-table-column>
+              <el-table-column label="实际箱数" width="90" align="right">
+                <template slot-scope="scope">{{ formatInteger(scope.row.actualBoxes) }}</template>
+              </el-table-column>
+              <el-table-column label="差异箱数" width="90" align="right">
+                <template slot-scope="scope">{{ formatInteger(scope.row.diffBoxes) }}</template>
+              </el-table-column>
+              <el-table-column label="计划重量(KG)" width="120" align="right">
+                <template slot-scope="scope">{{ formatNumber(scope.row.plannedWeight, 3) }}</template>
+              </el-table-column>
+              <el-table-column label="实际重量(KG)" width="120" align="right">
+                <template slot-scope="scope">{{ formatNumber(scope.row.actualWeight, 3) }}</template>
+              </el-table-column>
+              <el-table-column label="差异重量(KG)" width="120" align="right">
+                <template slot-scope="scope">{{ formatNumber(scope.row.diffWeight, 3) }}</template>
+              </el-table-column>
+            </el-table>
             <div class="attachment-toolbar">
               <el-button
                 v-if="attachmentEditable && currentOutboundBatch && canUploadStep('OUTBOUND_RECEIPT')"
@@ -755,6 +795,19 @@
               class="attachment-table outbound-history-table">
               <el-table-column type="expand">
                 <template slot-scope="scope">
+                  <div class="history-detail-label">批次计划</div>
+                  <el-table :data="scope.row.planItemList" border size="mini" class="attachment-table outbound-history-detail-table">
+                    <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
+                    <el-table-column prop="productCode" label="产品编码" width="105"></el-table-column>
+                    <el-table-column prop="productName" label="品名" min-width="160" show-overflow-tooltip></el-table-column>
+                    <el-table-column prop="containerNo" label="柜号" width="130" show-overflow-tooltip></el-table-column>
+                    <el-table-column prop="factoryNo" label="厂号" width="90" show-overflow-tooltip></el-table-column>
+                    <el-table-column prop="plannedBoxes" label="计划箱数" width="90" align="right"></el-table-column>
+                    <el-table-column label="计划重量(KG)" width="120" align="right">
+                      <template slot-scope="itemScope">{{ formatNumber(itemScope.row.plannedWeight, 3) }}</template>
+                    </el-table-column>
+                  </el-table>
+                  <div class="history-detail-label">实际出库</div>
                   <el-table :data="scope.row.receiptItemList" border size="mini" class="attachment-table outbound-history-detail-table">
                     <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
                     <el-table-column prop="productCode" label="系统编码" width="110"></el-table-column>
@@ -779,6 +832,9 @@
               </el-table-column>
               <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
               <el-table-column prop="batchNo" label="批次号" width="110"></el-table-column>
+              <el-table-column prop="ownershipName" label="货权" min-width="130" show-overflow-tooltip></el-table-column>
+              <el-table-column prop="driverName" label="司机" width="100" show-overflow-tooltip></el-table-column>
+              <el-table-column prop="plateNo" label="车牌号" width="110" show-overflow-tooltip></el-table-column>
               <el-table-column label="明细行数" width="90" align="right">
                 <template slot-scope="scope">{{ scope.row.receiptItemList.length }}</template>
               </el-table-column>
@@ -833,6 +889,13 @@
               <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
               <el-table-column prop="contractNo" label="合同号" width="150" show-overflow-tooltip></el-table-column>
               <el-table-column prop="recognizedProductCode" label="识别编码" width="100"></el-table-column>
+              <el-table-column prop="planMatchStatus" label="计划匹配" width="100">
+                <template slot-scope="scope">
+                  <el-tag size="mini" :type="scope.row.planMatchStatus === '已匹配' ? 'success' : 'danger'">
+                    {{ scope.row.planMatchStatus || '待匹配' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
               <el-table-column label="系统编码" min-width="220">
                 <template slot-scope="scope">
                   <el-select
@@ -1080,11 +1143,21 @@
         <el-button @click="bankSlipDetailVisible = false">关闭</el-button>
       </span>
     </el-dialog>
+    <sale-outbound-batch-dialog
+      v-if="outboundBatchDialogVisible"
+      ref="outboundBatchDialog"
+      @created="outboundBatchCreated">
+    </sale-outbound-batch-dialog>
   </el-dialog>
 </template>
 
 <script>
+import SaleOutboundBatchDialog from './sale-outbound-batch-dialog'
+
 export default {
+  components: {
+    SaleOutboundBatchDialog
+  },
   data () {
     return {
       visible: false,
@@ -1096,6 +1169,7 @@ export default {
       confirmLoading: false,
       outboundSaveLoading: false,
       outboundBatchLoading: false,
+      outboundBatchDialogVisible: false,
       bankSlipSaving: false,
       bankSlipDetailVisible: false,
       bankSlipDetailBatch: null,
@@ -1416,6 +1490,8 @@ export default {
         expectedBoxes: 0,
         expectedWeight: 0,
         salePriceKg: 0,
+        planItemId: '',
+        planMatchStatus: '待匹配',
         diffBoxes: 0,
         diffWeight: 0,
         adjustmentAmount: 0,
@@ -1554,6 +1630,12 @@ export default {
         saleOrderId: '',
         batchNo: '',
         status: 0,
+        driverId: '',
+        driverName: '',
+        plateNo: '',
+        driverMobile: '',
+        ownershipName: '',
+        planItemList: [],
         bankSlipFileId: '',
         receiptCount: 0,
         shippedTotalBoxes: 0,
@@ -1579,6 +1661,7 @@ export default {
       result.receipt = this.normalizeOutboundReceipt(result.receipt)
       result.receiptFileList = result.receiptFileList || []
       result.expenseList = result.expenseList || []
+      result.planItemList = result.planItemList || []
       return result
     },
     setActiveOutboundBatch () {
@@ -1644,6 +1727,20 @@ export default {
     },
     findOutboundExpectedSaleItem (row) {
       if (!row || !row.productId) return null
+      const batch = this.currentOutboundBatch
+      const planItems = batch && batch.planItemList ? batch.planItemList : []
+      if (planItems.length) {
+        const productPlans = planItems.filter(item => String(item.productId) === String(row.productId))
+        if (!productPlans.length) return null
+        const containerNo = this.normalizeOutboundContainerNo(row.containerNo)
+        const factoryNo = this.normalizeOutboundContainerNo(row.factoryNo)
+        const exact = productPlans.find(item => {
+          const containerMatched = !containerNo || this.normalizeOutboundContainerNo(item.containerNo) === containerNo
+          const factoryMatched = !factoryNo || this.normalizeOutboundContainerNo(item.factoryNo) === factoryNo
+          return containerMatched && factoryMatched
+        })
+        return exact || (productPlans.length === 1 ? productPlans[0] : null)
+      }
       const sourceItems = this.outboundExpectedSourceItems()
       const productItems = sourceItems.filter(item => String(item.productId) === String(row.productId))
       if (!productItems.length) return null
@@ -1662,16 +1759,22 @@ export default {
         this.$set(row, 'expectedBoxes', 0)
         this.$set(row, 'expectedWeight', 0)
         this.$set(row, 'salePriceKg', 0)
+        this.$set(row, 'planItemId', '')
+        this.$set(row, 'planMatchStatus', '计划外出库')
         return
       }
       this.$set(row, 'contractNo', this.dataForm.contractNo || this.dataForm.orderNo || '')
-      this.$set(row, 'expectedFactoryNo', saleItem.contractFactoryNo || '')
-      this.$set(row, 'expectedContainerNo', saleItem.sourceContainerNo || '')
-      this.$set(row, 'expectedBoxes', Number(saleItem.boxes || 0))
-      this.$set(row, 'expectedWeight', Number(saleItem.contractQuantityKg || 0))
+      const isPlan = Object.prototype.hasOwnProperty.call(saleItem, 'plannedBoxes')
+      this.$set(row, 'planItemId', isPlan ? saleItem.id : (row.planItemId || ''))
+      this.$set(row, 'planMatchStatus', isPlan ? '已匹配' : (row.planMatchStatus || '待匹配'))
+      this.$set(row, 'expectedFactoryNo', (isPlan ? saleItem.factoryNo : saleItem.contractFactoryNo) || '')
+      this.$set(row, 'expectedContainerNo', (isPlan ? saleItem.containerNo : saleItem.sourceContainerNo) || '')
+      this.$set(row, 'expectedBoxes', Number((isPlan ? saleItem.plannedBoxes : saleItem.boxes) || 0))
+      this.$set(row, 'expectedWeight', Number((isPlan ? saleItem.plannedWeight : saleItem.contractQuantityKg) || 0))
       this.$set(row, 'salePriceKg', Number(saleItem.salePriceKg || 0))
-      if (!row.factoryNo && saleItem.contractFactoryNo) {
-        this.$set(row, 'factoryNo', saleItem.contractFactoryNo)
+      const expectedFactory = isPlan ? saleItem.factoryNo : saleItem.contractFactoryNo
+      if (!row.factoryNo && expectedFactory) {
+        this.$set(row, 'factoryNo', expectedFactory)
       }
     },
     saleTypeChangeHandle (value) {
@@ -1814,22 +1917,24 @@ export default {
     },
     fetchOutboundReceiptProductOptions (row) {
       this.ensureOutboundReceiptProductState(row)
-      row._productLoading = true
-      this.$http({
-        url: this.$http.adornUrl('/erp/product/selectPage'),
-        method: 'get',
-        params: this.$http.adornParams({
-          page: 1,
-          limit: row._productPageSize,
-          keyword: row._productKeyword
-        })
-      }).then(({ data }) => {
-        row._productOptions = data && data.code === 0 ? (data.page.list || []) : []
-        row._productLoading = false
-      }).catch(() => {
-        row._productOptions = []
-        row._productLoading = false
+      const keyword = String(row._productKeyword || '').toLowerCase()
+      const plans = this.currentOutboundBatch && this.currentOutboundBatch.planItemList
+        ? this.currentOutboundBatch.planItemList
+        : []
+      const unique = {}
+      plans.forEach(item => {
+        if (!item.productId || unique[item.productId]) return
+        const text = `${item.productCode || ''} ${item.productName || ''} ${item.productNameEn || ''}`.toLowerCase()
+        if (keyword && text.indexOf(keyword) < 0) return
+        unique[item.productId] = {
+          id: item.productId,
+          productCode: item.productCode,
+          productName: item.productName,
+          productNameEn: item.productNameEn
+        }
       })
+      row._productOptions = Object.keys(unique).map(key => unique[key]).slice(0, 15)
+      row._productLoading = false
     },
     outboundReceiptProductChange (row, value) {
       this.ensureOutboundReceiptProductState(row)
@@ -1839,6 +1944,8 @@ export default {
         row.productId = ''
         row.productCode = ''
         row.productNameEn = ''
+        row.planItemId = ''
+        row.planMatchStatus = '计划外出库'
         this.applyOutboundExpectedByProduct(row)
         return
       }
@@ -2234,30 +2341,21 @@ export default {
         })
       }).catch(() => {})
     },
-    createOutboundBatch () {
+    openOutboundBatchDialog () {
       if (!this.dataForm.id) return
       if (this.hasOpenOutboundBatch) {
         this.$message.warning('当前还有未完成批次，请先确认完成或删除后再新增')
         return
       }
-      this.outboundBatchLoading = true
-      this.withGlobalLoading(this.$http({
-        url: this.$http.adornUrl('/erp/saleorder/outbound/batch/create'),
-        method: 'post',
-        data: this.$http.adornData({ saleOrderId: this.dataForm.id })
-      })).then(({ data }) => {
-        if (data && data.code === 0) {
-          const batch = this.normalizeOutboundBatch(data.batch)
-          this.activeOutboundBatchId = batch.id
-          this.$message.success('出库批次已创建')
-          this.refreshDetail()
-        } else {
-          this.$message.error((data && data.msg) || '创建出库批次失败')
-        }
-        this.outboundBatchLoading = false
-      }).catch(() => {
-        this.outboundBatchLoading = false
+      this.outboundBatchDialogVisible = true
+      this.$nextTick(() => {
+        this.$refs.outboundBatchDialog.init(this.dataForm)
       })
+    },
+    outboundBatchCreated (batch) {
+      this.activeOutboundBatchId = batch && batch.id
+      this.refreshDetail()
+      this.$emit('refreshDataList')
     },
     confirmOutboundBatch () {
       if (!this.currentOutboundBatch) return
@@ -2682,6 +2780,24 @@ export default {
 
 .attachment-toolbar {
   margin-bottom: 8px;
+}
+
+.outbound-batch-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+  margin: 8px 0 10px;
+  padding: 10px 14px;
+  border: 1px solid #d9ecff;
+  border-radius: 4px;
+  background: #f4f9ff;
+  color: #606266;
+}
+
+.history-detail-label {
+  margin: 8px 0 6px;
+  color: #303133;
+  font-weight: 600;
 }
 
 .outbound-receipt-actions {
