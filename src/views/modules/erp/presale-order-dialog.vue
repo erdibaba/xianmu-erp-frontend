@@ -183,14 +183,6 @@
                   </div>
                 </el-col>
               </el-row>
-              <el-alert
-                v-if="remainingPresaleWeightKg < 0"
-                title="客户订单确认重量已超过预售单重量，请核对。"
-                type="error"
-                show-icon
-                :closable="false"
-                class="linked-confirm-alert">
-              </el-alert>
             </div>
             <el-table
               :data="linkedConfirmRows"
