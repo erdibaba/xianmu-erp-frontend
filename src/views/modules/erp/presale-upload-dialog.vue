@@ -85,6 +85,10 @@ export default {
     orderId: {
       type: [Number, String],
       default: 0
+    },
+    confirmId: {
+      type: [Number, String],
+      default: 0
     }
   },
   data () {
@@ -233,6 +237,9 @@ export default {
         const formData = new FormData()
         formData.append('file', file)
         formData.append('presaleOrderId', this.orderId)
+        if (this.confirmId) {
+          formData.append('confirmId', this.confirmId)
+        }
         formData.append('attachmentType', this.uploadType === 'customs' ? 'CUSTOMS' : 'QUARANTINE')
         return this.$http({
           url: this.$http.adornUrl('/erp/presale/upload-attachment'),

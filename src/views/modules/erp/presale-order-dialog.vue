@@ -154,7 +154,7 @@
           </div>
         </el-tab-pane>
 
-        <el-tab-pane label="客户订单确认函" name="confirm">
+        <el-tab-pane v-if="!onlyEstimate" label="客户订单确认函" name="confirm">
           <div class="tab-pane-content">
             <div class="tab-tools">
               <el-button
@@ -393,7 +393,7 @@
             </div>
           </div>
         </el-tab-pane>
-        <el-tab-pane label="装箱单" name="packing">
+        <el-tab-pane v-if="!onlyEstimate" label="装箱单" name="packing">
           <div class="tab-pane-content">
             <div class="tab-tools">
               <el-button
@@ -586,7 +586,7 @@
             </div>
           </div>
         </el-tab-pane>
-        <el-tab-pane label="报关单" name="customs">
+        <el-tab-pane v-if="!onlyEstimate" label="报关单" name="customs">
           <div class="tab-pane-content">
             <div class="tab-tools">
               <el-button
@@ -624,7 +624,7 @@
             </div>
           </div>
         </el-tab-pane>
-        <el-tab-pane label="检疫证明" name="quarantine">
+        <el-tab-pane v-if="!onlyEstimate" label="检疫证明" name="quarantine">
           <div class="tab-pane-content">
             <div class="tab-tools">
               <el-button
@@ -672,6 +672,7 @@
       ref="attachmentUploadDialog"
       :upload-type="attachmentUploadType"
       :order-id="dataForm.id"
+      :confirm-id="(dataForm.confirmInfo || {}).id"
       @uploaded="attachmentUploadedHandle">
     </presale-upload-dialog>
   </el-dialog>
@@ -841,6 +842,12 @@ export default {
   components: {
     PresaleUploadDialog
   },
+  props: {
+    onlyEstimate: {
+      type: Boolean,
+      default: false
+    }
+  },
   data () {
     return {
       visible: false,
@@ -907,10 +914,16 @@ export default {
   },
   computed: {
     dialogTitle () {
-      if (this.readonly) {
-        return '预销售单详情'
+      if (this.onlyEstimate) {
+        if (this.readonly) {
+          return '预售单详情'
+        }
+        return this.dataForm.id ? '修改预售单' : '新增预售单'
       }
-      return this.dataForm.id ? '修改预销售单' : '新增预销售单'
+      if (this.readonly) {
+        return '客户订单确认详情'
+      }
+      return this.dataForm.id ? '修改客户订单确认' : '新增客户订单确认'
     },
     brandPartnerList () {
       return this.partnerList.filter(item => this.hasBusinessRole(item, 'BRAND'))
@@ -985,14 +998,14 @@ export default {
     }
   },
   methods: {
-    init (id, readonly, activeTab) {
+    init (id, readonly, activeTab, activeConfirmId) {
       this.visible = true
       this.readonly = !!readonly
-      this.activeTab = activeTab || 'estimate'
+      this.activeTab = this.onlyEstimate ? 'estimate' : (activeTab || 'estimate')
       this.dataForm = defaultForm()
       this.loadBaseOptions(() => {
         if (!id) return
-        this.fetchOrderDetail(id)
+        this.fetchOrderDetail(id, null, activeConfirmId)
       })
     },
     initFromEstimateResult (result) {
@@ -1005,19 +1018,19 @@ export default {
         this.detailLoading = false
       })
     },
-    initFromConfirmResult (orderId, result) {
+    initFromConfirmResult (orderId, result, activeConfirmId) {
       this.visible = true
       this.readonly = false
       this.activeTab = 'confirm'
       this.detailLoading = true
       this.loadBaseOptions(() => {
         this.fetchOrderDetail(orderId, (form) => {
-          form.confirmInfo = this.buildConfirmInfo(result, defaultConfirmInfo())
+          form.confirmInfo = this.buildConfirmInfo(result, activeConfirmId ? form.confirmInfo : defaultConfirmInfo())
           this.dataForm = form
-        })
+        }, activeConfirmId)
       })
     },
-    initFromPackingResult (orderId, result) {
+    initFromPackingResult (orderId, result, activeConfirmId) {
       this.visible = true
       this.readonly = false
       this.activeTab = 'packing'
@@ -1025,16 +1038,19 @@ export default {
       this.loadBaseOptions(() => {
         this.fetchOrderDetail(orderId, (form) => {
           form.packingInfo = this.buildPackingInfo(result, form.packingInfo, form.confirmInfo)
+          if (activeConfirmId) {
+            form.packingInfo.confirmId = activeConfirmId
+          }
           this.dataForm = form
-        })
+        }, activeConfirmId)
       })
     },
-    fetchOrderDetail (id, callback) {
+    fetchOrderDetail (id, callback, activeConfirmId) {
       this.detailLoading = true
       this.$http({
         url: this.$http.adornUrl(`/erp/presale/info/${id}`),
         method: 'get',
-        params: this.$http.adornParams()
+        params: this.$http.adornParams(activeConfirmId ? { confirmId: activeConfirmId } : {})
       }).then(({ data }) => {
         if (data && data.code === 0) {
           const form = this.normalizeForm(data.presaleOrder || {})
@@ -1681,7 +1697,7 @@ export default {
       }
       const currentTab = this.attachmentUploadType
       this.activeTab = currentTab
-      this.fetchOrderDetail(this.dataForm.id)
+      this.fetchOrderDetail(this.dataForm.id, null, (this.dataForm.confirmInfo || {}).id)
     },
     submitHandle () {
       if (this.saveLoading) {
