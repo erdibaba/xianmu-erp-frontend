@@ -221,43 +221,6 @@
                 type="text"
                 @click="downloadFile(`/erp/presale/download/confirm/${dataForm.id}`)">下载客户订单确认函原件</el-button>
             </div>
-            <div class="confirm-list-panel">
-              <div class="confirm-list-title">
-                <span>已上传确认函列表</span>
-                <el-tag size="mini" type="success">{{ (dataForm.confirmList || []).length }} 张</el-tag>
-              </div>
-            <el-table
-              v-if="(dataForm.confirmList || []).length"
-              :data="dataForm.confirmList"
-              border
-              size="mini"
-              class="confirm-list-table">
-              <el-table-column label="序号" width="60" align="center">
-                <template slot-scope="scope">{{ scope.$index + 1 }}</template>
-              </el-table-column>
-              <el-table-column prop="contractNo" label="确认函合同号" min-width="160" show-overflow-tooltip></el-table-column>
-              <el-table-column prop="containerNo" label="柜号" min-width="150" show-overflow-tooltip></el-table-column>
-              <el-table-column label="预计到港" width="120" align="center">
-                <template slot-scope="scope">{{ formatDateOnly(scope.row.expectedArrivalDate) }}</template>
-              </el-table-column>
-              <el-table-column label="总金额" width="130" align="right">
-                <template slot-scope="scope">{{ toNumber(scope.row.totalAmount).toFixed(2) }}</template>
-              </el-table-column>
-              <el-table-column label="操作" width="100" align="center">
-                <template slot-scope="scope">
-                  <el-tag v-if="isActiveConfirm(scope.row)" size="mini" type="success">当前查看</el-tag>
-                  <el-button type="text" size="small" @click="setActiveConfirm(scope.row)">查看/修改</el-button>
-                </template>
-              </el-table-column>
-            </el-table>
-              <el-alert
-                v-else
-                title="当前还没有保存过客户订单确认函。上传识别后需要点击保存，才会出现在这里。"
-                type="info"
-                :closable="false"
-                show-icon>
-              </el-alert>
-            </div>
             <el-empty v-if="!hasConfirmData" description="暂未上传客户订单确认函"></el-empty>
             <div v-else class="tab-pane-content-body">
               <div class="tab-scroll-area">
