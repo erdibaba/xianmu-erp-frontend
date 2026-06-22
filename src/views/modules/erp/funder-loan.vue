@@ -11,6 +11,9 @@
         </el-select>
       </el-form-item>
       <el-form-item><el-button type="primary" @click="getDataList()">查询</el-button></el-form-item>
+      <el-form-item>
+        <el-button v-if="isAuth('erp:funderloan:update')" type="success" @click="openBatchSettlement">按出库批次还款</el-button>
+      </el-form-item>
     </el-form>
 
     <el-table :data="dataList" border stripe v-loading="dataListLoading">
@@ -57,6 +60,10 @@
       <el-table :data="detailData.repaymentList || []" border style="margin-top:16px" max-height="420">
         <el-table-column prop="lineNo" label="序号" width="60" align="center"></el-table-column>
         <el-table-column prop="repaymentNo" label="还款编号" min-width="190"></el-table-column>
+        <el-table-column prop="repaymentSource" label="来源" width="100">
+          <template slot-scope="scope">{{ scope.row.repaymentSource === 'BATCH' ? '出库批次' : '手工' }}</template>
+        </el-table-column>
+        <el-table-column prop="outboundBatchNo" label="出库批次" min-width="140"></el-table-column>
         <el-table-column prop="repaymentDate" label="还款日期" width="120"></el-table-column>
         <el-table-column prop="loanDays" label="贷款天数" width="100" align="right"></el-table-column>
         <el-table-column label="归还本金" width="140" align="right"><template slot-scope="scope">{{ money(scope.row.repaymentPrincipal) }}</template></el-table-column>
@@ -129,6 +136,112 @@
         <el-button type="primary" :loading="submitLoading" @click="confirmRepayment()">确认还款</el-button>
       </span>
     </el-dialog>
+
+    <el-dialog title="按出库批次还款" :visible.sync="batchSettlementVisible" width="1280px" :close-on-click-modal="false">
+      <el-alert
+        title="仅能选择已确认完成且未结算过的出库批次。系统会按出库批次实际出库重量追溯到客户订单确认函小合同，再按资方规则计算并分摊还款。"
+        type="info"
+        :closable="false"
+        style="margin-bottom:16px">
+      </el-alert>
+      <el-form ref="batchSettlementForm" :model="batchSettlementForm" label-width="150px">
+        <el-row :gutter="18">
+          <el-col :span="12">
+            <el-form-item label="出库批次" required>
+              <el-select
+                v-model="batchSettlementForm.outboundBatchId"
+                filterable
+                remote
+                reserve-keyword
+                clearable
+                placeholder="输入批次号/销售单号/货权搜索"
+                :remote-method="searchBatchOptions"
+                :loading="batchOptionLoading"
+                style="width:100%"
+                @change="batchSettlementBatchChange">
+                <el-option
+                  v-for="item in batchOptions"
+                  :key="item.id"
+                  :label="`${item.batchNo} / ${item.saleOrderNo || '-'} / ${item.ownershipName || '-'}`"
+                  :value="item.id">
+                </el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="6">
+            <el-form-item label="结算日期" required>
+              <el-date-picker v-model="batchSettlementForm.settlementDate" type="date" value-format="yyyy-MM-dd" style="width:100%" @change="calculateBatchSettlement"></el-date-picker>
+            </el-form-item>
+          </el-col>
+          <el-col :span="6"><el-form-item label="资方规则"><el-input :value="ruleName(batchSettlementForm.ruleType)" disabled></el-input></el-form-item></el-col>
+          <el-col v-if="batchSettlementForm.ruleType === 'CHAOYUE'" :span="8">
+            <el-form-item label="资方认定回款本金">
+              <el-input-number v-model="batchSettlementForm.confirmedPrincipalAmount" :min="0" :precision="2" :controls="false" style="width:100%" @change="calculateBatchSettlement"></el-input-number>
+            </el-form-item>
+          </el-col>
+          <el-col v-if="batchSettlementForm.ruleType === 'WANXIANG'" :span="8">
+            <el-form-item label="补税点费用">
+              <el-input-number v-model="batchSettlementForm.taxAdjustAmount" :min="0" :precision="2" :controls="false" style="width:100%" @change="calculateBatchSettlement"></el-input-number>
+            </el-form-item>
+          </el-col>
+          <el-col v-if="batchSettlementForm.ruleType === 'WANXIANG'" :span="8">
+            <el-form-item label="毛重费用">
+              <el-input-number v-model="batchSettlementForm.grossWeightFeeAmount" :min="0" :precision="2" :controls="false" style="width:100%" @change="calculateBatchSettlement"></el-input-number>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="其他费用">
+              <el-input-number v-model="batchSettlementForm.otherFeeAmount" :min="0" :precision="2" :controls="false" style="width:100%" @change="calculateBatchSettlement"></el-input-number>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8"><el-form-item label="系统还本"><el-input :value="money(batchSettlementForm.systemPrincipalAmount)" disabled></el-input></el-form-item></el-col>
+          <el-col :span="8"><el-form-item label="确认还本"><el-input :value="money(batchSettlementForm.confirmedPrincipalAmount)" disabled></el-input></el-form-item></el-col>
+          <el-col :span="8"><el-form-item label="利息/资金成本"><el-input :value="money(batchSettlementForm.interestAmount)" disabled></el-input></el-form-item></el-col>
+          <el-col :span="8"><el-form-item label="仓储费用"><el-input :value="money(batchSettlementForm.storageFeeAmount)" disabled></el-input></el-form-item></el-col>
+          <el-col :span="8"><el-form-item label="其他资方费用"><el-input :value="money(otherBatchFees)" disabled></el-input></el-form-item></el-col>
+          <el-col :span="8"><el-form-item label="系统预计应付"><el-input :value="money(batchSettlementForm.expectedPaymentAmount)" disabled></el-input></el-form-item></el-col>
+          <el-col :span="8">
+            <el-form-item label="资方还款凭证" required>
+              <el-upload action="#" :show-file-list="false" :http-request="recognizeBatchVoucher" accept=".jpg,.jpeg,.png,.jfif,.bmp,.pdf">
+                <el-button type="primary" plain :loading="batchRecognizeLoading">上传并识别凭证</el-button>
+              </el-upload>
+              <span class="file-name">{{ batchSettlementForm.fileName || '尚未上传' }}</span>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8"><el-form-item label="识别金额"><el-input :value="money(batchSettlementForm.recognizedPaymentAmount)" disabled></el-input></el-form-item></el-col>
+          <el-col :span="8">
+            <el-form-item label="确认应付金额" required>
+              <el-input-number v-model="batchSettlementForm.confirmedPaymentAmount" :min="0" :precision="2" :controls="false" style="width:100%"></el-input-number>
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item label="备注">
+              <el-input v-model="batchSettlementForm.remark" maxlength="500"></el-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form>
+      <el-table :data="batchSettlementForm.itemList || []" border stripe max-height="360">
+        <el-table-column prop="lineNo" label="序号" width="60" align="center"></el-table-column>
+        <el-table-column prop="confirmContractNo" label="确认函合同号" min-width="150" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="productCode" label="产品编码" width="100"></el-table-column>
+        <el-table-column prop="productName" label="品名" min-width="160" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="containerNo" label="柜号" width="130" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="factoryNo" label="厂号" width="90"></el-table-column>
+        <el-table-column label="出库箱数" width="90" align="right"><template slot-scope="scope">{{ scope.row.shippedBoxes || 0 }}</template></el-table-column>
+        <el-table-column label="出库重量KG" width="120" align="right"><template slot-scope="scope">{{ number3(scope.row.shippedWeight) }}</template></el-table-column>
+        <el-table-column label="确认函单价" width="110" align="right"><template slot-scope="scope">{{ number6(scope.row.unitPriceInclTax) }}</template></el-table-column>
+        <el-table-column label="系统还本" width="120" align="right"><template slot-scope="scope">{{ money(scope.row.systemPrincipalAmount) }}</template></el-table-column>
+        <el-table-column label="确认还本" width="120" align="right"><template slot-scope="scope">{{ money(scope.row.confirmedPrincipalAmount) }}</template></el-table-column>
+        <el-table-column prop="loanDays" label="计息天数" width="90" align="right"></el-table-column>
+        <el-table-column label="利息/资金成本" width="130" align="right"><template slot-scope="scope">{{ money(scope.row.interestAmount) }}</template></el-table-column>
+        <el-table-column label="预计应付" width="120" align="right"><template slot-scope="scope">{{ money(scope.row.expectedPaymentAmount) }}</template></el-table-column>
+      </el-table>
+      <span slot="footer">
+        <el-button @click="batchSettlementVisible = false">取消</el-button>
+        <el-button type="primary" :loading="batchSubmitLoading" @click="confirmBatchSettlement">确认批次还款</el-button>
+      </span>
+    </el-dialog>
   </div>
 </template>
 
@@ -149,6 +262,31 @@ const emptyRepayment = loanId => ({
   rawText: ''
 })
 
+const emptyBatchSettlement = () => ({
+  outboundBatchId: '',
+  settlementDate: new Date().toISOString().slice(0, 10),
+  ruleType: '',
+  systemPrincipalAmount: 0,
+  confirmedPrincipalAmount: 0,
+  interestAmount: 0,
+  storageFeeAmount: 0,
+  handlingFeeAmount: 0,
+  codeScanFeeAmount: 0,
+  stampTaxAmount: 0,
+  depositAmount: 0,
+  taxAdjustAmount: 0,
+  grossWeightFeeAmount: 0,
+  otherFeeAmount: 0,
+  expectedPaymentAmount: 0,
+  recognizedPaymentAmount: 0,
+  confirmedPaymentAmount: 0,
+  filePath: '',
+  fileName: '',
+  rawText: '',
+  remark: '',
+  itemList: []
+})
+
 export default {
   data () {
     return {
@@ -166,6 +304,12 @@ export default {
       bankVoucherSupportTip: '支持浦发银行、建设银行、工商银行、兴业银行、农发行电子回单样本，支持 PDF / JPG / PNG，识别后请核对金额和日期。',
       recognizeLoading: false,
       submitLoading: false,
+      batchSettlementVisible: false,
+      batchSettlementForm: emptyBatchSettlement(),
+      batchOptions: [],
+      batchOptionLoading: false,
+      batchRecognizeLoading: false,
+      batchSubmitLoading: false,
       repaymentRules: {
         repaymentPrincipal: [{ required: true, message: '请输入本次归还本金', trigger: 'blur' }],
         repaymentDate: [{ required: true, message: '请选择还款日期', trigger: 'change' }],
@@ -187,6 +331,10 @@ export default {
   computed: {
     amountMismatch () {
       return Math.round(Number(this.repaymentForm.modifiedAmount || 0) * 100) !== Math.round(Number(this.repaymentForm.expectedPaymentAmount || 0) * 100)
+    },
+    otherBatchFees () {
+      const f = this.batchSettlementForm
+      return Number(f.handlingFeeAmount || 0) + Number(f.codeScanFeeAmount || 0) + Number(f.stampTaxAmount || 0) + Number(f.depositAmount || 0) + Number(f.taxAdjustAmount || 0) + Number(f.grossWeightFeeAmount || 0) + Number(f.otherFeeAmount || 0)
     }
   },
   activated () {
@@ -196,6 +344,12 @@ export default {
     money (value) { return Number(value || 0).toFixed(2) },
     rate (value) { return Number(value || 0).toFixed(10) },
     decimal10 (value) { return Number(value || 0).toFixed(10) },
+    number3 (value) { return Number(value || 0).toFixed(3) },
+    number6 (value) { return Number(value || 0).toFixed(6) },
+    ruleName (value) {
+      const map = { RUIHEXIANG: '瑞和祥', CHAOYUE: '超跃', WANXIANG: '万翔', DEFAULT: '默认' }
+      return map[value] || value || '-'
+    },
     getDataList () {
       this.dataListLoading = true
       this.$http({
@@ -234,6 +388,117 @@ export default {
       this.repaymentForm = emptyRepayment(loan.id)
       this.repaymentVisible = true
       this.$nextTick(() => this.$refs.repaymentForm && this.$refs.repaymentForm.clearValidate())
+    },
+    openBatchSettlement () {
+      this.batchSettlementForm = emptyBatchSettlement()
+      this.batchSettlementVisible = true
+      this.searchBatchOptions('')
+    },
+    searchBatchOptions (keyword) {
+      this.batchOptionLoading = true
+      this.$http({
+        url: this.$http.adornUrl('/erp/funder-finance/loan/batch-options'),
+        method: 'get',
+        params: this.$http.adornParams({ keyword })
+      }).then(({ data }) => {
+        if (data && data.code === 0) {
+          this.batchOptions = data.list || []
+        } else {
+          this.$message.error((data && data.msg) || '获取出库批次失败')
+        }
+      }).finally(() => {
+        this.batchOptionLoading = false
+      })
+    },
+    batchSettlementBatchChange () {
+      this.calculateBatchSettlement()
+    },
+    calculateBatchSettlement () {
+      if (!this.batchSettlementForm.outboundBatchId || !this.batchSettlementForm.settlementDate) return
+      const keepFile = {
+        recognizedPaymentAmount: this.batchSettlementForm.recognizedPaymentAmount,
+        confirmedPaymentAmount: this.batchSettlementForm.confirmedPaymentAmount,
+        filePath: this.batchSettlementForm.filePath,
+        fileName: this.batchSettlementForm.fileName,
+        rawText: this.batchSettlementForm.rawText,
+        remark: this.batchSettlementForm.remark
+      }
+      this.$http({
+        url: this.$http.adornUrl('/erp/funder-finance/loan/batch-settlement/calculate'),
+        method: 'post',
+        data: this.$http.adornData(this.batchSettlementForm)
+      }).then(({ data }) => {
+        if (data && data.code === 0) {
+          this.batchSettlementForm = Object.assign(emptyBatchSettlement(), data.settlement || {}, keepFile)
+          if (!Number(this.batchSettlementForm.confirmedPaymentAmount || 0)) {
+            this.batchSettlementForm.confirmedPaymentAmount = this.batchSettlementForm.expectedPaymentAmount || 0
+          }
+        } else {
+          this.$message.error((data && data.msg) || '计算批次结算失败')
+        }
+      })
+    },
+    recognizeBatchVoucher (request) {
+      const formData = new FormData()
+      formData.append('file', request.file)
+      this.batchRecognizeLoading = true
+      const loading = this.$loading({ lock: true, text: '正在识别并归档资方还款凭证...' })
+      this.$http({
+        url: this.$http.adornUrl('/erp/funder-finance/voucher/recognize'),
+        method: 'post',
+        data: formData,
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 120000
+      }).then(({ data }) => {
+        if (data && data.code === 0) {
+          const voucher = data.voucher || {}
+          this.batchSettlementForm.recognizedPaymentAmount = Number(voucher.recognizedAmount || 0)
+          this.batchSettlementForm.confirmedPaymentAmount = Number(voucher.recognizedAmount || 0)
+          this.batchSettlementForm.settlementDate = voucher.paymentDate || this.batchSettlementForm.settlementDate
+          this.batchSettlementForm.filePath = voucher.filePath || ''
+          this.batchSettlementForm.fileName = voucher.fileName || request.file.name
+          this.batchSettlementForm.rawText = voucher.rawText || ''
+          this.calculateBatchSettlement()
+          this.$message.success('资方还款凭证识别完成，请核对金额和日期')
+        } else {
+          this.$message.error((data && data.msg) || '资方还款凭证识别失败')
+        }
+      }).catch(() => this.$message.error('资方还款凭证识别请求失败')).finally(() => {
+        this.batchRecognizeLoading = false
+        loading.close()
+      })
+    },
+    confirmBatchSettlement () {
+      if (!this.batchSettlementForm.outboundBatchId) {
+        this.$message.error('请选择出库批次')
+        return
+      }
+      if (!this.batchSettlementForm.filePath) {
+        this.$message.error('请先上传资方还款凭证')
+        return
+      }
+      if (Number(this.batchSettlementForm.confirmedPaymentAmount || 0) <= 0) {
+        this.$message.error('确认应付金额必须大于0')
+        return
+      }
+      this.batchSubmitLoading = true
+      const loading = this.$loading({ lock: true, text: '正在确认批次还款...' })
+      this.$http({
+        url: this.$http.adornUrl('/erp/funder-finance/loan/batch-settlement/confirm'),
+        method: 'post',
+        data: this.$http.adornData(this.batchSettlementForm)
+      }).then(({ data }) => {
+        if (data && data.code === 0) {
+          this.$message.success('批次还款已确认')
+          this.batchSettlementVisible = false
+          this.getDataList()
+        } else {
+          this.$message.error((data && data.msg) || '确认批次还款失败')
+        }
+      }).catch(() => this.$message.error('确认批次还款请求失败')).finally(() => {
+        this.batchSubmitLoading = false
+        loading.close()
+      })
     },
     calculateRepayment () {
       if (!this.repaymentForm.loanId || Number(this.repaymentForm.repaymentPrincipal || 0) <= 0 || !this.repaymentForm.repaymentDate) return
