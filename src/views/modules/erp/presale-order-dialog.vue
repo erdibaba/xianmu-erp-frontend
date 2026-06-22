@@ -154,6 +154,73 @@
           </div>
         </el-tab-pane>
 
+        <el-tab-pane v-if="onlyEstimate" label="关联客户订单确认" name="linkedConfirm">
+          <div class="tab-pane-content">
+            <div class="linked-confirm-summary">
+              <el-row :gutter="12">
+                <el-col :span="6">
+                  <div class="summary-card">
+                    <div class="summary-label">预售单总重量(KG)</div>
+                    <div class="summary-value">{{ money(presaleTotalWeightKg) }}</div>
+                  </div>
+                </el-col>
+                <el-col :span="6">
+                  <div class="summary-card">
+                    <div class="summary-label">确认函总重量(KG)</div>
+                    <div class="summary-value">{{ money(confirmTotalWeightKg) }}</div>
+                  </div>
+                </el-col>
+                <el-col :span="6">
+                  <div class="summary-card" :class="{ 'is-warning': remainingPresaleWeightKg < 0 }">
+                    <div class="summary-label">剩余未确认重量(KG)</div>
+                    <div class="summary-value">{{ money(remainingPresaleWeightKg) }}</div>
+                  </div>
+                </el-col>
+                <el-col :span="6">
+                  <div class="summary-card">
+                    <div class="summary-label">确认占比</div>
+                    <div class="summary-value">{{ confirmWeightPercent }}</div>
+                  </div>
+                </el-col>
+              </el-row>
+              <el-alert
+                v-if="remainingPresaleWeightKg < 0"
+                title="客户订单确认重量已超过预售单重量，请核对。"
+                type="error"
+                show-icon
+                :closable="false"
+                class="linked-confirm-alert">
+              </el-alert>
+            </div>
+            <el-table
+              :data="linkedConfirmRows"
+              border
+              size="small"
+              height="440"
+              empty-text="暂无关联客户订单确认">
+              <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
+              <el-table-column prop="contractNo" label="确认函合同号" min-width="170" show-overflow-tooltip></el-table-column>
+              <el-table-column prop="containerNo" label="柜号" min-width="150" show-overflow-tooltip></el-table-column>
+              <el-table-column prop="buyerPartnerName" label="采购方" min-width="180" show-overflow-tooltip></el-table-column>
+              <el-table-column prop="coldFreshType" label="冷冻/冷鲜" width="110" align="center"></el-table-column>
+              <el-table-column label="预计到港" width="120" align="center">
+                <template slot-scope="scope">{{ formatDateOnly(scope.row.expectedArrivalDate) }}</template>
+              </el-table-column>
+              <el-table-column label="确认函重量(KG)" width="140" align="right">
+                <template slot-scope="scope">{{ money(scope.row.confirmWeightKg) }}</template>
+              </el-table-column>
+              <el-table-column label="总金额" width="130" align="right">
+                <template slot-scope="scope">{{ money(scope.row.totalAmount) }}</template>
+              </el-table-column>
+              <el-table-column label="操作" width="120" align="center" fixed="right">
+                <template slot-scope="scope">
+                  <el-button type="text" size="small" @click="setActiveConfirmFromSummary(scope.row)">查看详情</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+        </el-tab-pane>
+
         <el-tab-pane v-if="!onlyEstimate" label="客户订单确认函" name="confirm">
           <div class="tab-pane-content">
             <div class="tab-tools">
@@ -667,6 +734,52 @@
       <el-button @click="visible = false">{{ readonly ? '关闭' : '取消' }}</el-button>
       <el-button v-if="!readonly" type="primary" :loading="saveLoading" :disabled="saveLoading" @click="submitHandle()">保存</el-button>
     </span>
+    <el-dialog
+      title="客户订单确认详情"
+      :visible.sync="linkedConfirmDetailVisible"
+      append-to-body
+      width="1080px"
+      custom-class="linked-confirm-detail-dialog">
+      <div v-if="linkedConfirmDetail" class="linked-confirm-detail">
+        <div class="linked-confirm-detail-grid">
+          <div class="detail-cell"><span>确认函合同号</span><strong>{{ linkedConfirmDetail.contractNo || '-' }}</strong></div>
+          <div class="detail-cell"><span>柜号</span><strong>{{ linkedConfirmDetail.containerNo || '-' }}</strong></div>
+          <div class="detail-cell"><span>预计到港</span><strong>{{ formatDateOnly(linkedConfirmDetail.expectedArrivalDate) }}</strong></div>
+          <div class="detail-cell"><span>卖方/品牌方</span><strong>{{ linkedConfirmDetail.brandName || '-' }}</strong></div>
+          <div class="detail-cell"><span>采购方</span><strong>{{ linkedConfirmDetail.buyerPartnerName || '-' }}</strong></div>
+          <div class="detail-cell"><span>冷冻/冷鲜</span><strong>{{ linkedConfirmDetail.coldFreshType || '-' }}</strong></div>
+          <div class="detail-cell"><span>确认函重量(KG)</span><strong>{{ money(linkedConfirmDetail.confirmWeightKg) }}</strong></div>
+          <div class="detail-cell"><span>总金额</span><strong>{{ money(linkedConfirmDetail.totalAmount) }}</strong></div>
+          <div class="detail-cell"><span>币种</span><strong>{{ linkedConfirmDetail.currency || '-' }}</strong></div>
+        </div>
+        <el-table
+          :data="linkedConfirmDetail.itemList || []"
+          border
+          size="small"
+          height="360"
+          class="linked-confirm-detail-table">
+          <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
+          <el-table-column prop="sourceProductCode" label="确认函编码" min-width="120" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="productCode" label="系统编码" min-width="120" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="productName" label="产品中文名" min-width="160" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="productNameEn" label="产品英文名" min-width="220" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="marketCirculationName" label="市场流通名称" min-width="180" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="unit" label="计量单位" width="100" align="center"></el-table-column>
+          <el-table-column label="数量(KG)" width="120" align="right">
+            <template slot-scope="scope">{{ money(scope.row.quantity) }}</template>
+          </el-table-column>
+          <el-table-column label="单价(含税)" width="120" align="right">
+            <template slot-scope="scope">{{ money(scope.row.unitPriceInclTax) }}</template>
+          </el-table-column>
+          <el-table-column label="总值(含税)" width="130" align="right">
+            <template slot-scope="scope">{{ money(scope.row.lineTotalInclTax) }}</template>
+          </el-table-column>
+        </el-table>
+      </div>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="linkedConfirmDetailVisible = false">关闭</el-button>
+      </span>
+    </el-dialog>
     <presale-upload-dialog
       v-if="attachmentUploadVisible"
       ref="attachmentUploadDialog"
@@ -857,6 +970,8 @@ export default {
       detailLoading: false,
       attachmentUploadVisible: false,
       attachmentUploadType: 'customs',
+      linkedConfirmDetailVisible: false,
+      linkedConfirmDetail: null,
       dataForm: defaultForm(),
       partnerList: [],
       productList: [],
@@ -995,6 +1110,36 @@ export default {
     },
     packingExpandedKeys () {
       return (this.dataForm.packingInfo.itemList || []).map(item => this.packingRowKey(item))
+    },
+    presaleTotalWeightKg () {
+      return (this.dataForm.itemList || []).reduce((sum, item) => {
+        const kg = this.toNumber(item.quantityKg)
+        if (kg) {
+          return sum + kg
+        }
+        return sum + this.tonToKg(item.quantityTon)
+      }, 0)
+    },
+    linkedConfirmRows () {
+      return (this.dataForm.confirmList || []).map(confirm => {
+        const row = Object.assign({}, confirm)
+        row.confirmWeightKg = (confirm.itemList || []).reduce((sum, item) => {
+          return sum + this.toNumber(item.quantity)
+        }, 0)
+        return row
+      })
+    },
+    confirmTotalWeightKg () {
+      return this.linkedConfirmRows.reduce((sum, item) => sum + this.toNumber(item.confirmWeightKg), 0)
+    },
+    remainingPresaleWeightKg () {
+      return this.presaleTotalWeightKg - this.confirmTotalWeightKg
+    },
+    confirmWeightPercent () {
+      if (!this.presaleTotalWeightKg) {
+        return '0.00%'
+      }
+      return ((this.confirmTotalWeightKg / this.presaleTotalWeightKg) * 100).toFixed(2) + '%'
     }
   },
   methods: {
@@ -1574,6 +1719,10 @@ export default {
       }
       return !!(row && active.contractNo && row.contractNo && String(active.contractNo) === String(row.contractNo))
     },
+    setActiveConfirmFromSummary (row) {
+      this.linkedConfirmDetail = Object.assign({}, row)
+      this.linkedConfirmDetailVisible = true
+    },
     addEstimateItemRow () {
       const itemList = this.dataForm.itemList || (this.dataForm.itemList = [])
       itemList.push(defaultEstimateItem())
@@ -1827,6 +1976,77 @@ export default {
 
 .confirm-list-table /deep/ .el-tag {
   margin-right: 6px;
+}
+
+.linked-confirm-summary {
+  flex: 0 0 auto;
+  margin-bottom: 12px;
+}
+
+.summary-card {
+  padding: 12px 14px;
+  border: 1px solid #d7ebe8;
+  border-radius: 8px;
+  background: #f5fbfa;
+}
+
+.summary-card.is-warning {
+  border-color: #fbc4c4;
+  background: #fef0f0;
+}
+
+.summary-label {
+  margin-bottom: 6px;
+  color: #607d8b;
+  font-size: 12px;
+}
+
+.summary-value {
+  color: #1f5f73;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.summary-card.is-warning .summary-value {
+  color: #f56c6c;
+}
+
+.linked-confirm-alert {
+  margin-top: 10px;
+}
+
+.linked-confirm-detail-table {
+  margin-top: 14px;
+}
+
+.linked-confirm-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid #ebeef5;
+  border-left: 1px solid #ebeef5;
+}
+
+.detail-cell {
+  display: flex;
+  min-height: 42px;
+  border-right: 1px solid #ebeef5;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.detail-cell span {
+  flex: 0 0 118px;
+  padding: 11px 10px;
+  color: #606266;
+  background: #fafafa;
+}
+
+.detail-cell strong {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 11px 10px;
+  color: #303133;
+  font-weight: 500;
+  word-break: break-all;
 }
 
 .confirm-summary {
