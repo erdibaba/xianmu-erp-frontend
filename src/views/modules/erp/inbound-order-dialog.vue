@@ -6,7 +6,7 @@
     width="97%"
     top="4vh"
     custom-class="inbound-order-dialog-modal">
-    <div class="inbound-order-dialog" v-loading="detailLoading">
+    <div ref="dialogBody" class="inbound-order-dialog" v-loading="detailLoading">
       <el-form
         ref="dataForm"
         :model="dataForm"
@@ -173,7 +173,7 @@
           <div class="sub-title">SKU明细</div>
           <el-button v-if="!readonly" size="mini" type="primary" @click="addItemRow()">新增明细</el-button>
         </div>
-        <el-table :data="dataForm.itemList" border size="mini" :height="skuTableHeight" :fit="false" class="item-table">
+        <el-table ref="skuTable" :data="dataForm.itemList" border size="mini" :height="skuTableHeight" :fit="false" class="item-table">
           <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
           <el-table-column v-if="!readonly" label="操作" width="80" align="center">
             <template slot-scope="scope">
@@ -498,6 +498,7 @@ export default {
         return this.fetchDetail(presaleOrderId, confirmId)
       }).finally(() => {
         this.detailLoading = false
+        this.$nextTick(this.updateSkuTableHeight)
       })
     },
     initFromRecognizedResult (presaleOrderId, confirmId, result) {
@@ -522,6 +523,7 @@ export default {
         return this.resolveRecognizedDriver()
       }).finally(() => {
         this.detailLoading = false
+        this.$nextTick(this.updateSkuTableHeight)
       })
     },
     fetchDetail (presaleOrderId, confirmId) {
@@ -540,8 +542,27 @@ export default {
       })
     },
     updateSkuTableHeight () {
-      const viewportHeight = window.innerHeight || 900
-      this.skuTableHeight = Math.max(180, Math.min(320, viewportHeight - 575))
+      this.$nextTick(() => {
+        const viewportHeight = window.innerHeight || 900
+        const fallbackHeight = Math.max(180, Math.min(320, viewportHeight - 575))
+        const dialogBody = this.$refs.dialogBody
+        const skuTable = this.$refs.skuTable && this.$refs.skuTable.$el
+        if (!dialogBody || !skuTable) {
+          this.skuTableHeight = fallbackHeight
+          return
+        }
+        const bodyRect = dialogBody.getBoundingClientRect()
+        const tableRect = skuTable.getBoundingClientRect()
+        const availableHeight = Math.floor(bodyRect.bottom - tableRect.top - 12)
+        this.skuTableHeight = availableHeight > 0
+          ? Math.max(120, Math.min(320, availableHeight))
+          : fallbackHeight
+        this.$nextTick(() => {
+          if (this.$refs.skuTable) {
+            this.$refs.skuTable.doLayout()
+          }
+        })
+      })
     },
     loadProductList () {
       return this.$http({
