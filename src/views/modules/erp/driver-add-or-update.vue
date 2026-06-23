@@ -14,6 +14,9 @@
       <el-form-item label="手机号" prop="mobile">
         <el-input v-model.trim="dataForm.mobile" maxlength="50"></el-input>
       </el-form-item>
+      <el-form-item label="身份证号">
+        <el-input v-model.trim="dataForm.idCardNo" maxlength="100"></el-input>
+      </el-form-item>
       <el-form-item label="状态">
         <el-switch
           v-model="dataForm.status"
@@ -37,6 +40,7 @@
     driverName: '',
     plateNo: '',
     mobile: '',
+    idCardNo: '',
     status: 1
   })
 

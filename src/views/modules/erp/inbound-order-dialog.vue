@@ -83,7 +83,29 @@
           </el-col>
           <el-col :span="8">
             <el-form-item label="司机姓名">
-              <el-input v-model="dataForm.driverName" :disabled="readonly"></el-input>
+              <el-select
+                v-if="!readonly"
+                v-model="dataForm.driverId"
+                filterable
+                clearable
+                remote
+                reserve-keyword
+                :remote-method="searchDrivers"
+                :loading="driverLoading"
+                placeholder="输入司机姓名/车牌号/手机号/身份证号搜索"
+                style="width:100%;"
+                @visible-change="driverSelectVisibleChange"
+                @change="driverSelectChange">
+                <el-option
+                  v-for="item in driverOptions"
+                  :key="item.id"
+                  :label="`${item.driverName} / ${item.plateNo} / ${item.mobile}`"
+                  :value="item.id">
+                  <div class="driver-option-main">{{ item.driverName }} / {{ item.plateNo }} / {{ item.mobile }}</div>
+                  <div class="driver-option-sub">身份证：{{ item.idCardNo || '-' }}</div>
+                </el-option>
+              </el-select>
+              <el-input v-else v-model="dataForm.driverName" disabled></el-input>
             </el-form-item>
           </el-col>
           <el-col :span="8">
@@ -406,6 +428,8 @@ export default {
       packingBoxMap: {},
       productList: [],
       warehouseList: [],
+      driverOptions: [],
+      driverLoading: false,
       currentDamageRow: null,
       damageForm: {
         itemId: '',
@@ -448,6 +472,7 @@ export default {
         orderDate: '',
         expectedArrivalDate: '',
         containerNo: '',
+        driverId: '',
         driverName: '',
         truckNo: '',
         driverPhone: '',
@@ -471,6 +496,7 @@ export default {
       this.$nextTick(this.updateSkuTableHeight)
       this.archiveDialogVisible = false
       this.damageDialogVisible = false
+      this.driverOptions = []
       this.dataForm = this.defaultForm()
       this.detailLoading = true
       Promise.all([this.loadProductList(), this.loadWarehouseList(), this.loadPackingBoxMap(presaleOrderId, confirmId)]).then(() => {
@@ -489,6 +515,7 @@ export default {
       this.$nextTick(this.updateSkuTableHeight)
       this.archiveDialogVisible = false
       this.damageDialogVisible = false
+      this.driverOptions = []
       this.dataForm = this.defaultForm()
       this.detailLoading = true
       Promise.all([this.loadProductList(), this.loadWarehouseList(), this.loadPackingBoxMap(presaleOrderId, confirmId)]).then(() => {
@@ -497,6 +524,7 @@ export default {
           presaleOrderId: presaleOrderId,
           confirmId: confirmId || draft.confirmId || 0
         }))
+        return this.resolveRecognizedDriver()
       }).finally(() => {
         this.detailLoading = false
       })
@@ -551,6 +579,141 @@ export default {
         this.packingBoxMap = {}
       })
     },
+    driverSelectVisibleChange (visible) {
+      if (visible && !this.driverOptions.length) {
+        this.searchDrivers(this.dataForm.driverName || this.dataForm.truckNo || this.dataForm.driverPhone || this.dataForm.idCardNo || '')
+      }
+    },
+    searchDrivers (keyword) {
+      this.driverLoading = true
+      this.$http({
+        url: this.$http.adornUrl('/erp/inbound/driver/select'),
+        method: 'get',
+        params: this.$http.adornParams({
+          keyword: keyword || ''
+        })
+      }).then(({ data }) => {
+        this.driverOptions = data && data.code === 0 ? (data.page.list || []) : []
+      }).catch(() => {
+        this.driverOptions = []
+      }).finally(() => {
+        this.driverLoading = false
+      })
+    },
+    driverSelectChange (value) {
+      if (!value) {
+        this.dataForm.driverId = ''
+        return
+      }
+      const driver = this.driverOptions.find(item => String(item.id) === String(value))
+      if (driver) {
+        this.applyDriver(driver)
+      }
+    },
+    ensureDriverOption (driver) {
+      if (!driver || !driver.id) {
+        return
+      }
+      const exists = this.driverOptions.some(item => String(item.id) === String(driver.id))
+      if (!exists) {
+        this.driverOptions = [driver].concat(this.driverOptions)
+      }
+    },
+    applyDriver (driver) {
+      this.ensureDriverOption(driver)
+      this.dataForm.driverId = driver.id
+      this.dataForm.driverName = driver.driverName || ''
+      this.dataForm.truckNo = driver.plateNo || ''
+      this.dataForm.driverPhone = driver.mobile || ''
+      this.dataForm.idCardNo = driver.idCardNo || this.dataForm.idCardNo || ''
+    },
+    normalizePlateNo (value) {
+      return String(value || '').trim().toUpperCase()
+    },
+    normalizeText (value) {
+      return String(value || '').trim()
+    },
+    findExactDriver (drivers) {
+      const name = this.normalizeText(this.dataForm.driverName)
+      const plate = this.normalizePlateNo(this.dataForm.truckNo)
+      const mobile = this.normalizeText(this.dataForm.driverPhone)
+      const idCardNo = this.normalizeText(this.dataForm.idCardNo)
+      return (drivers || []).find(driver => {
+        const driverName = this.normalizeText(driver.driverName)
+        const driverPlate = this.normalizePlateNo(driver.plateNo)
+        const driverMobile = this.normalizeText(driver.mobile)
+        const driverIdCardNo = this.normalizeText(driver.idCardNo)
+        return (plate && driverPlate === plate) ||
+          (mobile && driverMobile === mobile) ||
+          (idCardNo && driverIdCardNo === idCardNo) ||
+          (name && driverName === name && (plate || mobile || idCardNo))
+      })
+    },
+    resolveRecognizedDriver () {
+      const hasRecognizedDriver = this.dataForm.driverName || this.dataForm.truckNo || this.dataForm.driverPhone || this.dataForm.idCardNo
+      if (!hasRecognizedDriver) {
+        return Promise.resolve()
+      }
+      const keyword = this.dataForm.truckNo || this.dataForm.driverPhone || this.dataForm.idCardNo || this.dataForm.driverName || ''
+      return this.$http({
+        url: this.$http.adornUrl('/erp/inbound/driver/select'),
+        method: 'get',
+        params: this.$http.adornParams({
+          keyword
+        })
+      }).then(({ data }) => {
+        const drivers = data && data.code === 0 ? (data.page.list || []) : []
+        this.driverOptions = drivers
+        const matched = this.findExactDriver(drivers)
+        if (matched) {
+          this.applyDriver(matched)
+          return
+        }
+        return this.confirmCreateRecognizedDriver()
+      }).catch(() => {
+        return this.confirmCreateRecognizedDriver()
+      })
+    },
+    confirmCreateRecognizedDriver () {
+      const driver = {
+        driverName: this.normalizeText(this.dataForm.driverName),
+        plateNo: this.normalizePlateNo(this.dataForm.truckNo),
+        mobile: this.normalizeText(this.dataForm.driverPhone),
+        idCardNo: this.normalizeText(this.dataForm.idCardNo),
+        status: 1
+      }
+      if (!driver.driverName || !driver.plateNo || !driver.mobile) {
+        return Promise.resolve()
+      }
+      return this.$confirm(
+        `识别到司机 ${driver.driverName} / ${driver.plateNo} / ${driver.mobile}，司机档案中不存在，是否新增？`,
+        '新增司机信息',
+        {
+          confirmButtonText: '确认新增',
+          cancelButtonText: '暂不新增',
+          type: 'warning'
+        }
+      ).then(() => {
+        this.detailLoading = true
+        return this.$http({
+          url: this.$http.adornUrl('/erp/inbound/driver/save'),
+          method: 'post',
+          data: this.$http.adornData(driver)
+        }).then(({ data }) => {
+          if (data && data.code === 0) {
+            const savedDriver = data.driver || driver
+            this.applyDriver(savedDriver)
+            this.$message.success('司机信息已新增并带入')
+          } else {
+            this.$message.error((data && data.msg) || '新增司机失败')
+          }
+        }).finally(() => {
+          this.detailLoading = false
+        })
+      }).catch(() => {
+        // 用户选择暂不新增时，仅保留OCR识别字段供人工核对。
+      })
+    },
     normalizeForm (form) {
       const source = form || {}
       const result = Object.assign(this.defaultForm(), source)
@@ -560,6 +723,15 @@ export default {
         fileName: ''
       }, item))
       result.expenseList = source.expenseList || []
+      if (result.driverId && result.driverName) {
+        this.ensureDriverOption({
+          id: result.driverId,
+          driverName: result.driverName,
+          plateNo: result.truckNo,
+          mobile: result.driverPhone,
+          idCardNo: result.idCardNo
+        })
+      }
       result.itemList = (source.itemList || []).map(item => Object.assign({
         id: 0,
         productId: '',
@@ -1022,6 +1194,18 @@ export default {
 }
 
 .product-option-name {
+  color: #909399;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.driver-option-main {
+  color: #303133;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.driver-option-sub {
   color: #909399;
   font-size: 12px;
   line-height: 18px;

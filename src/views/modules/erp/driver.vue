@@ -4,7 +4,7 @@
       <el-form-item>
         <el-input
           v-model="queryForm.keyword"
-          placeholder="司机姓名/车牌号/手机号"
+          placeholder="司机姓名/车牌号/手机号/身份证号"
           clearable
           @keyup.enter.native="searchHandle()">
         </el-input>
@@ -34,6 +34,7 @@
       <el-table-column prop="driverName" label="司机姓名" min-width="160" show-overflow-tooltip></el-table-column>
       <el-table-column prop="plateNo" label="车牌号" min-width="160" align="center" header-align="center"></el-table-column>
       <el-table-column prop="mobile" label="手机号" min-width="160" align="center" header-align="center"></el-table-column>
+      <el-table-column prop="idCardNo" label="身份证号" min-width="190" align="center" header-align="center" show-overflow-tooltip></el-table-column>
       <el-table-column label="状态" width="90" align="center" header-align="center">
         <template slot-scope="scope">
           <el-tag size="small" :type="scope.row.status === 1 ? 'success' : 'info'">
