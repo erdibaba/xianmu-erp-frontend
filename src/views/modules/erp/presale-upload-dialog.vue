@@ -104,7 +104,7 @@ export default {
       return this.uploadType === 'customs' || this.uploadType === 'quarantine'
     },
     allowMultipleFiles () {
-      return this.uploadType === 'quarantine'
+      return this.uploadType === 'packing' || this.uploadType === 'quarantine'
     },
     uploadLimit () {
       return this.allowMultipleFiles ? 20 : 1
@@ -121,7 +121,7 @@ export default {
         return '上传客户订单确认函/付款通知书，识别后带入“客户订单确认函”页签，可人工核对修改。'
       }
       if (this.uploadType === 'packing') {
-        return '上传装箱单 PDF，识别后带入“装箱单”页签，系统会提取总箱数、总重量、保质期和生产日期分布。'
+        return '可同时上传多张装箱单 PDF/图片，识别后带入“装箱单”页签，系统会合并提取总箱数、总重量、保质期和生产日期分布。'
       }
       if (this.uploadType === 'customs') {
         return '上传报关单原件，系统仅做归档存储，不进行 OCR 识别。'
@@ -149,7 +149,7 @@ export default {
         return '支持 JPG / PNG / JFIF / BMP / PDF，当前主要用于客户订单确认函与付款通知书。'
       }
       if (this.uploadType === 'packing') {
-        return '支持 JPG / PNG / JFIF / BMP / PDF，当前主要用于装箱单。'
+        return '支持 JPG / PNG / JFIF / BMP / PDF，可一次选择多张装箱单。'
       }
       if (this.uploadType === 'customs') {
         return '支持 JPG / PNG / JFIF / BMP / PDF / XLS / XLSX / DOC / DOCX，当前用于报关单归档。'
@@ -193,17 +193,21 @@ export default {
         const files = this.fileList.map(item => item.raw || item).filter(Boolean)
         this.uploadArchiveRequest({ files })
       } else {
-        const file = this.fileList[0].raw || this.fileList[0]
-        this.recognizeRequest({ file })
+        const files = this.fileList.map(item => item.raw || item).filter(Boolean)
+        this.recognizeRequest({ files })
       }
     },
     handleRequest () {},
     recognizeRequest (option) {
-      const file = option.file
-      if (!file) return
+      const files = option.files || (option.file ? [option.file] : [])
+      if (!files.length) return
       this.loading = true
       const formData = new FormData()
-      formData.append('file', file)
+      if (files.length === 1) {
+        formData.append('file', files[0])
+      } else {
+        files.forEach(file => formData.append('files', file))
+      }
       formData.append('orderTypeHint', this.uploadType === 'confirm' ? 'PURCHASE' : (this.uploadType === 'packing' ? 'PACKING' : 'SALE'))
       this.$http({
         url: this.$http.adornUrl('/erp/ocr/recognize'),
