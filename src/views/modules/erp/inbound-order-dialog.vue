@@ -109,21 +109,16 @@
             </el-form-item>
           </el-col>
           <el-col :span="8">
-            <el-form-item label="车牌">
-              <el-input v-model="dataForm.truckNo" :disabled="readonly"></el-input>
+            <el-form-item label="身份证号">
+              <el-input v-model="dataForm.idCardNo" disabled></el-input>
             </el-form-item>
           </el-col>
         </el-row>
 
         <el-row :gutter="20">
-          <el-col :span="8">
+          <el-col v-if="false" :span="8">
             <el-form-item label="电话">
-              <el-input v-model="dataForm.driverPhone" :disabled="readonly"></el-input>
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="身份证号">
-              <el-input v-model="dataForm.idCardNo" :disabled="readonly"></el-input>
+              <el-input v-model="dataForm.driverPhone" disabled></el-input>
             </el-form-item>
           </el-col>
           <el-col :span="8">
