@@ -50,7 +50,7 @@
       </el-steps>
 
       <div class="step-grid">
-        <el-card v-if="false" shadow="never" class="step-card">
+        <el-card shadow="never" class="step-card">
           <div slot="header" class="step-card__header">
             <span>第一步：盖章合同</span>
             <el-tag size="small" :type="confirmedTagType(saleOrder.signedContractConfirmed)">{{ confirmedText(saleOrder.signedContractConfirmed) }}</el-tag>
