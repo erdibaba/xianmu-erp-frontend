@@ -418,70 +418,70 @@
     },
     template: `
       <div class="adjust-panel">
-        <el-form :inline="true" :model="query" size="small">
-          <el-form-item>
-            <el-upload
-              action="#"
-              :show-file-list="false"
-              :http-request="recognizeAdjustmentRequest"
-              :before-upload="beforeUpload"
-              accept=".jpg,.jpeg,.png,.jfif,.bmp,.pdf">
-              <el-button type="warning" :loading="uploadLoading">{{ uploadButtonText }}</el-button>
-            </el-upload>
-          </el-form-item>
-          <template>
-            <el-form-item :label="targetWarehouseLabel">
-              <el-select v-model="defaultTargetWarehouseId" filterable clearable placeholder="选择后可应用到行" style="width: 180px;" @change="defaultTargetWarehouseChange">
-                <el-option v-for="item in warehouseList" :key="item.id" :label="item.warehouseName" :value="item.id"></el-option>
-              </el-select>
-            </el-form-item>
-            <el-form-item>
-              <el-button plain @click="applyDefaultWarehouse()">应用{{ targetWarehouseLabel }}</el-button>
-            </el-form-item>
-          </template>
-          <template v-if="isFreshToFrozen">
-            <el-form-item label="延长天数">
-              <el-input-number v-model="extendDays" :min="1" :precision="0" :controls="false" style="width: 90px;"></el-input-number>
-            </el-form-item>
-            <el-form-item>
-              <el-button plain @click="extendExpiryDaysHandle()">批量延长过期天数</el-button>
-            </el-form-item>
-          </template>
-          <el-form-item>
-            <el-input v-model="query.keyword" placeholder="产品编码/中文名/英文名" clearable @keyup.enter.native="getDataList()"></el-input>
-          </el-form-item>
-          <el-form-item label="仓库">
-            <el-select v-model="query.warehouseId" filterable clearable placeholder="请选择仓库" style="width: 190px;" @change="sourceWarehouseChange">
-              <el-option v-for="item in warehouseList" :key="item.id" :label="item.warehouseName" :value="item.id"></el-option>
-            </el-select>
-          </el-form-item>
-          <el-form-item label="柜号">
-            <el-select
-              v-model="query.containerNos"
-              multiple
-              filterable
-              remote
-              clearable
-              reserve-keyword
-              :disabled="!query.warehouseId"
-              :loading="containerLoading"
-              :remote-method="remoteSearchContainers"
-              placeholder="请选择柜号"
-              style="width: 260px;">
-              <el-option v-for="item in containerOptions" :key="item" :label="item" :value="item"></el-option>
-            </el-select>
-          </el-form-item>
-          <el-form-item>
-            <el-input v-model="query.factoryNo" placeholder="厂号" clearable @keyup.enter.native="getDataList()"></el-input>
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" @click="getDataList()">查询</el-button>
-            <el-button @click="resetQuery()">重置</el-button>
-            <el-button type="warning" plain @click="addSelectedToAdjustList()">加入调整列表</el-button>
-            <el-button v-if="isAuth('erp:inventory-adjustment:save')" type="success" @click="submitHandle()">确认调整</el-button>
-          </el-form-item>
-        </el-form>
-        <div class="adjust-section-title">候选库存列表</div>
+        <section class="adjust-workflow-card source-card">
+          <div class="adjust-card-heading">
+            <div>
+              <div class="adjust-step-title"><span class="adjust-step-number">1</span>获取待调整库存</div>
+              <div class="adjust-step-desc">可以按仓库和柜号查询，也可以上传单据识别。</div>
+            </div>
+          </div>
+          <div class="adjust-source-layout">
+            <div class="adjust-query-area">
+              <div class="adjust-area-label">按库存查询</div>
+              <el-form :inline="true" :model="query" size="small" class="adjust-query-form">
+                <el-form-item label="来源仓库">
+                  <el-select v-model="query.warehouseId" filterable clearable placeholder="请选择来源仓库" style="width: 190px;" @change="sourceWarehouseChange">
+                    <el-option v-for="item in warehouseList" :key="item.id" :label="item.warehouseName" :value="item.id"></el-option>
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="柜号">
+                  <el-select
+                    v-model="query.containerNos"
+                    multiple
+                    filterable
+                    remote
+                    clearable
+                    reserve-keyword
+                    :disabled="!query.warehouseId"
+                    :loading="containerLoading"
+                    :remote-method="remoteSearchContainers"
+                    placeholder="请选择柜号"
+                    style="width: 260px;">
+                    <el-option v-for="item in containerOptions" :key="item" :label="item" :value="item"></el-option>
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="产品">
+                  <el-input v-model="query.keyword" placeholder="编码/中文名/英文名" clearable @keyup.enter.native="getDataList()" style="width: 190px;"></el-input>
+                </el-form-item>
+                <el-form-item label="厂号">
+                  <el-input v-model="query.factoryNo" placeholder="请输入厂号" clearable @keyup.enter.native="getDataList()" style="width: 130px;"></el-input>
+                </el-form-item>
+                <el-form-item class="adjust-query-actions">
+                  <el-button type="primary" @click="getDataList()">查询库存</el-button>
+                  <el-button @click="resetQuery()">重置</el-button>
+                </el-form-item>
+              </el-form>
+            </div>
+            <div class="adjust-upload-area">
+              <div class="adjust-area-label">按单据识别</div>
+              <div class="adjust-upload-desc">上传单据后，已匹配明细会直接加入待调整列表。</div>
+              <el-upload
+                action="#"
+                :show-file-list="false"
+                :http-request="recognizeAdjustmentRequest"
+                :before-upload="beforeUpload"
+                accept=".jpg,.jpeg,.png,.jfif,.bmp,.pdf">
+                <el-button type="warning" :loading="uploadLoading">{{ uploadButtonText }}</el-button>
+              </el-upload>
+            </div>
+          </div>
+          <div class="adjust-section-heading">
+            <div>
+              <div class="adjust-section-title">候选库存列表</div>
+              <div class="adjust-section-subtitle">勾选需要处理的库存，再加入待调整列表。</div>
+            </div>
+            <el-button type="primary" plain size="small" @click="addSelectedToAdjustList()">加入调整列表</el-button>
+          </div>
         <el-table ref="candidateTable" :data="dataList" border stripe height="300" v-loading="loading" @selection-change="selectionChangeHandle">
           <el-table-column type="selection" width="45" align="center" header-align="center"></el-table-column>
           <el-table-column type="index" label="序号" width="60" align="center" header-align="center"></el-table-column>
@@ -504,12 +504,45 @@
             <template slot-scope="scope">{{ scope.row.lotType === 'ADJUSTMENT' ? '调整后' : '入库' }}</template>
           </el-table-column>
         </el-table>
+        </section>
 
-        <div class="adjust-section-title adjust-list-title">
-          待调整列表
-          <span class="adjust-section-subtitle">确认调整只提交这里的数据，可从列表中移除。</span>
-        </div>
-        <el-table ref="adjustTable" :data="adjustList" border stripe height="360" empty-text="请先查询勾选库存或上传识别单据后加入调整列表">
+        <section class="adjust-workflow-card batch-setting-card">
+          <div class="adjust-card-heading">
+            <div>
+              <div class="adjust-step-title"><span class="adjust-step-number">2</span>批量设置调整参数</div>
+              <div class="adjust-step-desc">批量设置会应用到当前待调整列表，每一行仍可单独修改。</div>
+            </div>
+          </div>
+          <el-form :inline="true" size="small" class="adjust-batch-form">
+            <el-form-item :label="targetWarehouseLabel">
+              <el-select v-model="defaultTargetWarehouseId" filterable clearable placeholder="请选择仓库" style="width: 210px;" @change="defaultTargetWarehouseChange">
+                <el-option v-for="item in warehouseList" :key="item.id" :label="item.warehouseName" :value="item.id"></el-option>
+              </el-select>
+            </el-form-item>
+            <el-form-item>
+              <el-button @click="applyDefaultWarehouse()">批量应用{{ targetWarehouseLabel }}</el-button>
+            </el-form-item>
+            <template v-if="isFreshToFrozen">
+              <span class="adjust-batch-divider"></span>
+              <el-form-item label="延长过期天数">
+                <el-input-number v-model="extendDays" :min="1" :precision="0" :controls="false" style="width: 110px;"></el-input-number>
+              </el-form-item>
+              <el-form-item>
+                <el-button @click="extendExpiryDaysHandle()">批量应用延长天数</el-button>
+              </el-form-item>
+            </template>
+          </el-form>
+        </section>
+
+        <section class="adjust-workflow-card adjust-list-card">
+          <div class="adjust-section-heading adjust-list-heading">
+            <div>
+              <div class="adjust-step-title"><span class="adjust-step-number">3</span>待调整列表</div>
+              <div class="adjust-step-desc">核对箱数、重量和目标仓库后再确认，确认后不能撤销。</div>
+            </div>
+            <el-button v-if="isAuth('erp:inventory-adjustment:save')" type="success" @click="submitHandle()">确认调整</el-button>
+          </div>
+          <el-table ref="adjustTable" :data="adjustList" border stripe height="360" empty-text="请先查询勾选库存或上传识别单据后加入调整列表">
           <el-table-column type="index" label="序号" width="60" align="center" header-align="center"></el-table-column>
           <el-table-column prop="productCode" label="产品编码" width="110" align="center" header-align="center"></el-table-column>
           <el-table-column prop="productName" label="中文名称" min-width="150" show-overflow-tooltip></el-table-column>
@@ -566,10 +599,11 @@
           </el-table-column>
           <el-table-column label="操作" width="90" fixed="right" align="center" header-align="center">
             <template slot-scope="scope">
-              <el-button type="text" size="small" @click="removeAdjustRow(scope.$index)">移除</el-button>
+              <el-button type="text" class="adjust-remove-button" size="small" @click="removeAdjustRow(scope.$index)">移除</el-button>
             </template>
           </el-table-column>
-        </el-table>
+          </el-table>
+        </section>
       </div>
     `
   }
@@ -605,37 +639,154 @@
   }
 </script>
 
-<style scoped>
+<style>
   .mod-erp-stock-adjustment .adjust-tip {
     margin-bottom: 12px;
     padding: 10px 12px;
     border: 1px solid #d9ecff;
-    border-radius: 4px;
+    border-radius: 8px;
     background: #ecf5ff;
     color: #3a6f9f;
     line-height: 1.5;
   }
 
-  .adjust-panel .el-form {
+  .adjust-panel {
+    padding-bottom: 8px;
+  }
+
+  .adjust-panel .adjust-workflow-card {
+    margin-bottom: 14px;
+    padding: 16px;
+    border: 1px solid #dfe8ef;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 3px 12px rgba(29, 76, 108, 0.05);
+  }
+
+  .adjust-panel .adjust-card-heading,
+  .adjust-panel .adjust-section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .adjust-panel .adjust-card-heading {
+    margin-bottom: 14px;
+  }
+
+  .adjust-panel .adjust-step-title {
+    display: flex;
+    align-items: center;
+    color: #183f5a;
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .adjust-panel .adjust-step-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    margin-right: 8px;
+    border-radius: 50%;
+    background: #1678b8;
+    color: #fff;
+    font-size: 13px;
+  }
+
+  .adjust-panel .adjust-step-desc {
+    margin-top: 5px;
+    color: #7c8e9b;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .adjust-panel .adjust-source-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 280px;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+
+  .adjust-panel .adjust-query-area,
+  .adjust-panel .adjust-upload-area {
+    padding: 14px;
+    border-radius: 8px;
+  }
+
+  .adjust-panel .adjust-query-area {
+    border: 1px solid #e3ebf0;
+    background: #f8fafc;
+  }
+
+  .adjust-panel .adjust-upload-area {
+    border: 1px dashed #e4b267;
+    background: #fff9ef;
+  }
+
+  .adjust-panel .adjust-area-label {
     margin-bottom: 12px;
+    color: #34556b;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .adjust-panel .adjust-upload-desc {
+    min-height: 42px;
+    margin-bottom: 12px;
+    color: #8b7555;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  .adjust-panel .adjust-query-form,
+  .adjust-panel .adjust-batch-form {
+    margin-bottom: -10px;
+  }
+
+  .adjust-panel .adjust-query-actions {
+    margin-left: 4px;
   }
 
   .adjust-panel .adjust-section-title {
-    margin: 12px 0 8px;
     font-size: 14px;
     font-weight: 600;
     color: #204f74;
   }
 
-  .adjust-panel .adjust-list-title {
-    margin-top: 16px;
-  }
-
   .adjust-panel .adjust-section-subtitle {
-    margin-left: 10px;
+    margin-top: 4px;
     font-size: 12px;
     font-weight: normal;
     color: #909399;
+  }
+
+  .adjust-panel .batch-setting-card {
+    border-color: #cfe3ef;
+    background: linear-gradient(135deg, #f4f9fc 0%, #eef6fa 100%);
+  }
+
+  .adjust-panel .adjust-batch-form {
+    padding: 4px 0 0 32px;
+  }
+
+  .adjust-panel .adjust-batch-divider {
+    display: inline-block;
+    width: 1px;
+    height: 28px;
+    margin: 1px 18px 0 4px;
+    vertical-align: top;
+    background: #cbdbe5;
+  }
+
+  .adjust-panel .adjust-list-heading {
+    margin-bottom: 12px;
+  }
+
+  .adjust-panel .adjust-remove-button {
+    color: #e05252;
   }
 
   .adjust-panel .match-status-tag {
@@ -644,5 +795,44 @@
     line-height: 20px;
     white-space: normal;
     word-break: break-all;
+  }
+
+  @media (max-width: 1180px) {
+    .adjust-panel .adjust-source-layout {
+      grid-template-columns: 1fr;
+    }
+
+    .adjust-panel .adjust-upload-area {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .adjust-panel .adjust-upload-area .adjust-area-label,
+    .adjust-panel .adjust-upload-area .adjust-upload-desc {
+      margin-bottom: 0;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .adjust-panel .adjust-workflow-card {
+      padding: 12px;
+    }
+
+    .adjust-panel .adjust-card-heading,
+    .adjust-panel .adjust-section-heading,
+    .adjust-panel .adjust-upload-area {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .adjust-panel .adjust-batch-form {
+      padding-left: 0;
+    }
+
+    .adjust-panel .adjust-batch-divider {
+      display: none;
+    }
   }
 </style>
