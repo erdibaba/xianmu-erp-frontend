@@ -49,7 +49,6 @@
       </el-table-column>
       <el-table-column prop="secondaryPartnerName" label="二批商" min-width="180"></el-table-column>
       <el-table-column prop="warehouseName" label="仓库" min-width="160"></el-table-column>
-      <el-table-column prop="contractNo" label="合同号" min-width="160"></el-table-column>
       <el-table-column label="关联预销售单" min-width="170">
         <template slot-scope="scope">{{ scope.row.sourcePresaleOrderNo || '-' }}</template>
       </el-table-column>
