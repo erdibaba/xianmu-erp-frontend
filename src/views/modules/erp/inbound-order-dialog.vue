@@ -682,37 +682,63 @@ export default {
         idCardNo: this.normalizeText(this.dataForm.idCardNo),
         status: 1
       }
-      if (!driver.driverName || !driver.plateNo || !driver.mobile) {
+      if (!driver.driverName && !driver.plateNo && !driver.mobile && !driver.idCardNo) {
         return Promise.resolve()
       }
-      return this.$confirm(
-        `识别到司机 ${driver.driverName} / ${driver.plateNo} / ${driver.mobile}，司机档案中不存在，是否新增？`,
-        '新增司机信息',
-        {
-          confirmButtonText: '确认新增',
-          cancelButtonText: '暂不新增',
-          type: 'warning'
+      return this.completeRecognizedDriverForCreate(driver).then(completedDriver => {
+        if (!completedDriver) {
+          return
         }
-      ).then(() => {
-        this.detailLoading = true
-        return this.$http({
-          url: this.$http.adornUrl('/erp/inbound/driver/save'),
-          method: 'post',
-          data: this.$http.adornData(driver)
-        }).then(({ data }) => {
-          if (data && data.code === 0) {
-            const savedDriver = data.driver || driver
-            this.applyDriver(savedDriver)
-            this.$message.success('司机信息已新增并带入')
-          } else {
-            this.$message.error((data && data.msg) || '新增司机失败')
+        return this.$confirm(
+          `识别到司机 ${completedDriver.driverName} / ${completedDriver.plateNo} / ${completedDriver.mobile}，司机档案中不存在，是否新增？`,
+          '新增司机信息',
+          {
+            confirmButtonText: '确认新增',
+            cancelButtonText: '暂不新增',
+            type: 'warning'
           }
-        }).finally(() => {
-          this.detailLoading = false
+        ).then(() => {
+          this.detailLoading = true
+          return this.$http({
+            url: this.$http.adornUrl('/erp/inbound/driver/save'),
+            method: 'post',
+            data: this.$http.adornData(completedDriver)
+          }).then(({ data }) => {
+            if (data && data.code === 0) {
+              const savedDriver = data.driver || completedDriver
+              this.applyDriver(savedDriver)
+              this.$message.success('司机信息已新增并带入')
+            } else {
+              this.$message.error((data && data.msg) || '新增司机失败')
+            }
+          }).finally(() => {
+            this.detailLoading = false
+          })
         })
       }).catch(() => {
-        // 用户选择暂不新增时，仅保留OCR识别字段供人工核对。
+        // 用户取消补全或暂不新增时，仅保留OCR识别字段供人工核对。
       })
+    },
+    completeRecognizedDriverForCreate (driver) {
+      const work = Object.assign({}, driver)
+      const promptField = (field, title, message, normalizer) => {
+        if (work[field]) {
+          return Promise.resolve()
+        }
+        return this.$prompt(message, title, {
+          confirmButtonText: '继续',
+          cancelButtonText: '暂不新增',
+          inputValue: '',
+          inputValidator: value => !!this.normalizeText(value) || `${message}不能为空`,
+          inputErrorMessage: `${message}不能为空`
+        }).then(({ value }) => {
+          work[field] = normalizer ? normalizer(value) : this.normalizeText(value)
+        })
+      }
+      return promptField('driverName', '补全司机姓名', '请输入司机姓名')
+        .then(() => promptField('plateNo', '补全车牌号', '请输入车牌号', this.normalizePlateNo))
+        .then(() => promptField('mobile', '补全手机号', '请输入手机号'))
+        .then(() => work)
     },
     normalizeForm (form) {
       const source = form || {}
