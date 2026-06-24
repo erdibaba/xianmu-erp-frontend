@@ -240,7 +240,7 @@
           </el-col>
         </el-row>
       </el-form>
-      <el-table class="batch-settlement-item-table" :data="batchSettlementForm.itemList || []" border stripe max-height="460">
+      <el-table class="batch-settlement-item-table" :data="batchSettlementForm.itemList || []" border stripe height="460">
         <el-table-column prop="lineNo" label="序号" width="60" align="center"></el-table-column>
         <el-table-column prop="confirmContractNo" label="确认函合同号" min-width="150" show-overflow-tooltip></el-table-column>
         <el-table-column prop="productCode" label="产品编码" width="100"></el-table-column>
