@@ -494,7 +494,7 @@
             </el-table>
           </el-tab-pane>
 
-          <el-tab-pane label="出库批次" name="outboundReceipt">
+          <el-tab-pane class="outbound-receipt-pane" label="出库批次" name="outboundReceipt">
             <div class="outbound-batch-panel">
               <div class="outbound-flow-card">
                 <div class="outbound-flow-header">
@@ -790,7 +790,7 @@
                 </template>
               </el-table-column>
             </el-table>
-            <div class="outbound-section-title">
+            <div class="outbound-section-title outbound-history-section-title">
               <strong>历史确认批次明细</strong>
               <span class="sub-title-tip">只展示已确认完成批次，便于核对历史出库。</span>
             </div>
@@ -882,7 +882,7 @@
                 </template>
               </el-table-column>
             </el-table>
-            <div class="outbound-section-title">
+            <div class="outbound-section-title outbound-current-section-title">
               <strong>当前批次明细</strong>
               <span class="sub-title-tip">当前正在上传、核对和保存的出库批次。</span>
             </div>
@@ -1021,7 +1021,7 @@
                 </template>
               </el-table-column>
             </el-table>
-            <el-table :data="currentOutboundReceiptFiles" border size="mini" class="attachment-table">
+            <el-table :data="currentOutboundReceiptFiles" border size="mini" class="attachment-table outbound-receipt-files-table">
               <el-table-column prop="fileName" label="归档原件" min-width="240" show-overflow-tooltip></el-table-column>
               <el-table-column label="上传时间" width="170" align="center">
                 <template slot-scope="scope">{{ formatDateTime(scope.row.createTime) }}</template>
@@ -1037,7 +1037,7 @@
                 </template>
               </el-table-column>
             </el-table>
-            <el-table :data="currentOutboundBankSlipFiles" border size="mini" class="attachment-table">
+            <el-table :data="currentOutboundBankSlipFiles" border size="mini" class="attachment-table outbound-bank-files-table">
               <el-table-column prop="fileName" label="二批来款水单" min-width="240" show-overflow-tooltip></el-table-column>
               <el-table-column label="上传时间" width="170" align="center">
                 <template slot-scope="scope">{{ formatDateTime(scope.row.createTime) }}</template>
@@ -2804,6 +2804,28 @@ export default {
 
 .attachment-toolbar {
   margin-bottom: 8px;
+}
+
+.outbound-receipt-pane {
+  display: flex;
+  flex-direction: column;
+}
+
+.outbound-current-section-title,
+.outbound-receipt-table,
+.outbound-receipt-files-table,
+.outbound-bank-files-table {
+  order: 70;
+}
+
+.outbound-adjustment-summary,
+.outbound-summary-table {
+  order: 80;
+}
+
+.outbound-history-section-title,
+.outbound-history-table {
+  order: 90;
 }
 
 .outbound-flow-card {
