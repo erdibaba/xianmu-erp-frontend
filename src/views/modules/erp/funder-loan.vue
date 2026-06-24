@@ -269,31 +269,39 @@
         :closable="false"
         style="margin-bottom:12px">
       </el-alert>
-      <el-table :data="batchFeeSummaryRows" border stripe size="mini" style="margin-bottom:12px">
-        <el-table-column prop="name" label="费用大类" width="150"></el-table-column>
-        <el-table-column label="金额" width="130" align="right">
-          <template slot-scope="scope">{{ money(scope.row.amount) }}</template>
-        </el-table-column>
-        <el-table-column prop="formula" label="汇总公式" min-width="520" show-overflow-tooltip></el-table-column>
-      </el-table>
-      <el-table :data="batchFeeFormulaRows" border stripe size="mini" style="margin-bottom:12px">
-        <el-table-column prop="name" label="费用项" width="130"></el-table-column>
-        <el-table-column label="金额" width="120" align="right">
-          <template slot-scope="scope">{{ money(scope.row.amount) }}</template>
-        </el-table-column>
-        <el-table-column prop="formula" label="计算公式/来源" min-width="620" show-overflow-tooltip></el-table-column>
-      </el-table>
-      <el-table :data="batchFeeDetailRows" border stripe size="mini" max-height="360">
-        <el-table-column prop="lineNo" label="行号" width="60" align="center"></el-table-column>
-        <el-table-column prop="productCode" label="产品编码" width="100"></el-table-column>
-        <el-table-column prop="productName" label="品名" min-width="150" show-overflow-tooltip></el-table-column>
-        <el-table-column prop="containerNo" label="柜号" width="120" show-overflow-tooltip></el-table-column>
-        <el-table-column prop="feeName" label="费用项" width="120"></el-table-column>
-        <el-table-column label="金额" width="110" align="right">
-          <template slot-scope="scope">{{ money(scope.row.amount) }}</template>
-        </el-table-column>
-        <el-table-column prop="formula" label="明细公式" min-width="520" show-overflow-tooltip></el-table-column>
-      </el-table>
+      <el-collapse v-model="feeExplainActiveNames">
+        <el-collapse-item title="费用汇总" name="summary">
+          <el-table :data="batchFeeSummaryRows" border stripe size="mini">
+            <el-table-column prop="name" label="费用大类" width="150"></el-table-column>
+            <el-table-column label="金额" width="130" align="right">
+              <template slot-scope="scope">{{ money(scope.row.amount) }}</template>
+            </el-table-column>
+            <el-table-column prop="formula" label="汇总公式" min-width="520" show-overflow-tooltip></el-table-column>
+          </el-table>
+        </el-collapse-item>
+        <el-collapse-item title="费用项公式" name="formula">
+          <el-table :data="batchFeeFormulaRows" border stripe size="mini">
+            <el-table-column prop="name" label="费用项" width="130"></el-table-column>
+            <el-table-column label="金额" width="120" align="right">
+              <template slot-scope="scope">{{ money(scope.row.amount) }}</template>
+            </el-table-column>
+            <el-table-column prop="formula" label="计算公式/来源" min-width="620" show-overflow-tooltip></el-table-column>
+          </el-table>
+        </el-collapse-item>
+        <el-collapse-item title="明细代入公式" name="detail">
+          <el-table :data="batchFeeDetailRows" border stripe size="mini" max-height="360">
+            <el-table-column prop="lineNo" label="行号" width="60" align="center"></el-table-column>
+            <el-table-column prop="productCode" label="产品编码" width="100"></el-table-column>
+            <el-table-column prop="productName" label="品名" min-width="150" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="containerNo" label="柜号" width="120" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="feeName" label="费用项" width="120"></el-table-column>
+            <el-table-column label="金额" width="110" align="right">
+              <template slot-scope="scope">{{ money(scope.row.amount) }}</template>
+            </el-table-column>
+            <el-table-column prop="formula" label="明细公式" min-width="520" show-overflow-tooltip></el-table-column>
+          </el-table>
+        </el-collapse-item>
+      </el-collapse>
       <div class="other-fee-total">费用合计：¥{{ money(batchFeeTotal) }}</div>
       <span slot="footer">
         <el-button @click="otherFeeDetailVisible = false">关闭</el-button>
@@ -368,6 +376,7 @@ export default {
       batchRecognizeLoading: false,
       batchSubmitLoading: false,
       otherFeeDetailVisible: false,
+      feeExplainActiveNames: ['summary', 'formula'],
       repaymentRules: {
         repaymentPrincipal: [{ required: true, message: '请输入本次归还本金', trigger: 'blur' }],
         repaymentDate: [{ required: true, message: '请选择还款日期', trigger: 'change' }],
