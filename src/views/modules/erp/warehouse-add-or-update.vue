@@ -42,6 +42,11 @@
           </el-form-item>
         </el-col>
         <el-col :span="12">
+          <el-form-item label="启用扫码费">
+            <el-switch v-model="dataForm.scanFeeEnabled" :active-value="1" :inactive-value="0"></el-switch>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
           <el-form-item label="联系人">
             <el-input v-model="dataForm.contactName"></el-input>
           </el-form-item>
@@ -95,6 +100,7 @@
     frozenColdFee: 0,
     chilledColdFee: 0,
     feeUnit: 'WEIGHT',
+    scanFeeEnabled: 1,
     status: 1,
     remark: ''
   })

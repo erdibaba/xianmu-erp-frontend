@@ -5,7 +5,7 @@
     :visible.sync="visible"
     width="1180px">
     <el-alert
-      title="费用统一按元/吨维护；系统取业务日期当天已生效的最新价格，跨调价日期时后续计算会按生效区间拆分。"
+      title="仓储/装卸费用按元/吨维护；扫码费可按吨或按箱维护。系统取业务日期当天已生效的最新价格。"
       type="info"
       show-icon
       :closable="false"
@@ -46,6 +46,19 @@
           </el-form-item>
         </el-col>
         <el-col :span="8">
+          <el-form-item label="扫码费方式" prop="scanFeeUnit">
+            <el-select v-model="dataForm.scanFeeUnit" style="width: 100%;">
+              <el-option label="按吨" value="TON"></el-option>
+              <el-option label="按箱" value="BOX"></el-option>
+            </el-select>
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+          <el-form-item label="扫码费单价" prop="scanFeeRate">
+            <el-input-number v-model="dataForm.scanFeeRate" :precision="2" :min="0" :controls="false" style="width: 100%;"></el-input-number>
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
           <el-form-item label="状态">
             <el-select v-model="dataForm.status" style="width: 100%;">
               <el-option label="启用" :value="1"></el-option>
@@ -73,6 +86,10 @@
       <el-table-column prop="chilledStorageFee" label="仓储冷藏费(元/吨)" width="150" align="right" header-align="center"></el-table-column>
       <el-table-column prop="frozenColdFee" label="冷链冷冻装卸费(元/吨)" width="180" align="right" header-align="center"></el-table-column>
       <el-table-column prop="chilledColdFee" label="冷链冷藏装卸费(元/吨)" width="180" align="right" header-align="center"></el-table-column>
+      <el-table-column label="扫码费方式" width="110" align="center" header-align="center">
+        <template slot-scope="scope">{{ scanFeeUnitLabel(scope.row.scanFeeUnit) }}</template>
+      </el-table-column>
+      <el-table-column prop="scanFeeRate" label="扫码费单价" width="110" align="right" header-align="center"></el-table-column>
       <el-table-column label="状态" width="80" align="center" header-align="center">
         <template slot-scope="scope">
           <el-tag size="small" :type="scope.row.status === 1 ? 'success' : 'info'">{{ scope.row.status === 1 ? '启用' : '停用' }}</el-tag>
@@ -101,6 +118,8 @@
     chilledStorageFee: 0,
     frozenColdFee: 0,
     chilledColdFee: 0,
+    scanFeeUnit: 'TON',
+    scanFeeRate: 0,
     status: 1,
     remark: ''
   })
@@ -129,6 +148,12 @@
           ],
           chilledColdFee: [
             { required: true, message: '冷链冷藏装卸费不能为空', trigger: 'blur' }
+          ],
+          scanFeeUnit: [
+            { required: true, message: '扫码费方式不能为空', trigger: 'change' }
+          ],
+          scanFeeRate: [
+            { required: true, message: '扫码费单价不能为空', trigger: 'blur' }
           ]
         }
       }
@@ -172,6 +197,9 @@
       },
       editHandle (row) {
         this.dataForm = Object.assign(defaultForm(), row)
+      },
+      scanFeeUnitLabel (unit) {
+        return unit === 'BOX' ? '按箱' : '按吨'
       },
       submitHandle () {
         this.$refs.dataForm.validate((valid) => {

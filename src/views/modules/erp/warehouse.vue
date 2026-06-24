@@ -22,6 +22,15 @@
       <el-table-column prop="frozenColdFee" label="冷链冷冻装卸费(元/吨)" width="170" align="right" header-align="center"></el-table-column>
       <el-table-column prop="chilledColdFee" label="冷链冷藏装卸费(元/吨)" width="170" align="right" header-align="center"></el-table-column>
       <el-table-column prop="feeUnit" label="计费单位" width="100" align="center" header-align="center"></el-table-column>
+      <el-table-column label="扫码费" width="90" align="center" header-align="center">
+        <template slot-scope="scope">
+          <el-tag size="small" :type="scope.row.scanFeeEnabled === 1 ? 'success' : 'info'">{{ scope.row.scanFeeEnabled === 1 ? '启用' : '停用' }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="扫码费方式" width="110" align="center" header-align="center">
+        <template slot-scope="scope">{{ scanFeeUnitLabel(scope.row.scanFeeUnit) }}</template>
+      </el-table-column>
+      <el-table-column prop="scanFeeRate" label="扫码费单价" width="110" align="right" header-align="center"></el-table-column>
       <el-table-column prop="contactName" label="联系人" width="100" align="center" header-align="center"></el-table-column>
       <el-table-column prop="contactPhone" label="联系电话" width="130" align="center" header-align="center"></el-table-column>
       <el-table-column label="状态" width="80" align="center" header-align="center">
@@ -128,6 +137,15 @@
         this.$nextTick(() => {
           this.$refs.feeRateDialog.init(row)
         })
+      },
+      scanFeeUnitLabel (unit) {
+        if (unit === 'BOX') {
+          return '按箱'
+        }
+        if (unit === 'TON') {
+          return '按吨'
+        }
+        return '-'
       },
       deleteHandle (id) {
         const ids = id ? [id] : this.dataListSelections.map(item => item.id)
