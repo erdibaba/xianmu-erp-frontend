@@ -138,13 +138,14 @@
     </el-dialog>
 
     <el-dialog title="按出库批次还款" :visible.sync="batchSettlementVisible" width="1280px" custom-class="batch-settlement-dialog" :close-on-click-modal="false">
-      <el-alert
-        title="仅能选择已确认完成且未结算过的出库批次。系统会按出库批次实际出库重量追溯到客户订单确认函小合同，再按资方规则计算并分摊还款。"
-        type="info"
-        :closable="false"
-        style="margin-bottom:16px">
-      </el-alert>
-      <el-form ref="batchSettlementForm" :model="batchSettlementForm" label-width="150px">
+      <div v-loading="batchSettlementLoading" element-loading-text="正在加载批次还款数据...">
+        <el-alert
+          title="仅能选择已确认完成且未结算过的出库批次。系统会按出库批次实际出库重量追溯到客户订单确认函小合同，再按资方规则计算并分摊还款。"
+          type="info"
+          :closable="false"
+          style="margin-bottom:16px">
+        </el-alert>
+        <el-form ref="batchSettlementForm" :model="batchSettlementForm" label-width="150px">
         <el-row :gutter="18">
           <el-col :span="12">
             <el-form-item label="出库批次" required>
@@ -251,23 +252,24 @@
             </el-form-item>
           </el-col>
         </el-row>
-      </el-form>
-      <el-table class="batch-settlement-item-table" :data="batchSettlementForm.itemList || []" border stripe height="460">
-        <el-table-column prop="lineNo" label="序号" width="60" align="center"></el-table-column>
-        <el-table-column prop="confirmContractNo" label="确认函合同号" min-width="150" show-overflow-tooltip></el-table-column>
-        <el-table-column prop="productCode" label="产品编码" width="100"></el-table-column>
-        <el-table-column prop="productName" label="品名" min-width="160" show-overflow-tooltip></el-table-column>
-        <el-table-column prop="containerNo" label="柜号" width="130" show-overflow-tooltip></el-table-column>
-        <el-table-column prop="factoryNo" label="厂号" width="90"></el-table-column>
-        <el-table-column label="出库箱数" width="90" align="right"><template slot-scope="scope">{{ scope.row.shippedBoxes || 0 }}</template></el-table-column>
-        <el-table-column label="计费重量KG" width="120" align="right"><template slot-scope="scope">{{ number3(scope.row.feeWeight || scope.row.shippedWeight) }}</template></el-table-column>
-        <el-table-column label="确认函单价" width="110" align="right"><template slot-scope="scope">{{ number6(scope.row.unitPriceInclTax) }}</template></el-table-column>
-        <el-table-column label="系统还本" width="120" align="right"><template slot-scope="scope">{{ money(scope.row.systemPrincipalAmount) }}</template></el-table-column>
-        <el-table-column label="确认还本" width="120" align="right"><template slot-scope="scope">{{ money(scope.row.confirmedPrincipalAmount) }}</template></el-table-column>
-        <el-table-column prop="loanDays" label="计息天数" width="90" align="right"></el-table-column>
-        <el-table-column label="利息/资金成本" width="130" align="right"><template slot-scope="scope">{{ money(scope.row.interestAmount) }}</template></el-table-column>
-        <el-table-column label="预计应付" width="120" align="right"><template slot-scope="scope">{{ money(scope.row.expectedPaymentAmount) }}</template></el-table-column>
-      </el-table>
+        </el-form>
+        <el-table class="batch-settlement-item-table" :data="batchSettlementForm.itemList || []" border stripe height="460">
+          <el-table-column prop="lineNo" label="序号" width="60" align="center"></el-table-column>
+          <el-table-column prop="confirmContractNo" label="确认函合同号" min-width="150" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="productCode" label="产品编码" width="100"></el-table-column>
+          <el-table-column prop="productName" label="品名" min-width="160" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="containerNo" label="柜号" width="130" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="factoryNo" label="厂号" width="90"></el-table-column>
+          <el-table-column label="出库箱数" width="90" align="right"><template slot-scope="scope">{{ scope.row.shippedBoxes || 0 }}</template></el-table-column>
+          <el-table-column label="计费重量KG" width="120" align="right"><template slot-scope="scope">{{ number3(scope.row.feeWeight || scope.row.shippedWeight) }}</template></el-table-column>
+          <el-table-column label="确认函单价" width="110" align="right"><template slot-scope="scope">{{ number6(scope.row.unitPriceInclTax) }}</template></el-table-column>
+          <el-table-column label="系统还本" width="120" align="right"><template slot-scope="scope">{{ money(scope.row.systemPrincipalAmount) }}</template></el-table-column>
+          <el-table-column label="确认还本" width="120" align="right"><template slot-scope="scope">{{ money(scope.row.confirmedPrincipalAmount) }}</template></el-table-column>
+          <el-table-column prop="loanDays" label="计息天数" width="90" align="right"></el-table-column>
+          <el-table-column label="利息/资金成本" width="130" align="right"><template slot-scope="scope">{{ money(scope.row.interestAmount) }}</template></el-table-column>
+          <el-table-column label="预计应付" width="120" align="right"><template slot-scope="scope">{{ money(scope.row.expectedPaymentAmount) }}</template></el-table-column>
+        </el-table>
+      </div>
       <span slot="footer">
         <el-button @click="batchSettlementVisible = false">取消</el-button>
         <el-button type="primary" :loading="batchSubmitLoading" @click="confirmBatchSettlement">确认批次还款</el-button>
@@ -386,6 +388,8 @@ export default {
       batchSettlementForm: emptyBatchSettlement(),
       batchOptions: [],
       batchOptionLoading: false,
+      batchSettlementLoading: false,
+      batchSettlementCalcToken: 0,
       batchRecognizeLoading: false,
       batchSubmitLoading: false,
       otherFeeDetailVisible: false,
@@ -434,7 +438,7 @@ export default {
         { name: '利息/资金成本', amount: f.interestAmount, formula: this.interestRuleFormula() },
         { name: '仓储费用', amount: f.storageFeeAmount, formula: '各明细行按：出库重量KG ÷ 1000 × 仓储费单价（按仓库费用历史和业务日期取价）计算后汇总。' },
         { name: '手续费/装卸费', amount: f.handlingFeeAmount, formula: '各明细行按：出库重量KG ÷ 1000 × 装卸费单价（按仓库费用历史和业务日期取价）计算后汇总。' },
-        { name: '扫码费', amount: f.codeScanFeeAmount, formula: '上海仓按：出库箱数 × 0.35；其他仓按：出库重量KG ÷ 1000 × 15。' },
+        { name: '扫码费', amount: f.codeScanFeeAmount, formula: '开关打开时，各明细行按对应仓库费用历史维护的扫码费方式和单价计算；开关关闭时为0。' },
         { name: '印花税', amount: f.stampTaxAmount, formula: '各明细行按：出库重量KG × 确认函含税单价 × 0.0006 计算后汇总。' },
         { name: '保证金/押金', amount: f.depositAmount, formula: '各明细行按：货值金额 × 25%；货值金额 = 出库重量KG × 确认函含税单价。' },
         { name: '补税点费用', amount: f.taxAdjustAmount, formula: '人工录入费用，计入其他资方费用。' },
@@ -575,11 +579,14 @@ export default {
     openBatchSettlement () {
       this.batchSettlementForm = emptyBatchSettlement()
       this.batchSettlementVisible = true
-      this.searchBatchOptions('')
+      this.batchSettlementLoading = true
+      this.searchBatchOptions('').finally(() => {
+        this.batchSettlementLoading = false
+      })
     },
     searchBatchOptions (keyword) {
       this.batchOptionLoading = true
-      this.$http({
+      return this.$http({
         url: this.$http.adornUrl('/erp/funder-finance/loan/batch-options'),
         method: 'get',
         params: this.$http.adornParams({ keyword })
@@ -598,6 +605,8 @@ export default {
     },
     calculateBatchSettlement () {
       if (!this.batchSettlementForm.outboundBatchId || !this.batchSettlementForm.settlementDate) return
+      const requestIncludeCodeScanFee = Number(this.batchSettlementForm.includeCodeScanFee || 0)
+      const calcToken = ++this.batchSettlementCalcToken
       const keepFile = {
         recognizedPaymentAmount: this.batchSettlementForm.recognizedPaymentAmount,
         confirmedPaymentAmount: this.batchSettlementForm.confirmedPaymentAmount,
@@ -606,18 +615,32 @@ export default {
         rawText: this.batchSettlementForm.rawText,
         remark: this.batchSettlementForm.remark
       }
+      const requestForm = Object.assign({}, this.batchSettlementForm, {
+        includeCodeScanFee: requestIncludeCodeScanFee
+      })
+      this.batchSettlementLoading = true
       this.$http({
         url: this.$http.adornUrl('/erp/funder-finance/loan/batch-settlement/calculate'),
         method: 'post',
-        data: this.$http.adornData(this.batchSettlementForm)
+        data: this.$http.adornData(requestForm)
       }).then(({ data }) => {
+        if (calcToken !== this.batchSettlementCalcToken) {
+          return
+        }
         if (data && data.code === 0) {
           this.batchSettlementForm = Object.assign(emptyBatchSettlement(), data.settlement || {}, keepFile)
+          this.batchSettlementForm.includeCodeScanFee = requestIncludeCodeScanFee
           if (!Number(this.batchSettlementForm.confirmedPaymentAmount || 0)) {
             this.batchSettlementForm.confirmedPaymentAmount = this.batchSettlementForm.expectedPaymentAmount || 0
           }
         } else {
           this.$message.error((data && data.msg) || '计算批次结算失败')
+        }
+      }).catch(() => {
+        this.$message.error('计算批次结算请求失败')
+      }).finally(() => {
+        if (calcToken === this.batchSettlementCalcToken) {
+          this.batchSettlementLoading = false
         }
       })
     },
