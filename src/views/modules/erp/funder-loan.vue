@@ -137,7 +137,7 @@
       </span>
     </el-dialog>
 
-    <el-dialog title="按出库批次还款" :visible.sync="batchSettlementVisible" width="1280px" :close-on-click-modal="false">
+    <el-dialog title="按出库批次还款" :visible.sync="batchSettlementVisible" width="1280px" custom-class="batch-settlement-dialog" :close-on-click-modal="false">
       <el-alert
         title="仅能选择已确认完成且未结算过的出库批次。系统会按出库批次实际出库重量追溯到客户订单确认函小合同，再按资方规则计算并分摊还款。"
         type="info"
@@ -240,7 +240,7 @@
           </el-col>
         </el-row>
       </el-form>
-      <el-table :data="batchSettlementForm.itemList || []" border stripe max-height="360">
+      <el-table class="batch-settlement-item-table" :data="batchSettlementForm.itemList || []" border stripe max-height="460">
         <el-table-column prop="lineNo" label="序号" width="60" align="center"></el-table-column>
         <el-table-column prop="confirmContractNo" label="确认函合同号" min-width="150" show-overflow-tooltip></el-table-column>
         <el-table-column prop="productCode" label="产品编码" width="100"></el-table-column>
@@ -770,4 +770,6 @@ export default {
 .fee-summary-item { border: 1px solid #ebeef5; border-radius: 4px; padding: 10px 12px; background: #fff; display: flex; align-items: center; justify-content: space-between; color: #606266; }
 .fee-summary-item strong { color: #17b3a3; font-size: 16px; }
 .other-fee-total { margin-top: 10px; text-align: right; font-weight: 700; color: #303133; }
+/deep/ .batch-settlement-dialog .el-dialog__body { max-height: calc(100vh - 190px); overflow-y: auto; padding-bottom: 12px; }
+.batch-settlement-item-table { margin-top: 4px; }
 </style>
