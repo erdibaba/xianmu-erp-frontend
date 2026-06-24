@@ -174,6 +174,18 @@
             </el-form-item>
           </el-col>
           <el-col :span="6"><el-form-item label="资方规则"><el-input :value="ruleName(batchSettlementForm.ruleType)" disabled></el-input></el-form-item></el-col>
+          <el-col :span="6">
+            <el-form-item label="计算扫码费">
+              <el-switch
+                v-model="batchSettlementForm.includeCodeScanFee"
+                :active-value="1"
+                :inactive-value="0"
+                active-text="计算"
+                inactive-text="不计算"
+                @change="calculateBatchSettlement">
+              </el-switch>
+            </el-form-item>
+          </el-col>
           <el-col v-if="batchSettlementForm.ruleType === 'CHAOYUE'" :span="8">
             <el-form-item label="资方认定回款本金">
               <el-input-number v-model="batchSettlementForm.confirmedPrincipalAmount" :min="0" :precision="2" :controls="false" style="width:100%" @change="calculateBatchSettlement"></el-input-number>
@@ -248,7 +260,7 @@
         <el-table-column prop="containerNo" label="柜号" width="130" show-overflow-tooltip></el-table-column>
         <el-table-column prop="factoryNo" label="厂号" width="90"></el-table-column>
         <el-table-column label="出库箱数" width="90" align="right"><template slot-scope="scope">{{ scope.row.shippedBoxes || 0 }}</template></el-table-column>
-        <el-table-column label="出库重量KG" width="120" align="right"><template slot-scope="scope">{{ number3(scope.row.shippedWeight) }}</template></el-table-column>
+        <el-table-column label="计费重量KG" width="120" align="right"><template slot-scope="scope">{{ number3(scope.row.feeWeight || scope.row.shippedWeight) }}</template></el-table-column>
         <el-table-column label="确认函单价" width="110" align="right"><template slot-scope="scope">{{ number6(scope.row.unitPriceInclTax) }}</template></el-table-column>
         <el-table-column label="系统还本" width="120" align="right"><template slot-scope="scope">{{ money(scope.row.systemPrincipalAmount) }}</template></el-table-column>
         <el-table-column label="确认还本" width="120" align="right"><template slot-scope="scope">{{ money(scope.row.confirmedPrincipalAmount) }}</template></el-table-column>
@@ -341,6 +353,7 @@ const emptyBatchSettlement = () => ({
   depositAmount: 0,
   taxAdjustAmount: 0,
   grossWeightFeeAmount: 0,
+  includeCodeScanFee: 0,
   otherFeeAmount: 0,
   expectedPaymentAmount: 0,
   recognizedPaymentAmount: 0,
@@ -471,6 +484,9 @@ export default {
       const ton = this.ton(kg)
       return ton > 0 ? Number(amount || 0) / ton : 0
     },
+    feeWeight (item) {
+      return Number((item && (item.feeWeight || item.shippedWeight)) || 0)
+    },
     interestRuleFormula () {
       const map = {
         RUIHEXIANG: '瑞和祥：各明细行按 确认还本 × 6% ÷ 365 × 计息天数 计算；跨月时计息天数按结算日所在月天数规则取值。',
@@ -487,12 +503,14 @@ export default {
       return `确认还本${this.money(item.confirmedPrincipalAmount)} × ${rate} ÷ ${daysBase} × ${item.loanDays || 0}天 = ${this.money(item.interestAmount)}`
     },
     itemStorageFormula (item) {
-      const rate = this.inferTonRate(item.storageFeeAmount, item.shippedWeight)
-      return `出库重量${this.number3(item.shippedWeight)}KG ÷ 1000 × 仓储费单价${this.money(rate)}元/吨 = ${this.money(item.storageFeeAmount)}`
+      const weight = this.feeWeight(item)
+      const rate = this.inferTonRate(item.storageFeeAmount, weight)
+      return `计费重量${this.number3(weight)}KG ÷ 1000 × 仓储费单价${this.money(rate)}元/吨 = ${this.money(item.storageFeeAmount)}`
     },
     itemHandlingFormula (item) {
-      const rate = this.inferTonRate(item.handlingFeeAmount, item.shippedWeight)
-      return `出库重量${this.number3(item.shippedWeight)}KG ÷ 1000 × 装卸费单价${this.money(rate)}元/吨 = ${this.money(item.handlingFeeAmount)}`
+      const weight = this.feeWeight(item)
+      const rate = this.inferTonRate(item.handlingFeeAmount, weight)
+      return `计费重量${this.number3(weight)}KG ÷ 1000 × 装卸费单价${this.money(rate)}元/吨 = ${this.money(item.handlingFeeAmount)}`
     },
     itemCodeScanFormula (item) {
       const boxes = Number(item.shippedBoxes || 0)
@@ -500,11 +518,13 @@ export default {
       if (boxes > 0 && Math.abs(amount / boxes - 0.35) < 0.01) {
         return `出库箱数${boxes} × 0.35 = ${this.money(item.codeScanFeeAmount)}`
       }
-      const rate = this.inferTonRate(item.codeScanFeeAmount, item.shippedWeight)
-      return `出库重量${this.number3(item.shippedWeight)}KG ÷ 1000 × ${this.money(rate)}元/吨 = ${this.money(item.codeScanFeeAmount)}`
+      const weight = this.feeWeight(item)
+      const rate = this.inferTonRate(item.codeScanFeeAmount, weight)
+      return `计费重量${this.number3(weight)}KG ÷ 1000 × ${this.money(rate)}元/吨 = ${this.money(item.codeScanFeeAmount)}`
     },
     itemStampTaxFormula (item) {
-      return `出库重量${this.number3(item.shippedWeight)}KG × 确认函含税单价${this.number6(item.unitPriceInclTax)} × 0.0006 = ${this.money(item.stampTaxAmount)}`
+      const weight = this.feeWeight(item)
+      return `计费重量${this.number3(weight)}KG × 确认函含税单价${this.number6(item.unitPriceInclTax)} × 0.0006 = ${this.money(item.stampTaxAmount)}`
     },
     itemDepositFormula (item) {
       return `货值金额${this.money(item.costAmount)} × 25% = ${this.money(item.depositAmount)}`
