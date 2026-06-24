@@ -496,26 +496,94 @@
 
           <el-tab-pane label="出库批次" name="outboundReceipt">
             <div class="outbound-batch-panel">
-              <div class="attachment-toolbar">
-                <el-button
-                  v-if="attachmentEditable && !outboundCompleted"
-                  size="mini"
-                  type="primary"
-                  plain
-                  :loading="outboundBatchLoading"
-                  :disabled="hasOpenOutboundBatch"
-                  @click="openOutboundBatchDialog">
-                  新增出库批次
-                </el-button>
-                <span v-if="hasOpenOutboundBatch" class="sub-title-tip">当前还有未完成批次，请先确认完成或删除后再新增。</span>
-                <el-tag v-if="currentOutboundBatch" size="small" type="info">
-                  当前批次：{{ currentOutboundBatch.batchNo }}
-                </el-tag>
-                <el-tag v-if="currentOutboundBatch" size="small" :type="currentOutboundBatchTagType">
-                  {{ formatOutboundBatchStatus(currentOutboundBatch.status) }}
-                </el-tag>
-                <span v-if="!currentOutboundBatch && !outboundCompleted" class="sub-title-tip">请先新增出库批次，再上传出库回单和二批来款水单。</span>
-                <span v-if="outboundCompleted" class="sub-title-tip">整单出库已完成。</span>
+              <div class="outbound-flow-card">
+                <div class="outbound-flow-header">
+                  <div>
+                    <strong>出库批次流程</strong>
+                    <span class="sub-title-tip">{{ outboundWorkflowTip }}</span>
+                  </div>
+                  <div class="outbound-flow-tags">
+                    <el-tag v-if="currentOutboundBatch" size="small" type="info">
+                      当前批次：{{ currentOutboundBatch.batchNo }}
+                    </el-tag>
+                    <el-tag v-if="currentOutboundBatch" size="small" :type="currentOutboundBatchTagType">
+                      {{ formatOutboundBatchStatus(currentOutboundBatch.status) }}
+                    </el-tag>
+                    <el-tag v-if="outboundCompleted" size="small" type="success">整单出库已完成</el-tag>
+                  </div>
+                </div>
+                <el-steps :active="outboundWorkflowActiveStep" finish-status="success" simple class="outbound-flow-steps">
+                  <el-step title="创建批次"></el-step>
+                  <el-step title="上传出库回单"></el-step>
+                  <el-step title="上传来款水单"></el-step>
+                  <el-step title="确认批次完成"></el-step>
+                </el-steps>
+                <div class="outbound-flow-actions">
+                  <el-button
+                    v-if="attachmentEditable && !currentOutboundBatch && !outboundCompleted"
+                    size="mini"
+                    type="primary"
+                    :loading="outboundBatchLoading"
+                    @click="openOutboundBatchDialog">
+                    新增出库批次
+                  </el-button>
+                  <el-button
+                    v-if="attachmentEditable && currentOutboundBatch && canUploadStep('OUTBOUND_RECEIPT')"
+                    size="mini"
+                    type="primary"
+                    plain
+                    :loading="uploadLoading && currentUploadType === 'OUTBOUND_RECEIPT'"
+                    @click="triggerUpload('OUTBOUND_RECEIPT')">
+                    上传出库回单识别
+                  </el-button>
+                  <el-button
+                    v-if="attachmentEditable && dataForm.outboundReceipt"
+                    size="mini"
+                    type="primary"
+                    plain
+                    :loading="outboundSaveLoading"
+                    :disabled="isStepConfirmed('OUTBOUND_RECEIPT')"
+                    @click="saveOutboundReceipt()">
+                    保存出库回单
+                  </el-button>
+                  <el-button
+                    v-if="attachmentEditable && currentOutboundBatch && canUploadStep('OUTBOUND_BATCH_BANK_SLIP')"
+                    size="mini"
+                    type="primary"
+                    plain
+                    :loading="uploadLoading && currentUploadType === 'OUTBOUND_BATCH_BANK_SLIP'"
+                    @click="triggerUpload('OUTBOUND_BATCH_BANK_SLIP')">
+                    {{ currentOutboundBankSlipVisible ? '重新识别二批来款水单' : '上传二批来款水单' }}
+                  </el-button>
+                  <el-button
+                    v-if="attachmentEditable && currentOutboundBatch && currentOutboundBatchEditable"
+                    size="mini"
+                    type="primary"
+                    plain
+                    :loading="outboundBatchLoading"
+                    @click="bindOutboundScanLink">
+                    绑定扫码链接
+                  </el-button>
+                  <el-button
+                    v-if="attachmentEditable && currentOutboundBatch && canConfirmOutboundBatch"
+                    size="mini"
+                    type="success"
+                    :loading="confirmLoading && currentConfirmType === 'OUTBOUND_BATCH'"
+                    @click="confirmOutboundBatch">
+                    确认批次完成
+                  </el-button>
+                  <el-button
+                    v-if="attachmentEditable && currentOutboundBatch && currentOutboundBatchEditable"
+                    size="mini"
+                    type="danger"
+                    plain
+                    :loading="outboundBatchLoading"
+                    @click="voidOutboundBatch">
+                    删除当前批次
+                  </el-button>
+                  <span v-if="hasOpenOutboundBatch" class="sub-title-tip">当前批次未完成前，不能新增下一批。</span>
+                  <span v-if="attachmentEditable && currentOutboundBatch && currentOutboundBatchEditable" class="sub-title-tip">{{ bankVoucherSupportTip }}</span>
+                </div>
               </div>
             </div>
             <div v-if="currentOutboundBatch" class="outbound-batch-info">
@@ -559,65 +627,6 @@
               </el-table-column>
             </el-table>
             <div class="attachment-toolbar">
-              <el-button
-                v-if="attachmentEditable && currentOutboundBatch && canUploadStep('OUTBOUND_RECEIPT')"
-                size="mini"
-                type="primary"
-                plain
-                :loading="uploadLoading && currentUploadType === 'OUTBOUND_RECEIPT'"
-                @click="triggerUpload('OUTBOUND_RECEIPT')">
-                上传出库回单识别
-              </el-button>
-              <el-button
-                v-if="attachmentEditable && currentOutboundBatch && canUploadStep('OUTBOUND_BATCH_BANK_SLIP')"
-                size="mini"
-                type="primary"
-                plain
-                :loading="uploadLoading && currentUploadType === 'OUTBOUND_BATCH_BANK_SLIP'"
-                @click="triggerUpload('OUTBOUND_BATCH_BANK_SLIP')">
-                {{ currentOutboundBankSlipVisible ? '重新识别二批来款水单' : '上传二批来款水单' }}
-              </el-button>
-              <span
-                v-if="attachmentEditable && currentOutboundBatch && currentOutboundBatchEditable"
-                class="sub-title-tip">
-                {{ bankVoucherSupportTip }}
-              </span>
-              <el-button
-                v-if="attachmentEditable && currentOutboundBatch && currentOutboundBatchEditable"
-                size="mini"
-                type="primary"
-                plain
-                :loading="outboundBatchLoading"
-                @click="bindOutboundScanLink">
-                绑定扫码链接
-              </el-button>
-              <el-button
-                v-if="attachmentEditable && dataForm.outboundReceipt"
-                size="mini"
-                type="primary"
-                plain
-                :loading="outboundSaveLoading"
-                :disabled="isStepConfirmed('OUTBOUND_RECEIPT')"
-                @click="saveOutboundReceipt()">
-                保存
-              </el-button>
-              <el-button
-                v-if="attachmentEditable && currentOutboundBatch && canConfirmOutboundBatch"
-                size="mini"
-                type="success"
-                :loading="confirmLoading && currentConfirmType === 'OUTBOUND_BATCH'"
-                @click="confirmOutboundBatch">
-                确认批次完成
-              </el-button>
-              <el-button
-                v-if="attachmentEditable && currentOutboundBatch && currentOutboundBatchEditable"
-                size="mini"
-                type="danger"
-                plain
-                :loading="outboundBatchLoading"
-                @click="voidOutboundBatch">
-                删除批次
-              </el-button>
               <el-tag v-if="dataForm.outboundSummaryList && dataForm.outboundSummaryList.length" size="small" :type="outboundReceiptMatched ? 'success' : 'danger'">
                 {{ outboundReceiptMatched ? '整单箱数一致' : '整单待核对' }}
               </el-tag>
@@ -1224,6 +1233,21 @@ export default {
     },
     outboundCompleted () {
       return Number(this.dataForm.outboundReceiptConfirmed || 0) === 1 || this.outboundReceiptMatched
+    },
+    outboundWorkflowActiveStep () {
+      if (this.outboundCompleted) return 4
+      if (!this.currentOutboundBatch) return 0
+      if (!this.currentOutboundHasReceiptFile) return 1
+      if (!this.currentOutboundBankSlipVisible) return 2
+      return 3
+    },
+    outboundWorkflowTip () {
+      if (this.outboundCompleted) return '整单箱数已匹配，出库流程已完成。'
+      if (!this.currentOutboundBatch) return '先新增一个出库批次，再按步骤上传单据。'
+      if (!this.currentOutboundHasReceiptFile) return '当前批次已创建，下一步上传出库回单。'
+      if (!this.currentOutboundBankSlipVisible) return '出库回单已上传，下一步上传二批来款水单。'
+      if (this.canConfirmOutboundBatch) return '单据已齐全，可以确认当前批次完成。'
+      return '请先保存并核对当前批次明细，再确认批次完成。'
     },
     showSpotPreviewButton () {
       return this.isSpotSale && !this.contentReadonly
@@ -2780,6 +2804,49 @@ export default {
 
 .attachment-toolbar {
   margin-bottom: 8px;
+}
+
+.outbound-flow-card {
+  margin-bottom: 12px;
+  padding: 14px 16px;
+  border: 1px solid #d9ecff;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f5fbff 0%, #ffffff 100%);
+}
+
+.outbound-flow-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.outbound-flow-header strong {
+  margin-right: 10px;
+  color: #1f6fbf;
+  font-size: 15px;
+}
+
+.outbound-flow-tags {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.outbound-flow-steps {
+  margin-bottom: 12px;
+  background: transparent;
+}
+
+.outbound-flow-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px dashed #d9ecff;
 }
 
 .outbound-batch-info {
