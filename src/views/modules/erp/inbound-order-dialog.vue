@@ -145,29 +145,10 @@
           <el-button size="mini" @click="archiveDialogVisible = true">
             查看归档原件（{{ (dataForm.fileList || []).length }}）
           </el-button>
+          <el-button size="mini" @click="expenseDialogVisible = true">
+            查看关联支出费用（{{ (dataForm.expenseList || []).length }}）
+          </el-button>
         </div>
-
-        <div class="sku-title-row">
-          <div class="sub-title">关联支出费用</div>
-        </div>
-        <el-table :data="dataForm.expenseList || []" border size="mini" class="expense-table">
-          <el-table-column prop="expenseName" label="费用名称" width="120"></el-table-column>
-          <el-table-column prop="warehouseName" label="仓库" min-width="150" show-overflow-tooltip></el-table-column>
-          <el-table-column prop="temperatureZone" label="温区" width="80" align="center"></el-table-column>
-          <el-table-column label="业务日期" width="110" align="center">
-            <template slot-scope="scope">{{ formatDate(scope.row.businessStartDate) }}</template>
-          </el-table-column>
-          <el-table-column label="重量(吨)" width="100" align="right">
-            <template slot-scope="scope">{{ formatNumber(scope.row.weightTon, 3) }}</template>
-          </el-table-column>
-          <el-table-column label="费率" width="90" align="right">
-            <template slot-scope="scope">{{ formatNumber(scope.row.rate, 2) }}</template>
-          </el-table-column>
-          <el-table-column label="金额" width="110" align="right">
-            <template slot-scope="scope">{{ formatMoney(scope.row.totalAmount) }}</template>
-          </el-table-column>
-          <el-table-column prop="remark" label="备注" min-width="220" show-overflow-tooltip></el-table-column>
-        </el-table>
 
         <div class="sku-title-row">
           <div class="sub-title">SKU明细</div>
@@ -359,6 +340,35 @@
     </el-dialog>
 
     <el-dialog
+      title="关联支出费用"
+      append-to-body
+      :visible.sync="expenseDialogVisible"
+      width="72%"
+      top="10vh">
+      <el-table :data="dataForm.expenseList || []" border size="mini" height="360" class="expense-dialog-table">
+        <el-table-column prop="expenseName" label="费用名称" width="120"></el-table-column>
+        <el-table-column prop="warehouseName" label="仓库" min-width="150" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="temperatureZone" label="温区" width="80" align="center"></el-table-column>
+        <el-table-column label="业务日期" width="110" align="center">
+          <template slot-scope="scope">{{ formatDate(scope.row.businessStartDate) }}</template>
+        </el-table-column>
+        <el-table-column label="重量(吨)" width="100" align="right">
+          <template slot-scope="scope">{{ formatNumber(scope.row.weightTon, 3) }}</template>
+        </el-table-column>
+        <el-table-column label="费率" width="90" align="right">
+          <template slot-scope="scope">{{ formatNumber(scope.row.rate, 2) }}</template>
+        </el-table-column>
+        <el-table-column label="金额" width="110" align="right">
+          <template slot-scope="scope">{{ formatMoney(scope.row.totalAmount) }}</template>
+        </el-table-column>
+        <el-table-column prop="remark" label="备注" min-width="220" show-overflow-tooltip></el-table-column>
+      </el-table>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="expenseDialogVisible = false">关闭</el-button>
+      </span>
+    </el-dialog>
+
+    <el-dialog
       title="入库报损"
       append-to-body
       :visible.sync="damageDialogVisible"
@@ -415,6 +425,7 @@ export default {
       visible: false,
       readonly: false,
       archiveDialogVisible: false,
+      expenseDialogVisible: false,
       damageDialogVisible: false,
       detailLoading: false,
       saveLoading: false,
@@ -490,6 +501,7 @@ export default {
       this.readonly = readonly
       this.$nextTick(this.updateSkuTableHeight)
       this.archiveDialogVisible = false
+      this.expenseDialogVisible = false
       this.damageDialogVisible = false
       this.driverOptions = []
       this.dataForm = this.defaultForm()
@@ -510,6 +522,7 @@ export default {
       this.readonly = false
       this.$nextTick(this.updateSkuTableHeight)
       this.archiveDialogVisible = false
+      this.expenseDialogVisible = false
       this.damageDialogVisible = false
       this.driverOptions = []
       this.dataForm = this.defaultForm()
@@ -544,7 +557,7 @@ export default {
     updateSkuTableHeight () {
       this.$nextTick(() => {
         const viewportHeight = window.innerHeight || 900
-        const fallbackHeight = Math.max(180, Math.min(320, viewportHeight - 575))
+        const fallbackHeight = Math.max(320, Math.min(460, viewportHeight - 510))
         const dialogBody = this.$refs.dialogBody
         const skuTable = this.$refs.skuTable && this.$refs.skuTable.$el
         if (!dialogBody || !skuTable) {
@@ -555,7 +568,7 @@ export default {
         const tableRect = skuTable.getBoundingClientRect()
         const availableHeight = Math.floor(bodyRect.bottom - tableRect.top - 12)
         this.skuTableHeight = availableHeight > 0
-          ? Math.max(120, Math.min(320, availableHeight))
+          ? Math.max(300, Math.min(460, availableHeight))
           : fallbackHeight
         this.$nextTick(() => {
           if (this.$refs.skuTable) {
