@@ -198,7 +198,14 @@
           <el-col :span="8"><el-form-item label="确认还本"><el-input :value="money(batchSettlementForm.confirmedPrincipalAmount)" disabled></el-input></el-form-item></el-col>
           <el-col :span="8"><el-form-item label="利息/资金成本"><el-input :value="money(batchSettlementForm.interestAmount)" disabled></el-input></el-form-item></el-col>
           <el-col :span="8"><el-form-item label="仓储费用"><el-input :value="money(batchSettlementForm.storageFeeAmount)" disabled></el-input></el-form-item></el-col>
-          <el-col :span="8"><el-form-item label="其他资方费用"><el-input :value="money(otherBatchFees)" disabled></el-input></el-form-item></el-col>
+          <el-col :span="8">
+            <el-form-item label="其他资方费用">
+              <div class="fee-explain-field">
+                <el-input :value="money(otherBatchFees)" disabled></el-input>
+                <el-button type="text" icon="el-icon-question" @click="otherFeeDetailVisible = true">费用说明</el-button>
+              </div>
+            </el-form-item>
+          </el-col>
           <el-col :span="8"><el-form-item label="系统预计应付"><el-input :value="money(batchSettlementForm.expectedPaymentAmount)" disabled></el-input></el-form-item></el-col>
           <el-col :span="8">
             <el-form-item label="资方还款凭证" required>
@@ -240,6 +247,27 @@
       <span slot="footer">
         <el-button @click="batchSettlementVisible = false">取消</el-button>
         <el-button type="primary" :loading="batchSubmitLoading" @click="confirmBatchSettlement">确认批次还款</el-button>
+      </span>
+    </el-dialog>
+
+    <el-dialog title="其他资方费用说明" :visible.sync="otherFeeDetailVisible" width="780px" append-to-body>
+      <el-alert
+        :title="otherBatchFeeRuleText"
+        type="info"
+        :closable="false"
+        style="margin-bottom:12px">
+      </el-alert>
+      <el-table :data="otherBatchFeeRows" border stripe size="mini">
+        <el-table-column prop="name" label="费用项" width="130"></el-table-column>
+        <el-table-column label="金额" width="120" align="right">
+          <template slot-scope="scope">{{ money(scope.row.amount) }}</template>
+        </el-table-column>
+        <el-table-column prop="source" label="来源" min-width="190" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="rule" label="计算/录入规则" min-width="280" show-overflow-tooltip></el-table-column>
+      </el-table>
+      <div class="other-fee-total">其他资方费用合计：¥{{ money(otherBatchFees) }}</div>
+      <span slot="footer">
+        <el-button @click="otherFeeDetailVisible = false">关闭</el-button>
       </span>
     </el-dialog>
   </div>
@@ -310,6 +338,7 @@ export default {
       batchOptionLoading: false,
       batchRecognizeLoading: false,
       batchSubmitLoading: false,
+      otherFeeDetailVisible: false,
       repaymentRules: {
         repaymentPrincipal: [{ required: true, message: '请输入本次归还本金', trigger: 'blur' }],
         repaymentDate: [{ required: true, message: '请选择还款日期', trigger: 'change' }],
@@ -335,6 +364,22 @@ export default {
     otherBatchFees () {
       const f = this.batchSettlementForm
       return Number(f.handlingFeeAmount || 0) + Number(f.codeScanFeeAmount || 0) + Number(f.stampTaxAmount || 0) + Number(f.depositAmount || 0) + Number(f.taxAdjustAmount || 0) + Number(f.grossWeightFeeAmount || 0) + Number(f.otherFeeAmount || 0)
+    },
+    otherBatchFeeRows () {
+      const f = this.batchSettlementForm
+      return [
+        { name: '手续费', amount: f.handlingFeeAmount, source: '资方批次结算结果', rule: '由后台按资方规则计算或返回，未产生则为0。' },
+        { name: '扫码费', amount: f.codeScanFeeAmount, source: '资方批次结算结果', rule: '由后台按资方规则计算或返回，未产生则为0。' },
+        { name: '印花税', amount: f.stampTaxAmount, source: '资方批次结算结果', rule: '由后台按资方规则计算或返回，未产生则为0。' },
+        { name: '保证金/押金', amount: f.depositAmount, source: '资方批次结算结果', rule: '由后台按资方规则计算或返回，未产生则为0。' },
+        { name: '补税点费用', amount: f.taxAdjustAmount, source: '按批次还款界面录入', rule: '万翔规则下可录入，计入其他资方费用。' },
+        { name: '毛重费用', amount: f.grossWeightFeeAmount, source: '按批次还款界面录入', rule: '万翔规则下可录入，计入其他资方费用。' },
+        { name: '其他费用', amount: f.otherFeeAmount, source: '按批次还款界面录入', rule: '人工补充的其他资方费用，计入本次预计应付。' }
+      ]
+    },
+    otherBatchFeeRuleText () {
+      const rule = this.ruleName(this.batchSettlementForm.ruleType)
+      return `当前资方规则：${rule}。其他资方费用 = 手续费 + 扫码费 + 印花税 + 保证金/押金 + 补税点费用 + 毛重费用 + 其他费用。`
     }
   },
   activated () {
@@ -599,4 +644,7 @@ export default {
 .file-name { margin-left: 12px; color: #606266; }
 .bank-voucher-tip { color: #909399; font-size: 12px; line-height: 20px; margin-top: 4px; }
 .amount-warning { color: #d93025; font-weight: 700; padding: 0 0 12px 150px; }
+.fee-explain-field { display: flex; align-items: center; gap: 8px; }
+.fee-explain-field .el-input { flex: 1; }
+.other-fee-total { margin-top: 10px; text-align: right; font-weight: 700; color: #303133; }
 </style>
