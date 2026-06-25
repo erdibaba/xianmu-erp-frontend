@@ -45,7 +45,16 @@
             <el-descriptions-item label="上传时间">{{ resultData.updateTime || resultData.createTime || '-' }}</el-descriptions-item>
             <template v-if="uploadType === 'customs'">
               <el-descriptions-item label="识别毛重(KG)">{{ resultData.recognizedGrossWeight || '-' }}</el-descriptions-item>
-              <el-descriptions-item label="确认毛重(KG)">{{ resultData.confirmedGrossWeight || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="确认毛重(KG)">
+                <el-input-number
+                  v-model="resultData.confirmedGrossWeight"
+                  :precision="3"
+                  :min="0"
+                  :controls="false"
+                  size="mini"
+                  style="width: 180px;">
+                </el-input-number>
+              </el-descriptions-item>
             </template>
           </template>
           <template v-else>
@@ -74,6 +83,7 @@
     <span slot="footer" class="dialog-footer">
       <el-button @click="visible = false">取消</el-button>
       <el-button v-if="!isArchiveUpload" type="primary" :disabled="!resultData" @click="confirmHandle()">带入编辑</el-button>
+      <el-button v-else-if="uploadType === 'customs'" type="primary" :loading="loading" :disabled="!resultData" @click="confirmCustomsUpload()">确认覆盖保存</el-button>
       <el-button v-else type="primary" :disabled="!resultData" @click="visible = false">完成</el-button>
     </span>
   </el-dialog>
@@ -100,7 +110,8 @@ export default {
       visible: false,
       loading: false,
       fileList: [],
-      resultData: null
+      resultData: null,
+      pendingCustomsFile: null
     }
   },
   computed: {
@@ -116,7 +127,7 @@ export default {
     dialogTitle () {
       if (this.uploadType === 'confirm') return '上传客户订单确认函'
       if (this.uploadType === 'packing') return '上传装箱单'
-      if (this.uploadType === 'customs') return '上传报关单'
+      if (this.uploadType === 'customs') return '识别报关单'
       if (this.uploadType === 'quarantine') return '上传检疫证明'
       return '上传预售销售单'
     },
@@ -128,7 +139,7 @@ export default {
         return '可同时上传多张装箱单 PDF/图片，识别后带入“装箱单”页签，系统会合并提取总箱数、总重量、保质期和生产日期分布。'
       }
       if (this.uploadType === 'customs') {
-        return '上传报关单原件，系统会自动识别毛重并归档；上传后请在报关单页签核对确认毛重。'
+        return '上传报关单原件后，系统会先识别毛重；请核对确认毛重后再覆盖保存归档。'
       }
       if (this.uploadType === 'quarantine') {
         return '上传检疫证明原件，系统仅做归档存储，不进行 OCR 识别；重新上传会覆盖当前确认函下已归档的检疫证明。'
@@ -170,6 +181,7 @@ export default {
       this.loading = false
       this.fileList = []
       this.resultData = null
+      this.pendingCustomsFile = null
     },
     beforeUpload (file) {
       const allow = this.isArchiveUpload
@@ -193,7 +205,10 @@ export default {
         this.$message.error('请先选择文件')
         return
       }
-      if (this.isArchiveUpload) {
+      if (this.uploadType === 'customs') {
+        const files = this.fileList.map(item => item.raw || item).filter(Boolean)
+        this.recognizeCustomsRequest({ files })
+      } else if (this.isArchiveUpload) {
         const files = this.fileList.map(item => item.raw || item).filter(Boolean)
         this.uploadArchiveRequest({ files })
       } else {
@@ -202,6 +217,37 @@ export default {
       }
     },
     handleRequest () {},
+    recognizeCustomsRequest (option) {
+      const files = option.files || (option.file ? [option.file] : [])
+      const file = files[0]
+      if (!file) return
+      this.pendingCustomsFile = file
+      this.loading = true
+      const formData = new FormData()
+      formData.append('file', file)
+      this.$http({
+        url: this.$http.adornUrl('/erp/presale/recognize-customs'),
+        method: 'post',
+        timeout: 1000 * 180,
+        data: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      }).then(({ data }) => {
+        if (data && data.code === 0) {
+          this.resultData = data.attachment || {}
+          if (!this.resultData.recognizedGrossWeight) {
+            this.$message.warning('未识别到毛重，请人工填写确认毛重后再保存')
+          }
+        } else {
+          this.$message.error((data && data.msg) || '报关单识别失败')
+        }
+        this.loading = false
+      }).catch(() => {
+        this.loading = false
+        this.$message.error('报关单识别失败，请检查文件或后端服务')
+      })
+    },
     recognizeRequest (option) {
       const files = option.files || (option.file ? [option.file] : [])
       if (!files.length) return
@@ -250,6 +296,9 @@ export default {
         }
         formData.append('attachmentType', this.uploadType === 'customs' ? 'CUSTOMS' : 'QUARANTINE')
         formData.append('overwriteExisting', index === 0 ? 'true' : 'false')
+        if (this.uploadType === 'customs' && option.confirmedGrossWeight !== undefined && option.confirmedGrossWeight !== null) {
+          formData.append('confirmedGrossWeight', option.confirmedGrossWeight)
+        }
         return this.$http({
           url: this.$http.adornUrl('/erp/presale/upload-attachment'),
           method: 'post',
@@ -279,6 +328,20 @@ export default {
     confirmHandle () {
       this.$emit('recognized', this.resultData)
       this.visible = false
+    },
+    confirmCustomsUpload () {
+      if (!this.pendingCustomsFile) {
+        this.$message.error('请先识别报关单文件')
+        return
+      }
+      if (this.resultData && (this.resultData.confirmedGrossWeight === undefined || this.resultData.confirmedGrossWeight === null || this.resultData.confirmedGrossWeight === '')) {
+        this.$message.error('请填写确认毛重')
+        return
+      }
+      this.uploadArchiveRequest({
+        files: [this.pendingCustomsFile],
+        confirmedGrossWeight: this.resultData.confirmedGrossWeight
+      })
     }
   }
 }
