@@ -17,12 +17,13 @@
         </el-input>
       </el-form-item>
       <el-form-item>
-        <el-select v-model="queryForm.expenseType" clearable filterable allow-create placeholder="费用类型" style="width: 170px;">
-          <el-option label="仓库杂费" value="仓库杂费"></el-option>
-          <el-option label="运输费" value="运输费"></el-option>
-          <el-option label="办公费" value="办公费"></el-option>
-          <el-option label="人工费" value="人工费"></el-option>
-          <el-option label="其他" value="其他"></el-option>
+        <el-select v-model="queryForm.expenseType" clearable filterable allow-create default-first-option placeholder="费用类型" style="width: 170px;">
+          <el-option
+            v-for="item in expenseTypeOptions"
+            :key="item"
+            :label="item"
+            :value="item">
+          </el-option>
         </el-select>
       </el-form-item>
       <el-form-item>
@@ -110,12 +111,13 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="费用类型">
-              <el-select v-model="dataForm.expenseType" filterable allow-create clearable placeholder="选择或输入费用类型" style="width: 100%;">
-                <el-option label="仓库杂费" value="仓库杂费"></el-option>
-                <el-option label="运输费" value="运输费"></el-option>
-                <el-option label="办公费" value="办公费"></el-option>
-                <el-option label="人工费" value="人工费"></el-option>
-                <el-option label="其他" value="其他"></el-option>
+              <el-select v-model="dataForm.expenseType" filterable allow-create default-first-option clearable placeholder="选择或输入费用类型" style="width: 100%;">
+                <el-option
+                  v-for="item in expenseTypeOptions"
+                  :key="item"
+                  :label="item"
+                  :value="item">
+                </el-option>
               </el-select>
             </el-form-item>
           </el-col>
@@ -200,6 +202,7 @@
         dataListLoading: false,
         dataListSelections: [],
         deleteLoading: false,
+        expenseTypeOptions: [],
         dialogVisible: false,
         submitLoading: false,
         dataForm: defaultForm(),
@@ -218,9 +221,21 @@
       }
     },
     activated () {
+      this.loadExpenseTypes()
       this.getDataList()
     },
     methods: {
+      loadExpenseTypes () {
+        this.$http({
+          url: this.$http.adornUrl('/erp/manual-expense/types'),
+          method: 'get',
+          params: this.$http.adornParams()
+        }).then(({data}) => {
+          if (data && data.code === 0) {
+            this.expenseTypeOptions = data.list || []
+          }
+        })
+      },
       searchHandle () {
         this.pageIndex = 1
         this.getDataList()
@@ -322,6 +337,7 @@
               return this.uploadPendingFiles(expenseId).then(() => {
                 this.$message.success('保存成功')
                 this.dialogVisible = false
+                this.loadExpenseTypes()
                 this.getDataList()
               })
             }
