@@ -178,15 +178,9 @@
             </el-table-column>
           </el-table>
         </el-col>
-        <el-col :span="16">
+        <el-col :span="24">
           <el-form-item label="备注">
             <el-input v-model="dataForm.remark" maxlength="500" show-word-limit></el-input>
-          </el-form-item>
-        </el-col>
-        <el-col :span="8">
-          <el-form-item label-width="0">
-            <el-button type="primary" :loading="saving" @click="submitHandle">{{ dataForm.id ? '保存修改' : '新增价格' }}</el-button>
-            <el-button v-if="dataForm.id" @click="resetForm">取消编辑</el-button>
           </el-form-item>
         </el-col>
       </el-row>
@@ -234,6 +228,8 @@
       </el-table-column>
     </el-table>
     <span slot="footer" class="dialog-footer">
+      <el-button v-if="dataForm.id" @click="resetForm">取消编辑</el-button>
+      <el-button type="primary" :loading="saving" @click="submitHandle">{{ dataForm.id ? '保存修改' : '新增价格' }}</el-button>
       <el-button @click="visible = false">关闭</el-button>
     </span>
   </el-dialog>
