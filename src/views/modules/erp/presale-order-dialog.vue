@@ -635,6 +635,23 @@
                         <el-input :value="formatDateTime(dataForm.customsInfo.updateTime || dataForm.customsInfo.createTime)" :disabled="true"></el-input>
                       </el-form-item>
                     </el-col>
+                    <el-col :span="12">
+                      <el-form-item label="识别毛重(KG)">
+                        <el-input :value="dataForm.customsInfo.recognizedGrossWeight || ''" :disabled="true"></el-input>
+                      </el-form-item>
+                    </el-col>
+                    <el-col :span="12">
+                      <el-form-item label="确认毛重(KG)">
+                        <el-input-number
+                          v-model="dataForm.customsInfo.confirmedGrossWeight"
+                          :precision="3"
+                          :min="0"
+                          :controls="false"
+                          :disabled="readonly"
+                          style="width: 100%;">
+                        </el-input-number>
+                      </el-form-item>
+                    </el-col>
                     <el-col :span="24">
                       <el-form-item label="归档路径">
                         <el-input :value="dataForm.customsInfo.filePath" :disabled="true"></el-input>
@@ -866,6 +883,9 @@ function defaultAttachmentInfo () {
     attachmentType: '',
     filePath: '',
     fileName: '',
+    recognizedGrossWeight: null,
+    confirmedGrossWeight: null,
+    rawText: '',
     remark: '',
     createTime: '',
     updateTime: ''

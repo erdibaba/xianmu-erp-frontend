@@ -43,6 +43,10 @@
             <el-descriptions-item label="归档原件">{{ resultData.filePath || '-' }}</el-descriptions-item>
             <el-descriptions-item label="文件名称">{{ resultData.fileName || '-' }}</el-descriptions-item>
             <el-descriptions-item label="上传时间">{{ resultData.updateTime || resultData.createTime || '-' }}</el-descriptions-item>
+            <template v-if="uploadType === 'customs'">
+              <el-descriptions-item label="识别毛重(KG)">{{ resultData.recognizedGrossWeight || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="确认毛重(KG)">{{ resultData.confirmedGrossWeight || '-' }}</el-descriptions-item>
+            </template>
           </template>
           <template v-else>
             <el-descriptions-item label="识别类型">{{ resultData.docType || '-' }}</el-descriptions-item>
@@ -124,7 +128,7 @@ export default {
         return '可同时上传多张装箱单 PDF/图片，识别后带入“装箱单”页签，系统会合并提取总箱数、总重量、保质期和生产日期分布。'
       }
       if (this.uploadType === 'customs') {
-        return '上传报关单原件，系统仅做归档存储，不进行 OCR 识别。'
+        return '上传报关单原件，系统会自动识别毛重并归档；上传后请在报关单页签核对确认毛重。'
       }
       if (this.uploadType === 'quarantine') {
         return '上传检疫证明原件，系统仅做归档存储，不进行 OCR 识别。'
@@ -152,7 +156,7 @@ export default {
         return '支持 JPG / PNG / JFIF / BMP / PDF，可一次选择多张装箱单。'
       }
       if (this.uploadType === 'customs') {
-        return '支持 JPG / PNG / JFIF / BMP / PDF / XLS / XLSX / DOC / DOCX，当前用于报关单归档。'
+        return '支持 JPG / PNG / JFIF / BMP / PDF / XLS / XLSX / DOC / DOCX，当前用于报关单归档和毛重识别。'
       }
       if (this.uploadType === 'quarantine') {
         return '支持 JPG / PNG / JFIF / BMP / PDF / XLS / XLSX / DOC / DOCX，当前用于检疫证明归档。'
