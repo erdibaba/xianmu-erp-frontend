@@ -442,7 +442,7 @@ export default {
         { name: '印花税', amount: f.stampTaxAmount, formula: '各明细行按：出库重量KG × 确认函含税单价 × 0.0006 计算后汇总。' },
         { name: '保证金/押金', amount: f.depositAmount, formula: '各明细行按：货值金额 × 25%；货值金额 = 出库重量KG × 确认函含税单价。' },
         { name: '补税点费用', amount: f.taxAdjustAmount, formula: '人工录入费用，计入其他资方费用。' },
-        { name: '毛重费用', amount: f.grossWeightFeeAmount, formula: '人工录入费用，计入其他资方费用。' },
+        { name: '毛重费用', amount: f.grossWeightFeeAmount, formula: '各明细行按：先用 产品总净重 ÷ 确认单整单净重 × 报关单确认毛重 得到产品总毛重，再按 产品总毛重 ÷ 产品总箱数 × 本次出库箱数 得到本次计费毛重，最后按 本次计费毛重KG ÷ 1000 × 毛重费率 × 计费天数 计算后汇总。' },
         { name: '其他费用', amount: f.otherFeeAmount, formula: '人工补充费用，计入其他资方费用。' }
       ]
     },
@@ -461,6 +461,7 @@ export default {
         rows.push(Object.assign({}, base, { feeName: '扫码费', amount: this.isIncludeCodeScanFee ? item.codeScanFeeAmount : 0, formula: this.itemCodeScanFormula(item) }))
         rows.push(Object.assign({}, base, { feeName: '印花税', amount: item.stampTaxAmount, formula: this.itemStampTaxFormula(item) }))
         rows.push(Object.assign({}, base, { feeName: '保证金/押金', amount: item.depositAmount, formula: this.itemDepositFormula(item) }))
+        rows.push(Object.assign({}, base, { feeName: '毛重费用', amount: item.grossWeightFeeAmount, formula: this.itemGrossWeightFormula(item) }))
       })
       return rows
     },
@@ -541,6 +542,15 @@ export default {
     },
     itemDepositFormula (item) {
       return `货值金额${this.money(item.costAmount)} × 25% = ${this.money(item.depositAmount)}`
+    },
+    itemGrossWeightFormula (item) {
+      if (!Number(item.grossWeightFeeAmount || 0)) {
+        return '当前明细未产生毛重费用。'
+      }
+      const grossWeight = Number(item.grossDiffWeight || 0)
+      const rate = Number(item.grossFeeRate || 0)
+      const days = Number(item.grossFeeDays || 0)
+      return `本次计费毛重${this.number3(grossWeight)}KG ÷ 1000 × 毛重费率${this.money(rate)}元/吨/天 × ${days}天 = ${this.money(item.grossWeightFeeAmount)}。本次计费毛重由：产品总净重 ÷ 确认单整单净重 × 报关单确认毛重，再按本次出库箱数折算。`
     },
     ruleName (value) {
       const map = { RUIHEXIANG: '瑞和祥', CHAOYUE: '超跃', WANXIANG: '万翔', DEFAULT: '默认' }
