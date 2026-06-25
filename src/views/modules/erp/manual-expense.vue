@@ -75,7 +75,7 @@
       <el-table-column prop="createTime" label="创建时间" width="160" align="center" header-align="center"></el-table-column>
       <el-table-column fixed="right" label="操作" width="130" align="center" header-align="center">
         <template slot-scope="scope">
-          <el-button v-if="isAuth('erp:manual-expense:update')" type="text" size="small" @click="openDialog(scope.row.id)">修改</el-button>
+          <el-button v-if="isAuth('erp:manual-expense:info')" type="text" size="small" @click="openDialog(scope.row.id)">详情</el-button>
           <el-button v-if="isAuth('erp:manual-expense:delete')" type="text" size="small" @click="deleteHandle(scope.row.id)">删除</el-button>
         </template>
       </el-table-column>
@@ -92,7 +92,7 @@
     </el-pagination>
 
     <el-dialog
-      :title="dataForm.id ? '修改费用支出' : '新增费用支出'"
+      :title="dataForm.id ? '费用支出详情' : '新增费用支出'"
       :close-on-click-modal="false"
       :visible.sync="dialogVisible"
       width="760px">
@@ -105,13 +105,14 @@
                 type="date"
                 value-format="yyyy-MM-dd"
                 placeholder="选择费用日期"
+                :disabled="!!dataForm.id"
                 style="width: 100%;">
               </el-date-picker>
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="费用类型">
-              <el-select v-model="dataForm.expenseType" filterable allow-create default-first-option clearable placeholder="选择或输入费用类型" style="width: 100%;">
+              <el-select v-model="dataForm.expenseType" filterable allow-create default-first-option clearable placeholder="选择或输入费用类型" :disabled="!!dataForm.id" style="width: 100%;">
                 <el-option
                   v-for="item in expenseTypeOptions"
                   :key="item"
@@ -123,20 +124,20 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="费用名称" prop="expenseName">
-              <el-input v-model.trim="dataForm.expenseName" maxlength="128" show-word-limit></el-input>
+              <el-input v-model.trim="dataForm.expenseName" maxlength="128" show-word-limit :disabled="!!dataForm.id"></el-input>
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="支出金额" prop="amount">
-              <el-input-number v-model="dataForm.amount" :precision="2" :min="0" :controls="false" style="width: 100%;"></el-input-number>
+              <el-input-number v-model="dataForm.amount" :precision="2" :min="0" :controls="false" :disabled="!!dataForm.id" style="width: 100%;"></el-input-number>
             </el-form-item>
           </el-col>
           <el-col :span="24">
             <el-form-item label="备注">
-              <el-input v-model.trim="dataForm.remark" type="textarea" :rows="3" maxlength="1000" show-word-limit></el-input>
+              <el-input v-model.trim="dataForm.remark" type="textarea" :rows="3" maxlength="1000" show-word-limit :disabled="!!dataForm.id"></el-input>
             </el-form-item>
           </el-col>
-          <el-col :span="24">
+          <el-col v-if="!dataForm.id" :span="24">
             <el-form-item label="支出附件">
               <el-upload
                 action="#"
@@ -159,7 +160,6 @@
                 <el-table-column label="操作" width="120" align="center">
                   <template slot-scope="scope">
                     <el-button type="text" size="mini" @click="downloadFile(scope.row)">下载</el-button>
-                    <el-button v-if="isAuth('erp:manual-expense:update')" type="text" size="mini" @click="deleteFile(scope.row)">删除</el-button>
                   </template>
                 </el-table-column>
               </el-table>
@@ -168,8 +168,8 @@
         </el-row>
       </el-form>
       <span slot="footer" class="dialog-footer">
-        <el-button :disabled="submitLoading" @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" @click="submitHandle">保存</el-button>
+        <el-button :disabled="submitLoading" @click="dialogVisible = false">{{ dataForm.id ? '关闭' : '取消' }}</el-button>
+        <el-button v-if="!dataForm.id" type="primary" :loading="submitLoading" @click="submitHandle">保存</el-button>
       </span>
     </el-dialog>
   </div>
@@ -321,13 +321,16 @@
         this.uploadFileList = fileList
       },
       submitHandle () {
+        if (this.dataForm.id) {
+          return
+        }
         this.$refs.dataForm.validate((valid) => {
           if (!valid || this.submitLoading) {
             return
           }
           this.submitLoading = true
           this.$http({
-            url: this.$http.adornUrl(`/erp/manual-expense/${this.dataForm.id ? 'update' : 'save'}`),
+            url: this.$http.adornUrl('/erp/manual-expense/save'),
             method: 'post',
             data: this.$http.adornData(this.dataForm)
           }).then(({data}) => {
