@@ -11,7 +11,7 @@
       <el-form-item>
         <el-input
           v-model="queryForm.keyword"
-          placeholder="销售单号 / 合同号 / 二批商 / 仓库"
+          placeholder="销售单号 / 合同号 / 二批商 / 销售 / 仓库"
           clearable
           @keyup.enter.native="getDataList()">
         </el-input>
@@ -48,6 +48,9 @@
         <template slot-scope="scope">{{ getSaleTypeLabel(scope.row.saleType) }}</template>
       </el-table-column>
       <el-table-column prop="secondaryPartnerName" label="二批商" min-width="180"></el-table-column>
+      <el-table-column prop="salespersonName" label="销售" min-width="130">
+        <template slot-scope="scope">{{ scope.row.salespersonName || '-' }}</template>
+      </el-table-column>
       <el-table-column prop="warehouseName" label="仓库" min-width="160"></el-table-column>
       <el-table-column label="关联预销售单" min-width="170">
         <template slot-scope="scope">{{ scope.row.sourcePresaleOrderNo || '-' }}</template>

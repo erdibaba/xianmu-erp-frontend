@@ -73,6 +73,32 @@
 
         <el-row :gutter="20">
           <el-col :span="6">
+            <el-form-item label="销售">
+              <el-select
+                v-model="dataForm.salespersonId"
+                :disabled="contentReadonly"
+                filterable
+                remote
+                clearable
+                reserve-keyword
+                style="width: 100%;"
+                placeholder="输入销售姓名搜索"
+                :loading="salespersonLoading"
+                :remote-method="remoteSearchSalespersons"
+                @visible-change="salespersonVisibleChange"
+                @change="salespersonChangeHandle">
+                <el-option
+                  v-for="item in salespersonOptions"
+                  :key="item.id"
+                  :label="salespersonLabel(item)"
+                  :value="item.id">
+                  <div class="product-option-code">{{ item.salesName }}</div>
+                  <div class="product-option-name">{{ item.mobile || '-' }} / {{ item.sysUsername || '未绑定账号' }}</div>
+                </el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="6">
             <el-form-item label="合同号">
               <el-input v-model="dataForm.contractNo" :disabled="contentReadonly"></el-input>
             </el-form-item>
@@ -1194,6 +1220,8 @@ export default {
       presaleOrderOptions: [],
       presaleOrderKeyword: '',
       presaleOrderLoading: false,
+      salespersonOptions: [],
+      salespersonLoading: false,
       dataForm: this.defaultForm(),
       dataRule: {
         saleType: [{ required: true, message: '请选择销售类型', trigger: 'change' }],
@@ -1404,6 +1432,8 @@ export default {
         secondaryPartnerId: '',
         secondaryPartnerName: '',
         secondaryPartnerColdStorageFreeDays: '',
+        salespersonId: '',
+        salespersonName: '',
         warehouseId: '',
         warehouseName: '',
         sourcePresaleOrderId: '',
@@ -1538,7 +1568,7 @@ export default {
       })
     },
     loadBaseOptions () {
-      return Promise.all([this.loadSecondaryPartners(), this.loadWarehouses(), this.loadProductList()])
+      return Promise.all([this.loadSecondaryPartners(), this.loadWarehouses(), this.loadProductList(), this.remoteSearchSalespersons('')])
     },
     loadSecondaryPartners () {
       return this.$http({
@@ -1570,6 +1600,46 @@ export default {
         this.productList = (data && data.list) || []
       })
     },
+    salespersonVisibleChange (visible) {
+      if (visible && !this.salespersonOptions.length) {
+        this.remoteSearchSalespersons('')
+      }
+    },
+    remoteSearchSalespersons (keyword) {
+      this.salespersonLoading = true
+      return this.$http({
+        url: this.$http.adornUrl('/erp/salesperson/select'),
+        method: 'get',
+        params: this.$http.adornParams({
+          keyword: keyword || ''
+        })
+      }).then(({ data }) => {
+        const list = (data && data.page && data.page.list) || []
+        const current = this.dataForm && this.dataForm.salespersonId ? [{
+          id: this.dataForm.salespersonId,
+          salesName: this.dataForm.salespersonName,
+          mobile: '',
+          sysUsername: ''
+        }] : []
+        const merged = current.concat(list)
+        const seen = {}
+        this.salespersonOptions = merged.filter(item => {
+          if (!item || !item.id || seen[item.id]) return false
+          seen[item.id] = true
+          return true
+        })
+      }).finally(() => {
+        this.salespersonLoading = false
+      })
+    },
+    salespersonChangeHandle (value) {
+      const target = (this.salespersonOptions || []).find(item => item.id === value)
+      this.dataForm.salespersonName = target ? target.salesName : ''
+    },
+    salespersonLabel (item) {
+      if (!item) return ''
+      return item.mobile ? `${item.salesName} / ${item.mobile}` : item.salesName
+    },
     fetchDetail (id) {
       if (!id) {
         this.dataForm.itemList = [this.defaultItemRow()]
@@ -1593,6 +1663,14 @@ export default {
       const result = Object.assign(this.defaultForm(), source)
       result.contractSignDate = this.normalizeDateValue(source.contractSignDate)
       result.fileList = source.fileList || []
+      if (result.salespersonId && !this.salespersonOptions.some(item => item.id === result.salespersonId)) {
+        this.salespersonOptions.unshift({
+          id: result.salespersonId,
+          salesName: result.salespersonName,
+          mobile: '',
+          sysUsername: ''
+        })
+      }
       result.outboundSummaryList = (source.outboundSummaryList || []).map(item => Object.assign({}, item))
       result.outboundBatchList = (source.outboundBatchList || []).map(item => this.normalizeOutboundBatch(item))
       const openBatch = result.outboundBatchList.find(item => {
