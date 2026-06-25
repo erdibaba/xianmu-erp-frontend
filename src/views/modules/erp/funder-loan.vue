@@ -18,6 +18,9 @@
 
     <el-table :data="dataList" border stripe v-loading="dataListLoading">
       <el-table-column prop="loanNo" label="贷款编号" min-width="190"></el-table-column>
+      <el-table-column label="还款状态" width="100" align="center">
+        <template slot-scope="scope"><el-tag :type="scope.row.status === 1 ? 'success' : 'warning'" size="small">{{ scope.row.status === 1 ? '还款完成' : '待还款' }}</el-tag></template>
+      </el-table-column>
       <el-table-column prop="funderName" label="资方" min-width="190" show-overflow-tooltip></el-table-column>
       <el-table-column prop="presaleOrderNo" label="预销售单号" min-width="170"></el-table-column>
       <el-table-column prop="sellerContractNo" label="预售合同号" min-width="160"></el-table-column>
@@ -28,9 +31,6 @@
       <el-table-column label="已还本金" width="140" align="right"><template slot-scope="scope">{{ money(scope.row.repaidPrincipal) }}</template></el-table-column>
       <el-table-column label="剩余本金" width="140" align="right"><template slot-scope="scope"><strong>{{ money(scope.row.remainingPrincipal) }}</strong></template></el-table-column>
       <el-table-column label="累计利息" width="180" align="right"><template slot-scope="scope">{{ decimal10(scope.row.interestAmount) }}</template></el-table-column>
-      <el-table-column label="状态" width="100" align="center">
-        <template slot-scope="scope"><el-tag :type="scope.row.status === 1 ? 'success' : 'warning'" size="small">{{ scope.row.status === 1 ? '还款完成' : '待还款' }}</el-tag></template>
-      </el-table-column>
       <el-table-column fixed="right" label="操作" width="170" align="center">
         <template slot-scope="scope">
           <el-button type="text" size="small" @click="openDetail(scope.row.id)">还款明细</el-button>
