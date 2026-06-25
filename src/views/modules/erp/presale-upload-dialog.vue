@@ -131,7 +131,7 @@ export default {
         return '上传报关单原件，系统会自动识别毛重并归档；上传后请在报关单页签核对确认毛重。'
       }
       if (this.uploadType === 'quarantine') {
-        return '上传检疫证明原件，系统仅做归档存储，不进行 OCR 识别。'
+        return '上传检疫证明原件，系统仅做归档存储，不进行 OCR 识别；重新上传会覆盖当前确认函下已归档的检疫证明。'
       }
       return '上传预售销售单 PDF，识别后带入“预售销售单”页签，用户修改后保存，原始记录会长期保留。'
     },
@@ -241,7 +241,7 @@ export default {
         return
       }
       this.loading = true
-      const requests = files.map(file => {
+      const requests = files.map((file, index) => {
         const formData = new FormData()
         formData.append('file', file)
         formData.append('presaleOrderId', this.orderId)
@@ -249,6 +249,7 @@ export default {
           formData.append('confirmId', this.confirmId)
         }
         formData.append('attachmentType', this.uploadType === 'customs' ? 'CUSTOMS' : 'QUARANTINE')
+        formData.append('overwriteExisting', index === 0 ? 'true' : 'false')
         return this.$http({
           url: this.$http.adornUrl('/erp/presale/upload-attachment'),
           method: 'post',

@@ -616,7 +616,7 @@
                 type="text"
                 @click="downloadFile(`/erp/presale/download/customs/${dataForm.id}`)">下载报关单原件</el-button>
               <el-button
-                v-if="!readonly && dataForm.id"
+                v-if="dataForm.id"
                 type="text"
                 @click="reuploadAttachment('customs')">重新上传</el-button>
             </div>
@@ -667,9 +667,9 @@
           <div class="tab-pane-content">
             <div class="tab-tools">
               <el-button
-                v-if="!readonly && dataForm.id"
+                v-if="dataForm.id"
                 type="text"
-                @click="reuploadAttachment('quarantine')">上传检疫证明</el-button>
+                @click="reuploadAttachment('quarantine')">重新上传检疫证明</el-button>
             </div>
             <el-empty v-if="!hasQuarantineData" description="暂未上传检疫证明"></el-empty>
             <div v-else class="tab-pane-content-body">
