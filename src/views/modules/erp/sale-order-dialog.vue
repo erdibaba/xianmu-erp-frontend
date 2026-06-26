@@ -41,6 +41,14 @@
                   :key="item.id"
                   :label="item.partnerName"
                   :value="item.id">
+                  <span>{{ item.partnerName }}</span>
+                  <el-tag
+                    v-if="item.riskLevel && item.riskLevel !== 'NORMAL'"
+                    size="mini"
+                    :type="partnerRiskTagType(item.riskLevel)"
+                    style="float: right; margin-top: 6px;">
+                    {{ partnerRiskLabel(item.riskLevel) }}
+                  </el-tag>
                 </el-option>
               </el-select>
             </el-form-item>
@@ -1912,10 +1920,31 @@ export default {
       const partner = this.secondaryPartnerList.find(item => String(item.id) === String(value))
       this.dataForm.secondaryPartnerName = partner ? partner.partnerName : ''
       this.dataForm.secondaryPartnerColdStorageFreeDays = partner ? (partner.coldStorageFreeDays || 7) : ''
+      this.warnSecondaryPartnerRisk(partner)
     },
     findSecondaryPartnerColdStorageFreeDays (partnerId) {
       const partner = this.secondaryPartnerList.find(item => String(item.id) === String(partnerId))
       return partner ? (partner.coldStorageFreeDays || 7) : ''
+    },
+    partnerRiskLabel (value) {
+      const map = { NORMAL: '正常', WATCH: '关注', DEFAULTED: '违约', BLACKLIST: '黑名单' }
+      return map[value] || '正常'
+    },
+    partnerRiskTagType (value) {
+      const map = { NORMAL: 'success', WATCH: 'warning', DEFAULTED: 'danger', BLACKLIST: 'info' }
+      return map[value] || 'success'
+    },
+    warnSecondaryPartnerRisk (partner) {
+      if (!partner || !partner.riskLevel || partner.riskLevel === 'NORMAL') {
+        return
+      }
+      const message = `二批商【${partner.partnerName || ''}】风险标记：${this.partnerRiskLabel(partner.riskLevel)}${partner.riskRemark ? '；说明：' + partner.riskRemark : ''}`
+      this.$message({
+        type: partner.riskLevel === 'WATCH' ? 'warning' : 'error',
+        message,
+        duration: 6000,
+        showClose: true
+      })
     },
     warehouseChangeHandle (value) {
       const warehouse = this.warehouseList.find(item => String(item.id) === String(value))

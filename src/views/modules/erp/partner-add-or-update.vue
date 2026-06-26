@@ -34,6 +34,26 @@
           </el-form-item>
         </el-col>
         <el-col :span="12">
+          <el-form-item label="风险标记">
+            <el-select v-model="dataForm.riskLevel" placeholder="请选择风险标记" style="width: 100%;">
+              <el-option label="正常" value="NORMAL"></el-option>
+              <el-option label="关注" value="WATCH"></el-option>
+              <el-option label="违约" value="DEFAULTED"></el-option>
+              <el-option label="黑名单" value="BLACKLIST"></el-option>
+            </el-select>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12" v-if="dataForm.riskLevel !== 'NORMAL'">
+          <el-form-item label="风险标记日期">
+            <el-date-picker v-model="dataForm.riskMarkDate" type="date" value-format="yyyy-MM-dd" style="width: 100%;"></el-date-picker>
+          </el-form-item>
+        </el-col>
+        <el-col :span="24" v-if="dataForm.riskLevel !== 'NORMAL'">
+          <el-form-item label="风险说明">
+            <el-input v-model="dataForm.riskRemark" type="textarea" :rows="2" maxlength="500" show-word-limit></el-input>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
           <el-form-item label="冷库减免天数">
             <el-input-number
               v-model="dataForm.coldStorageFreeDays"
@@ -174,6 +194,9 @@ const defaultForm = () => ({
   wecomChatId: '',
   wecomChatName: '',
   wecomChatOwner: '',
+  riskLevel: 'NORMAL',
+  riskRemark: '',
+  riskMarkDate: '',
   remark: '',
   status: 1
 })

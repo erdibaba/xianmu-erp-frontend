@@ -29,6 +29,13 @@
       <el-table-column label="业务角色" min-width="170" show-overflow-tooltip>
         <template slot-scope="scope">{{ bizRoleLabel(scope.row.businessRole) }}</template>
       </el-table-column>
+      <el-table-column label="风险标记" width="100" align="center" header-align="center">
+        <template slot-scope="scope">
+          <el-tag size="small" :type="riskTagType(scope.row.riskLevel)">{{ riskLabel(scope.row.riskLevel) }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="riskRemark" label="风险说明" min-width="180" show-overflow-tooltip></el-table-column>
+      <el-table-column prop="riskMarkDate" label="标记日期" width="110" align="center" header-align="center"></el-table-column>
       <el-table-column label="冷库减免天数" width="120" align="center" header-align="center">
         <template slot-scope="scope">{{ scope.row.coldStorageFreeDays || 7 }}天</template>
       </el-table-column>
@@ -105,6 +112,14 @@ export default {
   methods: {
     bizRoleLabel (value) {
       return getMultiOptionLabel(this.bizRoleOptions, value)
+    },
+    riskLabel (value) {
+      const map = { NORMAL: '正常', WATCH: '关注', DEFAULTED: '违约', BLACKLIST: '黑名单' }
+      return map[value] || '正常'
+    },
+    riskTagType (value) {
+      const map = { NORMAL: 'success', WATCH: 'warning', DEFAULTED: 'danger', BLACKLIST: 'info' }
+      return map[value] || 'success'
     },
     getDataList () {
       this.dataListLoading = true
