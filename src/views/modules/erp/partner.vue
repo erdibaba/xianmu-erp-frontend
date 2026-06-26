@@ -38,6 +38,9 @@
       <el-table-column label="资方账期天数" width="130" align="center" header-align="center">
         <template slot-scope="scope">{{ scope.row.funderCreditDays === null || scope.row.funderCreditDays === undefined ? '-' : scope.row.funderCreditDays + '天' }}</template>
       </el-table-column>
+      <el-table-column label="账期预警天数" width="130" align="center" header-align="center">
+        <template slot-scope="scope">{{ scope.row.funderWarningDays === null || scope.row.funderWarningDays === undefined ? '-' : scope.row.funderWarningDays + '天' }}</template>
+      </el-table-column>
       <el-table-column prop="wecomChatName" label="企微客户群" min-width="180" show-overflow-tooltip></el-table-column>
       <el-table-column prop="wecomChatOwner" label="企微群主" width="110" align="center" header-align="center"></el-table-column>
       <el-table-column prop="taxNo" label="税号" min-width="170" show-overflow-tooltip></el-table-column>

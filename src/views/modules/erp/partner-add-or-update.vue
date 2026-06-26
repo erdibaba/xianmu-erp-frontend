@@ -65,6 +65,17 @@
               style="width: 100%;"></el-input-number>
           </el-form-item>
         </el-col>
+        <el-col :span="12" v-if="showFunderFields">
+          <el-form-item label="账期预警天数">
+            <el-input-number
+              v-model="dataForm.funderWarningDays"
+              :min="0"
+              :precision="0"
+              :controls="false"
+              placeholder="一般设置14天"
+              style="width: 100%;"></el-input-number>
+          </el-form-item>
+        </el-col>
         <el-col :span="12">
           <el-form-item label="税号">
             <el-input v-model="dataForm.taxNo"></el-input>
@@ -152,6 +163,7 @@ const defaultForm = () => ({
   coldStorageFreeDays: 7,
   annualInterestRate: null,
   funderCreditDays: null,
+  funderWarningDays: 14,
   taxNo: '',
   bankName: '',
   bankAccount: '',

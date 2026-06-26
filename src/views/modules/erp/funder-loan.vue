@@ -10,6 +10,14 @@
           <el-option label="还款完成" :value="1"></el-option>
         </el-select>
       </el-form-item>
+      <el-form-item>
+        <el-select v-model="queryForm.dueStatus" clearable placeholder="到期状态">
+          <el-option label="未到预警期" value="normal"></el-option>
+          <el-option label="即将到期" value="warning"></el-option>
+          <el-option label="已逾期" value="overdue"></el-option>
+          <el-option label="已结清" value="settled"></el-option>
+        </el-select>
+      </el-form-item>
       <el-form-item><el-button type="primary" @click="getDataList()">查询</el-button></el-form-item>
       <el-form-item>
         <el-button v-if="isAuth('erp:funderloan:update')" type="success" @click="openBatchSettlement">按出库批次还款</el-button>
@@ -26,14 +34,24 @@
       <el-table-column prop="sellerContractNo" label="预售合同号" min-width="160"></el-table-column>
       <el-table-column prop="confirmContractNo" label="确认函合同号" min-width="160"></el-table-column>
       <el-table-column prop="loanDate" label="首次打款日期" width="120" align="center"></el-table-column>
+      <el-table-column prop="currentDueDate" label="当前到期日" width="120" align="center"></el-table-column>
+      <el-table-column label="剩余天数" width="100" align="right">
+        <template slot-scope="scope">{{ scope.row.remainingDays === null || scope.row.remainingDays === undefined ? '-' : scope.row.remainingDays }}</template>
+      </el-table-column>
+      <el-table-column label="到期状态" width="110" align="center">
+        <template slot-scope="scope">
+          <el-tag :type="dueTagType(scope.row.dueAlertStatus)" size="small">{{ scope.row.dueAlertStatusName || '-' }}</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="贷款本金" width="140" align="right"><template slot-scope="scope">{{ money(scope.row.loanAmount) }}</template></el-table-column>
       <el-table-column label="年利率（%）" width="150" align="right"><template slot-scope="scope">{{ rate(scope.row.annualInterestRate) }}</template></el-table-column>
       <el-table-column label="已还本金" width="140" align="right"><template slot-scope="scope">{{ money(scope.row.repaidPrincipal) }}</template></el-table-column>
       <el-table-column label="剩余本金" width="140" align="right"><template slot-scope="scope"><strong>{{ money(scope.row.remainingPrincipal) }}</strong></template></el-table-column>
       <el-table-column label="累计利息" width="180" align="right"><template slot-scope="scope">{{ decimal10(scope.row.interestAmount) }}</template></el-table-column>
-      <el-table-column fixed="right" label="操作" width="170" align="center">
+      <el-table-column fixed="right" label="操作" width="210" align="center">
         <template slot-scope="scope">
           <el-button type="text" size="small" @click="openDetail(scope.row.id)">还款明细</el-button>
+          <el-button v-if="scope.row.status !== 1 && isAuth('erp:funderloan:update')" type="text" size="small" @click="openExtendDueDate(scope.row)">延期</el-button>
           <el-button v-if="scope.row.status !== 1 && isAuth('erp:funderloan:update')" type="text" size="small" @click="openRepayment(scope.row)">新增还款</el-button>
         </template>
       </el-table-column>
@@ -54,6 +72,12 @@
         <el-descriptions-item label="确认函合同号">{{ detailData.confirmContractNo }}</el-descriptions-item>
         <el-descriptions-item label="贷款本金">{{ money(detailData.loanAmount) }}</el-descriptions-item>
         <el-descriptions-item label="年利率">{{ rate(detailData.annualInterestRate) }}%</el-descriptions-item>
+        <el-descriptions-item label="账期天数">{{ detailData.loanCreditDays || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="预警天数">{{ detailData.warningDays === null || detailData.warningDays === undefined ? '-' : detailData.warningDays }}</el-descriptions-item>
+        <el-descriptions-item label="原始到期日">{{ detailData.originalDueDate || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="当前到期日">{{ detailData.currentDueDate || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="到期状态">{{ detailData.dueAlertStatusName || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="延期原因">{{ detailData.dueExtendReason || '-' }}</el-descriptions-item>
         <el-descriptions-item label="已还本金">{{ money(detailData.repaidPrincipal) }}</el-descriptions-item>
         <el-descriptions-item label="剩余本金">{{ money(detailData.remainingPrincipal) }}</el-descriptions-item>
       </el-descriptions>
@@ -79,6 +103,27 @@
           <template slot-scope="scope"><el-button type="text" size="small" @click="downloadRepayment(scope.row.id, scope.row.fileName)">下载</el-button></template>
         </el-table-column>
       </el-table>
+    </el-dialog>
+
+    <el-dialog title="修改账期到期日" :visible.sync="dueExtendVisible" width="520px" :close-on-click-modal="false">
+      <el-form ref="dueExtendForm" :model="dueExtendForm" :rules="dueExtendRules" label-width="120px">
+        <el-form-item label="贷款编号">
+          <el-input :value="dueExtendForm.loanNo" disabled></el-input>
+        </el-form-item>
+        <el-form-item label="原当前到期日">
+          <el-input :value="dueExtendForm.oldCurrentDueDate || '-'" disabled></el-input>
+        </el-form-item>
+        <el-form-item label="新到期日" prop="currentDueDate">
+          <el-date-picker v-model="dueExtendForm.currentDueDate" type="date" value-format="yyyy-MM-dd" style="width:100%"></el-date-picker>
+        </el-form-item>
+        <el-form-item label="延期原因" prop="dueExtendReason">
+          <el-input v-model="dueExtendForm.dueExtendReason" type="textarea" maxlength="500" :rows="3" show-word-limit></el-input>
+        </el-form-item>
+      </el-form>
+      <span slot="footer">
+        <el-button @click="dueExtendVisible = false">取消</el-button>
+        <el-button type="primary" :loading="dueExtendLoading" @click="submitExtendDueDate">保存</el-button>
+      </span>
     </el-dialog>
 
     <el-dialog title="新增还款" :visible.sync="repaymentVisible" width="820px" :close-on-click-modal="false">
@@ -370,7 +415,7 @@ const emptyBatchSettlement = () => ({
 export default {
   data () {
     return {
-      queryForm: { keyword: '', status: '' },
+      queryForm: { keyword: '', status: '', dueStatus: '' },
       dataList: [],
       pageIndex: 1,
       pageSize: 10,
@@ -394,6 +439,19 @@ export default {
       batchSubmitLoading: false,
       otherFeeDetailVisible: false,
       feeExplainActiveNames: ['summary', 'formula'],
+      dueExtendVisible: false,
+      dueExtendLoading: false,
+      dueExtendForm: {
+        id: null,
+        loanNo: '',
+        oldCurrentDueDate: '',
+        currentDueDate: '',
+        dueExtendReason: ''
+      },
+      dueExtendRules: {
+        currentDueDate: [{ required: true, message: '请选择新的到期日', trigger: 'change' }],
+        dueExtendReason: [{ required: true, message: '请输入延期原因', trigger: 'blur' }]
+      },
       repaymentRules: {
         repaymentPrincipal: [{ required: true, message: '请输入本次归还本金', trigger: 'blur' }],
         repaymentDate: [{ required: true, message: '请选择还款日期', trigger: 'change' }],
@@ -561,7 +619,7 @@ export default {
       this.$http({
         url: this.$http.adornUrl('/erp/funder-finance/loan/list'),
         method: 'get',
-        params: this.$http.adornParams({ page: this.pageIndex, limit: this.pageSize, keyword: this.queryForm.keyword, status: this.queryForm.status })
+        params: this.$http.adornParams({ page: this.pageIndex, limit: this.pageSize, keyword: this.queryForm.keyword, status: this.queryForm.status, dueStatus: this.queryForm.dueStatus })
       }).then(({ data }) => {
         this.dataListLoading = false
         if (data && data.code === 0) {
@@ -574,6 +632,10 @@ export default {
     },
     sizeChangeHandle (value) { this.pageSize = value; this.pageIndex = 1; this.getDataList() },
     currentChangeHandle (value) { this.pageIndex = value; this.getDataList() },
+    dueTagType (status) {
+      const map = { settled: 'success', overdue: 'danger', warning: 'warning', normal: 'info', none: 'info' }
+      return map[status] || 'info'
+    },
     openDetail (id) {
       const loading = this.$loading({ lock: true, text: '正在加载贷款及还款明细...' })
       this.$http({
@@ -588,6 +650,44 @@ export default {
           this.$message.error((data && data.msg) || '获取贷款详情失败')
         }
       }).finally(() => loading.close())
+    },
+    openExtendDueDate (loan) {
+      this.dueExtendForm = {
+        id: loan.id,
+        loanNo: loan.loanNo,
+        oldCurrentDueDate: loan.currentDueDate || '',
+        currentDueDate: loan.currentDueDate || '',
+        dueExtendReason: loan.dueExtendReason || ''
+      }
+      this.dueExtendVisible = true
+      this.$nextTick(() => this.$refs.dueExtendForm && this.$refs.dueExtendForm.clearValidate())
+    },
+    submitExtendDueDate () {
+      this.$refs.dueExtendForm.validate(valid => {
+        if (!valid) return
+        this.dueExtendLoading = true
+        const loading = this.$loading({ lock: true, text: '正在保存资方账期延期...' })
+        this.$http({
+          url: this.$http.adornUrl('/erp/funder-finance/loan/due-date/extend'),
+          method: 'post',
+          data: this.$http.adornData({
+            id: this.dueExtendForm.id,
+            currentDueDate: this.dueExtendForm.currentDueDate,
+            dueExtendReason: this.dueExtendForm.dueExtendReason
+          })
+        }).then(({ data }) => {
+          if (data && data.code === 0) {
+            this.$message.success('资方账期延期已保存')
+            this.dueExtendVisible = false
+            this.getDataList()
+          } else {
+            this.$message.error((data && data.msg) || '保存资方账期延期失败')
+          }
+        }).catch(() => this.$message.error('保存资方账期延期请求失败')).finally(() => {
+          this.dueExtendLoading = false
+          loading.close()
+        })
+      })
     },
     openRepayment (loan) {
       this.activeLoan = Object.assign({}, loan)
