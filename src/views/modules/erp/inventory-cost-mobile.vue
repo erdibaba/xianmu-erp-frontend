@@ -107,6 +107,8 @@
             <div class="detail-line">来源：{{ item.sourceNo || '-' }}</div>
             <div class="detail-line">合同：{{ item.contractNo || '-' }}</div>
             <div class="detail-line">柜号：{{ item.containerNo || '-' }} / 厂号：{{ item.factoryNo || '-' }}</div>
+            <div class="detail-line">生产日期：{{ dateText(item.productionDate) }} / 过期日期：{{ dateText(item.expiryDate) }}</div>
+            <div class="detail-line">剩余箱数：{{ numberText(item.availableBoxes, 0) }}</div>
             <div class="detail-line">本行重量：{{ numberText(item.basisWeightKg, 2) }} KG</div>
             <div v-if="item.remark" class="detail-remark">{{ item.remark }}</div>
           </div>
@@ -244,6 +246,10 @@
       numberText (value, digits) {
         const num = Number(value || 0)
         return num.toLocaleString('zh-CN', { minimumFractionDigits: digits, maximumFractionDigits: digits })
+      },
+      dateText (value) {
+        if (!value) return '-'
+        return String(value).slice(0, 10)
       }
     }
   }

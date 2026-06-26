@@ -98,6 +98,13 @@
         <el-table-column prop="contractNo" label="合同号" min-width="150" show-overflow-tooltip></el-table-column>
         <el-table-column prop="containerNo" label="柜号" min-width="130" show-overflow-tooltip></el-table-column>
         <el-table-column prop="factoryNo" label="厂号" width="100" align="center" header-align="center"></el-table-column>
+        <el-table-column label="生产日期" width="115" align="center" header-align="center">
+          <template slot-scope="scope">{{ dateText(scope.row.productionDate) }}</template>
+        </el-table-column>
+        <el-table-column label="过期日期" width="115" align="center" header-align="center">
+          <template slot-scope="scope">{{ dateText(scope.row.expiryDate) }}</template>
+        </el-table-column>
+        <el-table-column prop="availableBoxes" label="剩余箱数" width="95" align="right" header-align="center"></el-table-column>
         <el-table-column label="来源金额" width="125" align="right" header-align="center">
           <template slot-scope="scope">{{ moneyText(scope.row.sourceAmount) }}</template>
         </el-table-column>
@@ -241,6 +248,10 @@
       numberText (value, digits) {
         const num = Number(value || 0)
         return num.toLocaleString('zh-CN', { minimumFractionDigits: digits, maximumFractionDigits: digits })
+      },
+      dateText (value) {
+        if (!value) return '-'
+        return String(value).slice(0, 10)
       }
     }
   }
