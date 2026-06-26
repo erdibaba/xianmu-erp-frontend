@@ -229,13 +229,15 @@
                   :label="item.productCode"
                   :value="item.id">
                   <div class="product-option-code">{{ item.productCode }}</div>
-                  <div class="product-option-name">{{ item.productName || '-' }} / {{ item.productNameEn || '-' }}</div>
+                  <div class="product-option-name">{{ item.marketCirculationName || item.productName || '-' }} / {{ item.productNameEn || '-' }}</div>
                 </el-option>
               </el-select>
             </template>
           </el-table-column>
 
-          <el-table-column prop="productName" label="中文名称" min-width="140" show-overflow-tooltip></el-table-column>
+          <el-table-column label="市场流通名称" min-width="160" show-overflow-tooltip>
+            <template slot-scope="scope">{{ saleProductDisplayName(scope.row) }}</template>
+          </el-table-column>
           <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
           <el-table-column prop="productSpec" label="规格" width="90"></el-table-column>
           <el-table-column prop="unit" label="单位" width="80"></el-table-column>
@@ -321,7 +323,9 @@
           class="allocation-table">
           <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
           <el-table-column prop="productCode" label="产品编码" min-width="120"></el-table-column>
-          <el-table-column prop="productName" label="中文名称" min-width="140" show-overflow-tooltip></el-table-column>
+          <el-table-column label="市场流通名称" min-width="160" show-overflow-tooltip>
+            <template slot-scope="scope">{{ saleProductDisplayName(scope.row) }}</template>
+          </el-table-column>
           <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
           <el-table-column prop="boxes" label="分配箱数" width="90" align="center"></el-table-column>
           <el-table-column prop="ownershipName" label="货权" min-width="120" show-overflow-tooltip>
@@ -630,7 +634,9 @@
               class="attachment-table outbound-plan-table">
               <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
               <el-table-column prop="productCode" label="产品编码" width="105"></el-table-column>
-              <el-table-column prop="productName" label="品名" min-width="160" show-overflow-tooltip></el-table-column>
+              <el-table-column label="品名" min-width="160" show-overflow-tooltip>
+                <template slot-scope="scope">{{ saleProductDisplayName(scope.row) }}</template>
+              </el-table-column>
               <el-table-column prop="containerNo" label="柜号" width="130" show-overflow-tooltip></el-table-column>
               <el-table-column prop="factoryNo" label="厂号" width="90" show-overflow-tooltip></el-table-column>
               <el-table-column label="计划箱数" width="90" align="right">
@@ -786,7 +792,9 @@
               class="attachment-table outbound-summary-table">
               <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
               <el-table-column prop="productCode" label="系统编码" width="110"></el-table-column>
-              <el-table-column prop="productName" label="品名" min-width="170" show-overflow-tooltip></el-table-column>
+              <el-table-column label="品名" min-width="170" show-overflow-tooltip>
+                <template slot-scope="scope">{{ saleProductDisplayName(scope.row) }}</template>
+              </el-table-column>
               <el-table-column label="应出箱数" width="95" align="right">
                 <template slot-scope="scope">{{ formatInteger(scope.row.expectedBoxes) }}</template>
               </el-table-column>
@@ -834,7 +842,9 @@
                   <el-table :data="scope.row.planItemList" border size="mini" class="attachment-table outbound-history-detail-table">
                     <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
                     <el-table-column prop="productCode" label="产品编码" width="105"></el-table-column>
-                    <el-table-column prop="productName" label="品名" min-width="160" show-overflow-tooltip></el-table-column>
+                    <el-table-column label="品名" min-width="160" show-overflow-tooltip>
+                      <template slot-scope="itemScope">{{ saleProductDisplayName(itemScope.row) }}</template>
+                    </el-table-column>
                     <el-table-column prop="containerNo" label="柜号" width="130" show-overflow-tooltip></el-table-column>
                     <el-table-column prop="factoryNo" label="厂号" width="90" show-overflow-tooltip></el-table-column>
                     <el-table-column prop="plannedBoxes" label="计划箱数" width="90" align="right"></el-table-column>
@@ -846,7 +856,9 @@
                   <el-table :data="scope.row.receiptItemList" border size="mini" class="attachment-table outbound-history-detail-table">
                     <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
                     <el-table-column prop="productCode" label="系统编码" width="110"></el-table-column>
-                    <el-table-column prop="productName" label="品名" min-width="170" show-overflow-tooltip></el-table-column>
+                    <el-table-column label="品名" min-width="170" show-overflow-tooltip>
+                      <template slot-scope="itemScope">{{ saleProductDisplayName(itemScope.row) }}</template>
+                    </el-table-column>
                     <el-table-column prop="containerNo" label="柜号" width="130" show-overflow-tooltip></el-table-column>
                     <el-table-column prop="factoryNo" label="厂号" width="100" show-overflow-tooltip></el-table-column>
                     <el-table-column label="实际箱数" width="100" align="right">
@@ -953,12 +965,14 @@
                       :label="item.productCode"
                       :value="item.id">
                       <div class="product-option-code">{{ item.productCode }}</div>
-                      <div class="product-option-name">{{ item.productName || '-' }} / {{ item.productNameEn || '-' }}</div>
+                      <div class="product-option-name">{{ item.marketCirculationName || item.productName || '-' }} / {{ item.productNameEn || '-' }}</div>
                     </el-option>
                   </el-select>
                 </template>
               </el-table-column>
-              <el-table-column prop="productName" label="品名" min-width="170" show-overflow-tooltip></el-table-column>
+              <el-table-column label="品名" min-width="170" show-overflow-tooltip>
+                <template slot-scope="scope">{{ saleProductDisplayName(scope.row) }}</template>
+              </el-table-column>
               <el-table-column label="规格" width="90">
                 <template slot-scope="scope">
                   <el-input v-model="scope.row.productSpec" :disabled="!outboundReceiptEditable" size="mini"></el-input>
@@ -1465,6 +1479,7 @@ export default {
         productCode: '',
         productName: '',
         productNameEn: '',
+        marketCirculationName: '',
         productSpec: '',
         unit: '',
         boxes: 0,
@@ -1495,6 +1510,7 @@ export default {
         productCode: '',
         productName: '',
         productNameEn: '',
+        marketCirculationName: '',
         productSpec: '',
         unit: '',
         boxes: 0,
@@ -1530,6 +1546,7 @@ export default {
         recognizedProductCode: '',
         productName: '',
         productNameEn: '',
+        marketCirculationName: '',
         productSpec: '',
         unit: '',
         orderQty: null,
@@ -1969,6 +1986,7 @@ export default {
         row.productCode = ''
         row.productName = ''
         row.productNameEn = ''
+        row.marketCirculationName = ''
         row.productSpec = ''
         row.unit = ''
         row.sourcePresaleOrderItemId = ''
@@ -1988,6 +2006,7 @@ export default {
       row.productCode = product.productCode
       row.productName = product.productName || ''
       row.productNameEn = product.productNameEn || ''
+      row.marketCirculationName = product.marketCirculationName || ''
       row.productSpec = product.productSpec || ''
       row.unit = product.unit || ''
       if (!row._productOptions.find(item => String(item.id) === String(product.id))) {
@@ -2026,13 +2045,14 @@ export default {
       const unique = {}
       plans.forEach(item => {
         if (!item.productId || unique[item.productId]) return
-        const text = `${item.productCode || ''} ${item.productName || ''} ${item.productNameEn || ''}`.toLowerCase()
+        const text = `${item.productCode || ''} ${item.marketCirculationName || ''} ${item.productName || ''} ${item.productNameEn || ''}`.toLowerCase()
         if (keyword && text.indexOf(keyword) < 0) return
         unique[item.productId] = {
           id: item.productId,
           productCode: item.productCode,
           productName: item.productName,
-          productNameEn: item.productNameEn
+          productNameEn: item.productNameEn,
+          marketCirculationName: item.marketCirculationName
         }
       })
       row._productOptions = Object.keys(unique).map(key => unique[key]).slice(0, 15)
@@ -2045,7 +2065,9 @@ export default {
       if (!product) {
         row.productId = ''
         row.productCode = ''
+        row.productName = ''
         row.productNameEn = ''
+        row.marketCirculationName = ''
         row.planItemId = ''
         row.planMatchStatus = '计划外出库'
         this.applyOutboundExpectedByProduct(row)
@@ -2055,10 +2077,15 @@ export default {
       row.productCode = product.productCode
       row.productName = product.productName || ''
       row.productNameEn = product.productNameEn || ''
+      row.marketCirculationName = product.marketCirculationName || ''
       if (!row._productOptions.find(item => String(item.id) === String(product.id))) {
         row._productOptions = [product].concat(row._productOptions)
       }
       this.applyOutboundExpectedByProduct(row)
+    },
+    saleProductDisplayName (row) {
+      if (!row) return '-'
+      return row.marketCirculationName || row.productName || row.productNameEn || '-'
     },
     ensureOutboundReceiptProductState (row) {
       if (!row._productOptions) this.$set(row, '_productOptions', [])
@@ -2218,6 +2245,7 @@ export default {
           productCode: item.productCode,
           productName: item.productName,
           productNameEn: item.productNameEn,
+          marketCirculationName: item.marketCirculationName,
           productSpec: item.productSpec,
           unit: item.unit,
           boxes: item.boxes,
@@ -2280,6 +2308,7 @@ export default {
           productCode: item.productCode,
           productName: item.productName,
           productNameEn: item.productNameEn,
+          marketCirculationName: item.marketCirculationName,
           productSpec: item.productSpec,
           unit: item.unit,
           boxes: item.boxes,
@@ -2300,6 +2329,7 @@ export default {
           productCode: item.productCode,
           productName: item.productName,
           productNameEn: item.productNameEn,
+          marketCirculationName: item.marketCirculationName,
           productSpec: item.productSpec,
           unit: item.unit,
           boxes: item.boxes,
@@ -2625,6 +2655,7 @@ export default {
           recognizedProductCode: item.recognizedProductCode,
           productName: item.productName,
           productNameEn: item.productNameEn,
+          marketCirculationName: item.marketCirculationName,
           productSpec: item.productSpec,
           unit: item.unit,
           orderQty: item.orderQty,
