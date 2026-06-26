@@ -1,7 +1,7 @@
 <template>
   <div class="mod-erp-inventory-cost">
     <el-alert
-      title="成本价按当前剩余库存重量动态计算：订单确认函采购价 + 按合同剩余重量占比分摊的费用。"
+      title="成本价按当前剩余库存重量动态计算：订单确认函采购价 + 每日动态资金成本 + 每日动态仓储费 + 已登记支出费用。"
       type="info"
       :closable="false"
       show-icon>
