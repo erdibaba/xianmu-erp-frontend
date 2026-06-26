@@ -54,6 +54,17 @@
               style="width: 100%;"></el-input-number>
           </el-form-item>
         </el-col>
+        <el-col :span="12" v-if="showFunderFields">
+          <el-form-item label="资方账期天数">
+            <el-input-number
+              v-model="dataForm.funderCreditDays"
+              :min="0"
+              :precision="0"
+              :controls="false"
+              placeholder="请输入资方账期天数"
+              style="width: 100%;"></el-input-number>
+          </el-form-item>
+        </el-col>
         <el-col :span="12">
           <el-form-item label="税号">
             <el-input v-model="dataForm.taxNo"></el-input>
@@ -140,6 +151,7 @@ const defaultForm = () => ({
   businessRoles: [],
   coldStorageFreeDays: 7,
   annualInterestRate: null,
+  funderCreditDays: null,
   taxNo: '',
   bankName: '',
   bankAccount: '',
@@ -174,6 +186,9 @@ export default {
   computed: {
     showAnnualInterestRate () {
       return (this.dataForm.businessRoles || []).some(role => role === 'FUNDER' || role === 'SECONDARY')
+    },
+    showFunderFields () {
+      return (this.dataForm.businessRoles || []).some(role => role === 'FUNDER')
     }
   },
   methods: {
