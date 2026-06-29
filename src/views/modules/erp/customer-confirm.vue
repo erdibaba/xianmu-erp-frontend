@@ -59,7 +59,7 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column fixed="right" label="操作" width="300" align="center">
+      <el-table-column fixed="right" label="操作" width="360" align="center">
         <template slot-scope="scope">
           <div class="action-wrap">
             <el-button type="text" size="small" @click="viewHandle(scope.row)">详情</el-button>
@@ -88,6 +88,11 @@
               type="text"
               size="small"
               @click="uploadQuarantineHandle(scope.row)">上传检疫证明</el-button>
+            <el-button
+              v-if="isAuth('erp:tradeorder:update')"
+              type="text"
+              size="small"
+              @click="arrivalNoticeHandle(scope.row)">到港通知</el-button>
           </div>
         </template>
       </el-table-column>
@@ -132,6 +137,69 @@
       <span slot="footer" class="dialog-footer">
         <el-button @click="createVisible = false">取消</el-button>
         <el-button type="primary" @click="uploadNewConfirm()">上传客户订单确认函</el-button>
+      </span>
+    </el-dialog>
+
+    <el-dialog
+      title="发送到港通知"
+      :close-on-click-modal="false"
+      :visible.sync="arrivalNoticeVisible"
+      width="640px">
+      <el-form :model="arrivalNoticeForm" label-width="120px">
+        <el-form-item label="确认函合同号">
+          <el-input :value="arrivalNoticeForm.contractNo" disabled></el-input>
+        </el-form-item>
+        <el-form-item label="集装箱号">
+          <el-input :value="arrivalNoticeForm.containerNo" disabled></el-input>
+        </el-form-item>
+        <el-form-item label="实际到港日期" required>
+          <el-date-picker
+            v-model="arrivalNoticeForm.actualArrivalDate"
+            type="date"
+            value-format="yyyy-MM-dd"
+            placeholder="请选择实际到港日期"
+            style="width: 100%;">
+          </el-date-picker>
+        </el-form-item>
+        <el-form-item label="二批商" required>
+          <el-select
+            v-model="arrivalNoticeForm.partnerIds"
+            multiple
+            collapse-tags
+            filterable
+            clearable
+            :loading="arrivalPartnerLoading"
+            placeholder="默认选择关联期货单且已绑定企微客户群的二批商"
+            style="width: 100%;">
+            <el-option
+              v-for="item in arrivalPartnerList"
+              :key="item.id"
+              :label="item.partnerName"
+              :value="item.id"
+              :disabled="!item.wecomChatId">
+              <span>{{ item.partnerName }}</span>
+              <span style="float: right; color: #909399; font-size: 12px;">{{ item.wecomChatName || '未绑定企微群' }}</span>
+            </el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="通知内容">
+          <el-input
+            v-model="arrivalNoticeForm.content"
+            type="textarea"
+            :rows="6"
+            placeholder="可留空，系统会根据确认函合同号、柜号、实际到港日期自动生成。">
+          </el-input>
+        </el-form-item>
+        <el-alert
+          title="企业微信会创建待发送任务，需要对应群主在企业微信里确认后才会真正发到客户群。"
+          type="info"
+          show-icon
+          :closable="false">
+        </el-alert>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="arrivalNoticeVisible = false">取消</el-button>
+        <el-button type="primary" :loading="arrivalNoticeLoading" @click="sendArrivalNotice()">创建群发任务</el-button>
       </span>
     </el-dialog>
 
@@ -182,7 +250,19 @@ export default {
         presaleOrderId: ''
       },
       presaleOptions: [],
-      presaleOptionLoading: false
+      presaleOptionLoading: false,
+      arrivalNoticeVisible: false,
+      arrivalNoticeLoading: false,
+      arrivalPartnerLoading: false,
+      arrivalPartnerList: [],
+      arrivalNoticeForm: {
+        confirmId: 0,
+        contractNo: '',
+        containerNo: '',
+        actualArrivalDate: '',
+        partnerIds: [],
+        content: ''
+      }
     }
   },
   activated () {
@@ -311,6 +391,61 @@ export default {
       this.dialogVisible = true
       this.$nextTick(() => {
         this.$refs.dialog.init(row.presaleOrderId, false, 'confirm', row.id)
+      })
+    },
+    arrivalNoticeHandle (row) {
+      this.arrivalNoticeForm = {
+        confirmId: row.id,
+        contractNo: row.contractNo || '',
+        containerNo: row.containerNo || '',
+        actualArrivalDate: this.formatDateOnly(row.expectedArrivalDate),
+        partnerIds: [],
+        content: ''
+      }
+      this.arrivalPartnerList = []
+      this.arrivalNoticeVisible = true
+      this.arrivalPartnerLoading = true
+      this.$http({
+        url: this.$http.adornUrl('/erp/wecom/arrival-notice/partners'),
+        method: 'get',
+        params: this.$http.adornParams({
+          confirmId: row.id
+        })
+      }).then(({ data }) => {
+        this.arrivalPartnerList = (data && data.code === 0 && data.list) ? data.list : []
+        this.arrivalNoticeForm.partnerIds = this.arrivalPartnerList
+          .filter(item => item.wecomChatId)
+          .map(item => item.id)
+        if (!this.arrivalPartnerList.length) {
+          this.$message.warning('该确认函暂未找到关联期货销售单二批商')
+        }
+      }).finally(() => {
+        this.arrivalPartnerLoading = false
+      })
+    },
+    sendArrivalNotice () {
+      if (!this.arrivalNoticeForm.actualArrivalDate) {
+        this.$message.warning('请选择实际到港日期')
+        return
+      }
+      if (!this.arrivalNoticeForm.partnerIds || !this.arrivalNoticeForm.partnerIds.length) {
+        this.$message.warning('请选择至少一个二批商')
+        return
+      }
+      this.arrivalNoticeLoading = true
+      this.$http({
+        url: this.$http.adornUrl('/erp/wecom/arrival-notice/send'),
+        method: 'post',
+        data: this.$http.adornData(this.arrivalNoticeForm)
+      }).then(({ data }) => {
+        if (data && data.code === 0) {
+          this.$message.success(`已创建${(data.list || []).length}个企业微信群发任务，请群主在企业微信里确认发送`)
+          this.arrivalNoticeVisible = false
+        } else {
+          this.$message.error((data && data.msg) || '创建到港通知失败')
+        }
+      }).finally(() => {
+        this.arrivalNoticeLoading = false
       })
     },
     formatDateOnly (value) {
