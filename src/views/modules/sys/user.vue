@@ -7,7 +7,7 @@
       <el-form-item>
         <el-button @click="getDataList()">查询</el-button>
         <el-button v-if="isAuth('sys:user:save')" type="primary" @click="addOrUpdateHandle()">新增</el-button>
-        <el-button v-if="isAuth('sys:user:delete')" type="danger" @click="deleteHandle()" :disabled="dataListSelections.length <= 0">批量删除</el-button>
+        <el-button v-if="isAuth('sys:user:delete')" type="danger" @click="deleteHandle()" :disabled="dataListSelections.length <= 0 || deleteLoading">批量删除</el-button>
       </el-form-item>
     </el-form>
     <el-table
@@ -79,7 +79,7 @@
         label="操作">
         <template slot-scope="scope">
           <el-button v-if="isAuth('sys:user:update')" type="text" size="small" @click="addOrUpdateHandle(scope.row.userId)">修改</el-button>
-          <el-button v-if="isAuth('sys:user:delete')" type="text" size="small" @click="deleteHandle(scope.row.userId)">删除</el-button>
+          <el-button v-if="isAuth('sys:user:delete')" type="text" size="small" :disabled="deleteLoading" @click="deleteHandle(scope.row.userId)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -111,7 +111,8 @@
         totalPage: 0,
         dataListLoading: false,
         dataListSelections: [],
-        addOrUpdateVisible: false
+        addOrUpdateVisible: false,
+        deleteLoading: false
       }
     },
     components: {
@@ -170,11 +171,17 @@
         var userIds = id ? [id] : this.dataListSelections.map(item => {
           return item.userId
         })
+        if (!userIds.length) {
+          this.$message.warning('请选择要删除的用户')
+          return
+        }
         this.$confirm(`确定对[id=${userIds.join(',')}]进行[${id ? '删除' : '批量删除'}]操作?`, '提示', {
           confirmButtonText: '确定',
           cancelButtonText: '取消',
           type: 'warning'
         }).then(() => {
+          this.deleteLoading = true
+          const loading = this.$loading({ lock: true, text: '正在删除管理员...' })
           this.$http({
             url: this.$http.adornUrl('/sys/user/delete'),
             method: 'post',
@@ -190,8 +197,13 @@
                 }
               })
             } else {
-              this.$message.error(data.msg)
+              this.$message.error((data && data.msg) || '删除失败')
             }
+          }).catch(() => {
+            this.$message.error('删除请求失败，请检查登录状态或后端服务')
+          }).finally(() => {
+            this.deleteLoading = false
+            loading.close()
           })
         }).catch(() => {})
       }
