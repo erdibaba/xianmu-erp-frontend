@@ -2,7 +2,7 @@
   <div class="mod-funder-loan">
     <el-form :inline="true" :model="queryForm">
       <el-form-item>
-        <el-input v-model="queryForm.keyword" clearable placeholder="贷款编号/预售单/合同号/资方" @keyup.enter.native="getDataList()"></el-input>
+        <el-input v-model="queryForm.keyword" clearable placeholder="贷款编号/合同号/资方" @keyup.enter.native="getDataList()"></el-input>
       </el-form-item>
       <el-form-item>
         <el-select v-model="queryForm.status" clearable placeholder="还款状态">
@@ -30,7 +30,6 @@
         <template slot-scope="scope"><el-tag :type="scope.row.status === 1 ? 'success' : 'warning'" size="small">{{ scope.row.status === 1 ? '还款完成' : '待还款' }}</el-tag></template>
       </el-table-column>
       <el-table-column prop="funderName" label="资方" min-width="190" show-overflow-tooltip></el-table-column>
-      <el-table-column prop="presaleOrderNo" label="预销售单号" min-width="170"></el-table-column>
       <el-table-column prop="sellerContractNo" label="预售合同号" min-width="160"></el-table-column>
       <el-table-column prop="confirmContractNo" label="确认函合同号" min-width="160"></el-table-column>
       <el-table-column prop="loanDate" label="首次打款日期" width="120" align="center"></el-table-column>
@@ -47,7 +46,16 @@
       <el-table-column label="年利率（%）" width="150" align="right"><template slot-scope="scope">{{ rate(scope.row.annualInterestRate) }}</template></el-table-column>
       <el-table-column label="已还本金" width="140" align="right"><template slot-scope="scope">{{ money(scope.row.repaidPrincipal) }}</template></el-table-column>
       <el-table-column label="剩余本金" width="140" align="right"><template slot-scope="scope"><strong>{{ money(scope.row.remainingPrincipal) }}</strong></template></el-table-column>
-      <el-table-column label="累计利息" width="180" align="right"><template slot-scope="scope">{{ decimal10(scope.row.interestAmount) }}</template></el-table-column>
+      <el-table-column label="已结清利息" width="140" align="right"><template slot-scope="scope">{{ money(scope.row.settledInterestAmount) }}</template></el-table-column>
+      <el-table-column label="截至今日应计利息" width="170" align="right">
+        <template slot-scope="scope">
+          <el-tooltip placement="top" effect="light">
+            <div slot="content">测算截止：{{ scope.row.currentAccruedInterestAsOfDate || '-' }}；计息天数：{{ scope.row.currentAccruedInterestDays || 0 }}天</div>
+            <strong>{{ money(scope.row.currentAccruedInterestAmount) }}</strong>
+          </el-tooltip>
+        </template>
+      </el-table-column>
+      <el-table-column label="累计利息" width="140" align="right"><template slot-scope="scope">{{ money(scope.row.totalInterestAmount) }}</template></el-table-column>
       <el-table-column fixed="right" label="操作" width="210" align="center">
         <template slot-scope="scope">
           <el-button type="text" size="small" @click="openDetail(scope.row.id)">还款明细</el-button>
@@ -67,7 +75,6 @@
       <el-descriptions v-if="detailData.id" :column="4" border>
         <el-descriptions-item label="贷款编号">{{ detailData.loanNo }}</el-descriptions-item>
         <el-descriptions-item label="资方">{{ detailData.funderName }}</el-descriptions-item>
-        <el-descriptions-item label="预销售单号">{{ detailData.presaleOrderNo }}</el-descriptions-item>
         <el-descriptions-item label="预售合同号">{{ detailData.sellerContractNo }}</el-descriptions-item>
         <el-descriptions-item label="确认函合同号">{{ detailData.confirmContractNo }}</el-descriptions-item>
         <el-descriptions-item label="贷款本金">{{ money(detailData.loanAmount) }}</el-descriptions-item>
@@ -80,6 +87,10 @@
         <el-descriptions-item label="延期原因">{{ detailData.dueExtendReason || '-' }}</el-descriptions-item>
         <el-descriptions-item label="已还本金">{{ money(detailData.repaidPrincipal) }}</el-descriptions-item>
         <el-descriptions-item label="剩余本金">{{ money(detailData.remainingPrincipal) }}</el-descriptions-item>
+        <el-descriptions-item label="已结清利息">{{ money(detailData.settledInterestAmount) }}</el-descriptions-item>
+        <el-descriptions-item label="截至今日应计利息">{{ money(detailData.currentAccruedInterestAmount) }}</el-descriptions-item>
+        <el-descriptions-item label="应计利息天数">{{ detailData.currentAccruedInterestDays || 0 }}天</el-descriptions-item>
+        <el-descriptions-item label="累计利息">{{ money(detailData.totalInterestAmount) }}</el-descriptions-item>
       </el-descriptions>
       <el-table :data="detailData.repaymentList || []" border style="margin-top:16px" max-height="420">
         <el-table-column prop="lineNo" label="序号" width="60" align="center"></el-table-column>
