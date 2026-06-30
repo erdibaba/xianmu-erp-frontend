@@ -3,7 +3,7 @@
     :title="!dataForm.id ? '新增' : '修改'"
     :close-on-click-modal="false"
     :visible.sync="visible">
-    <el-form :model="dataForm" :rules="dataRule" ref="dataForm" @keyup.enter.native="dataFormSubmit()" label-width="80px">
+    <el-form :model="dataForm" :rules="dataRule" ref="dataForm" @keyup.enter.native="dataFormSubmit()" label-width="100px">
       <el-form-item label="类型" prop="type">
         <el-radio-group v-model="dataForm.type">
           <el-radio v-for="(type, index) in dataForm.typeList" :label="index" :key="index">{{ type }}</el-radio>
@@ -59,7 +59,7 @@
                 </div>
               </div>
             </el-popover>
-            <el-input v-model="dataForm.icon" v-popover:iconListPopover :readonly="true" placeholder="菜单图标名称" class="icon-list__input"></el-input>
+            <el-input v-model="dataForm.icon" v-popover:iconListPopover placeholder="SVG名称 / el-icon-* / fa fa-*" class="icon-list__input"></el-input>
           </el-col>
           <el-col :span="2" class="icon-list__tips">
             <el-tooltip placement="top" effect="light">
@@ -69,6 +69,27 @@
           </el-col>
         </el-row>
       </el-form-item>
+      <template v-if="dataForm.type !== 2">
+        <div class="mobile-config-title">手机端配置</div>
+        <el-form-item label="手机端显示" prop="mobileVisible">
+          <el-switch
+            v-model="dataForm.mobileVisible"
+            :active-value="1"
+            :inactive-value="0"
+            active-text="显示"
+            inactive-text="隐藏">
+          </el-switch>
+        </el-form-item>
+        <el-form-item label="手机端名称" prop="mobileTitle">
+          <el-input v-model="dataForm.mobileTitle" placeholder="不填默认使用菜单名称"></el-input>
+        </el-form-item>
+        <el-form-item label="手机端图标" prop="mobileIcon">
+          <el-input v-model="dataForm.mobileIcon" placeholder="如 el-icon-s-data / fa fa-list / system"></el-input>
+        </el-form-item>
+        <el-form-item label="手机端地址" prop="mobileUrl">
+          <el-input v-model="dataForm.mobileUrl" placeholder="如 /mobile/inventory-cost，不填默认使用菜单路由"></el-input>
+        </el-form-item>
+      </template>
     </el-form>
     <span slot="footer" class="dialog-footer">
       <el-button @click="visible = false">取消</el-button>
@@ -102,6 +123,10 @@
           perms: '',
           orderNum: 0,
           icon: '',
+          mobileVisible: 0,
+          mobileTitle: '',
+          mobileIcon: '',
+          mobileUrl: '',
           iconList: []
         },
         dataRule: {
@@ -158,6 +183,10 @@
               this.dataForm.perms = data.menu.perms
               this.dataForm.orderNum = data.menu.orderNum
               this.dataForm.icon = data.menu.icon
+              this.dataForm.mobileVisible = data.menu.mobileVisible || 0
+              this.dataForm.mobileTitle = data.menu.mobileTitle || ''
+              this.dataForm.mobileIcon = data.menu.mobileIcon || ''
+              this.dataForm.mobileUrl = data.menu.mobileUrl || ''
               this.menuListTreeSetCurrentNode()
             })
           }
@@ -192,7 +221,11 @@
                 'url': this.dataForm.url,
                 'perms': this.dataForm.perms,
                 'orderNum': this.dataForm.orderNum,
-                'icon': this.dataForm.icon
+                'icon': this.dataForm.icon,
+                'mobileVisible': this.dataForm.mobileVisible,
+                'mobileTitle': this.dataForm.mobileTitle,
+                'mobileIcon': this.dataForm.mobileIcon,
+                'mobileUrl': this.dataForm.mobileUrl
               })
             }).then(({data}) => {
               if (data && data.code === 0) {
@@ -255,6 +288,13 @@
       text-align: center;
       color: #e6a23c;
       cursor: pointer;
+    }
+    .mobile-config-title {
+      margin: 18px 0 12px;
+      padding-left: 100px;
+      color: #071452;
+      font-size: 14px;
+      font-weight: 700;
     }
   }
 </style>

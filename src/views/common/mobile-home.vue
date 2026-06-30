@@ -12,8 +12,11 @@
       <div v-loading="loading" class="mobile-menu-grid">
         <el-empty v-if="!loading && !mobileMenus.length" description="暂无手机端菜单，请联系管理员配置权限"></el-empty>
         <button v-for="item in mobileMenus" :key="item.menuId" class="mobile-menu-card" @click="goMenu(item)">
-          <i :class="item.mobileIcon || item.icon || 'el-icon-menu'"></i>
-          <span>{{ item.mobileTitle || item.name }}</span>
+          <span class="mobile-menu-card__icon">
+            <i v-if="isClassIcon(item.mobileIcon || item.icon)" :class="item.mobileIcon || item.icon"></i>
+            <icon-svg v-else :name="item.mobileIcon || item.icon || 'menu'"></icon-svg>
+          </span>
+          <span class="mobile-menu-card__title">{{ item.mobileTitle || item.name }}</span>
         </button>
       </div>
     </div>
@@ -58,6 +61,9 @@
           }
           return result
         }, [])
+      },
+      isClassIcon (icon) {
+        return !!icon && (/^el-icon-/.test(icon) || /^fa\s/.test(icon))
       },
       goMenu (item) {
         const target = item.mobileUrl || item.url
@@ -131,7 +137,7 @@
     border: 0;
     border-radius: 24px;
     box-shadow: 0 18px 36px rgba(7, 20, 82, .1);
-    i {
+    &__icon {
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -142,8 +148,13 @@
       font-size: 26px;
       background: linear-gradient(135deg, #06135a, #1d8c68);
       border-radius: 18px;
+      i,
+      svg {
+        width: 1em;
+        height: 1em;
+      }
     }
-    span {
+    &__title {
       display: block;
       font-size: 16px;
       font-weight: 800;

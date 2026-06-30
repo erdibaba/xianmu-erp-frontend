@@ -27,9 +27,23 @@
       <el-table-column
         header-align="center"
         align="center"
+        width="80"
         label="图标">
         <template slot-scope="scope">
-          <icon-svg :name="scope.row.icon || ''"></icon-svg>
+          <i v-if="isClassIcon(scope.row.icon)" :class="scope.row.icon"></i>
+          <icon-svg v-else :name="scope.row.icon || ''"></icon-svg>
+        </template>
+      </el-table-column>
+      <el-table-column
+        header-align="center"
+        align="center"
+        width="150"
+        label="手机端">
+        <template slot-scope="scope">
+          <el-tag v-if="Number(scope.row.mobileVisible) === 1" size="small" type="success">
+            {{ scope.row.mobileTitle || scope.row.name }}
+          </el-tag>
+          <span v-else class="muted-text">隐藏</span>
         </template>
       </el-table-column>
       <el-table-column
@@ -120,6 +134,9 @@
           this.$refs.addOrUpdate.init(id)
         })
       },
+      isClassIcon (icon) {
+        return !!icon && (/^el-icon-/.test(icon) || /^fa\s/.test(icon))
+      },
       // 删除
       deleteHandle (id) {
         this.$confirm(`确定对[id=${id}]进行[删除]操作?`, '提示', {
@@ -150,3 +167,9 @@
     }
   }
 </script>
+
+<style scoped>
+  .muted-text {
+    color: #909399;
+  }
+</style>
