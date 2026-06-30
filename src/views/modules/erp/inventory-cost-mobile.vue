@@ -5,7 +5,7 @@
         <div>
           <div class="eyebrow">鲜牧ERP</div>
           <h2>库存成本价</h2>
-          <p>按当前剩余库存重量动态计算采购价、资金成本和仓储费。</p>
+          <p>按当前剩余库存重量动态计算含税采购价、资金成本和仓储费。</p>
         </div>
       </div>
 
@@ -44,6 +44,7 @@
           <div class="card-top">
             <div>
               <div class="product-code">{{ item.productCode || '-' }}</div>
+              <div class="contract-no">{{ item.contractNo || '-' }}</div>
               <div class="product-name">{{ item.productName || item.productNameEn || '-' }}</div>
             </div>
             <div class="cost-badge">
@@ -66,7 +67,7 @@
               <span>{{ numberText(item.availableWeightKg, 2) }} KG</span>
             </div>
             <div>
-              <label>采购单价</label>
+              <label>含税采购单价</label>
               <span>{{ numberText(item.purchasePriceKg, 4) }}</span>
             </div>
             <div>
@@ -93,6 +94,7 @@
         append-to-body>
         <div v-if="currentRow" class="detail-head">
           <strong>{{ currentRow.productCode || '-' }}</strong>
+          <span>确认函合同号：{{ currentRow.contractNo || '-' }}</span>
           <span>{{ currentRow.productName || '-' }}</span>
           <em>{{ currentRow.ownershipName || '-' }}</em>
         </div>
@@ -172,6 +174,8 @@
         this.detailLoading = true
         const params = Object.assign({}, this.queryForm, {
           productId: row.productId,
+          confirmId: row.confirmId || '',
+          contractNo: row.contractNo || '',
           ownershipName: row.ownershipName || '',
           containerNos: (this.queryForm.containerNos || []).join(',')
         })
@@ -238,7 +242,7 @@
         })
       },
       cardKey (item) {
-        return [item.productId, item.ownershipName, item.productCode].join('-')
+        return [item.productId, item.confirmId, item.contractNo, item.ownershipName, item.productCode].join('-')
       },
       moneyText (value) {
         return this.numberText(value, 2)
@@ -347,6 +351,13 @@
     color: #0b7d88;
     font-size: 13px;
     font-weight: 700;
+  }
+
+  .contract-no {
+    margin-top: 2px;
+    color: #6b7a78;
+    font-size: 12px;
+    font-weight: 650;
   }
 
   .product-name {

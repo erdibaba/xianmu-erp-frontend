@@ -1,7 +1,7 @@
 <template>
   <div class="mod-erp-inventory-cost">
     <el-alert
-      title="成本价按当前剩余库存重量动态计算：订单确认函采购价 + 每日动态资金成本 + 每日动态仓储费 + 已登记支出费用。"
+      title="成本价按当前剩余库存重量动态计算：订单确认函含税采购价 + 每日动态资金成本 + 每日动态仓储费 + 已登记支出费用。"
       type="info"
       :closable="false"
       show-icon>
@@ -47,6 +47,7 @@
     <el-table :data="dataList" border stripe v-loading="dataListLoading" height="640">
       <el-table-column type="index" label="序号" width="60" align="center" header-align="center"></el-table-column>
       <el-table-column prop="productCode" label="产品编码" min-width="110" align="center" header-align="center"></el-table-column>
+      <el-table-column prop="contractNo" label="确认函合同号" min-width="150" show-overflow-tooltip></el-table-column>
       <el-table-column prop="productName" label="中文名称" min-width="170" show-overflow-tooltip></el-table-column>
       <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
       <el-table-column prop="ownershipName" label="货权" min-width="170" show-overflow-tooltip></el-table-column>
@@ -54,7 +55,7 @@
       <el-table-column prop="availableWeightKg" label="可售重量(KG)" width="125" align="right" header-align="center">
         <template slot-scope="scope">{{ numberText(scope.row.availableWeightKg, 2) }}</template>
       </el-table-column>
-      <el-table-column label="采购单价(元/KG)" width="145" align="right" header-align="center">
+      <el-table-column label="含税采购单价(元/KG)" width="165" align="right" header-align="center">
         <template slot-scope="scope">{{ numberText(scope.row.purchasePriceKg, 6) }}</template>
       </el-table-column>
       <el-table-column label="成本价(元/KG)" width="135" align="right" header-align="center">
@@ -86,6 +87,7 @@
       append-to-body>
       <div v-if="currentRow" class="detail-summary">
         <span>产品编码：{{ currentRow.productCode || '-' }}</span>
+        <span>确认函合同号：{{ currentRow.contractNo || '-' }}</span>
         <span>产品名称：{{ currentRow.productName || '-' }}</span>
         <span>货权：{{ currentRow.ownershipName || '-' }}</span>
         <span>成本价：{{ numberText(currentRow.costPriceKg, 6) }} 元/KG</span>
@@ -177,6 +179,8 @@
         this.detailLoading = true
         const params = Object.assign({}, this.queryForm, {
           productId: row.productId,
+          confirmId: row.confirmId || '',
+          contractNo: row.contractNo || '',
           ownershipName: row.ownershipName || '',
           containerNos: (this.queryForm.containerNos || []).join(',')
         })
