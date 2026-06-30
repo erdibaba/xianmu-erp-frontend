@@ -128,6 +128,7 @@ export default {
   methods: {
     init (id) {
       this.dataForm.id = id || 0
+      const loading = this.$loading({ lock: true, text: '正在加载管理员维护数据...' })
       Promise.all([this.loadRoles(), this.loadSecondaryPartners()]).then(() => {
         this.visible = true
         this.$nextTick(() => {
@@ -148,9 +149,17 @@ export default {
               this.dataForm.secondaryPartnerId = data.user.secondaryPartnerId || ''
               this.dataForm.roleIdList = data.user.roleIdList
               this.dataForm.status = data.user.status
+            } else {
+              this.$message.error((data && data.msg) || '获取管理员信息失败')
             }
+          }).catch(() => {
+            this.$message.error('获取管理员信息请求失败，请检查登录状态或后端服务')
           })
         }
+      }).catch((error) => {
+        this.$message.error((error && error.message) || '加载管理员维护数据失败，请检查登录状态、权限或后端服务')
+      }).finally(() => {
+        loading.close()
       })
     },
     loadRoles () {
@@ -159,7 +168,11 @@ export default {
         method: 'get',
         params: this.$http.adornParams()
       }).then(({ data }) => {
-        this.roleList = data && data.code === 0 ? data.list : []
+        if (data && data.code === 0) {
+          this.roleList = data.list || []
+          return
+        }
+        throw new Error((data && data.msg) || '获取角色列表失败')
       })
     },
     loadSecondaryPartners () {
@@ -168,7 +181,11 @@ export default {
         method: 'get',
         params: this.$http.adornParams({ businessRole: 'SECONDARY' })
       }).then(({ data }) => {
-        this.secondaryPartnerList = data && data.code === 0 ? (data.list || []) : []
+        if (data && data.code === 0) {
+          this.secondaryPartnerList = data.list || []
+          return
+        }
+        throw new Error((data && data.msg) || '获取二批主体列表失败')
       })
     },
     dataFormSubmit () {
