@@ -35,6 +35,10 @@
                 </el-col>
               </el-row>
             </el-form-item>
+            <el-form-item class="login-mobile-option">
+              <el-checkbox v-model="mobileLogin">手机端登录</el-checkbox>
+              <span class="login-mobile-tip">勾选后进入手机工作台</span>
+            </el-form-item>
             <el-form-item>
               <el-button class="login-btn-submit" type="primary" @click="dataFormSubmit()">登录</el-button>
             </el-form-item>
@@ -67,10 +71,12 @@
             { required: true, message: '验证码不能为空', trigger: 'blur' }
           ]
         },
-        captchaPath: ''
+        captchaPath: '',
+        mobileLogin: false
       }
     },
     created () {
+      this.mobileLogin = this.getDefaultMobileLogin()
       this.getCaptcha()
     },
     methods: {
@@ -90,9 +96,12 @@
             }).then(({data}) => {
               if (data && data.code === 0) {
                 this.$cookie.set('token', data.token)
+                window.localStorage.setItem('xianmuMobileLogin', this.mobileLogin ? '1' : '0')
                 const redirect = this.$route.query.redirect
                 if (redirect) {
-                  this.$router.replace(decodeURIComponent(redirect))
+                  this.$router.replace(this.normalizeRedirect(decodeURIComponent(redirect)))
+                } else if (this.mobileLogin) {
+                  this.$router.replace({ name: 'mobile-home' })
                 } else {
                   this.$router.replace({ name: 'home' })
                 }
@@ -108,6 +117,30 @@
       getCaptcha () {
         this.dataForm.uuid = getUUID()
         this.captchaPath = this.$http.adornUrl(`/captcha.jpg?uuid=${this.dataForm.uuid}`)
+      },
+      getDefaultMobileLogin () {
+        const fullPath = this.$route.fullPath || ''
+        const href = window.location.href || ''
+        if (this.$route.query.mobile === '1' || fullPath.indexOf('mobile=1') !== -1 || href.indexOf('mobile=1') !== -1) {
+          return true
+        }
+        if (this.$route.query.mobile === '0' || fullPath.indexOf('mobile=0') !== -1 || href.indexOf('mobile=0') !== -1) {
+          return false
+        }
+        const saved = window.localStorage.getItem('xianmuMobileLogin')
+        if (saved === '1') {
+          return true
+        }
+        if (saved === '0') {
+          return false
+        }
+        return window.innerWidth <= 768
+      },
+      normalizeRedirect (redirect) {
+        if (this.mobileLogin && redirect === '/erp-inventory-cost-mobile') {
+          return '/mobile/inventory-cost'
+        }
+        return redirect
       }
     }
   }
@@ -267,6 +300,23 @@
         width: 100%;
         cursor: pointer;
       }
+    }
+    .login-mobile-option {
+      margin: -4px 0 0;
+      .el-form-item__content {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        line-height: 22px;
+      }
+      .el-checkbox__label {
+        color: #071452;
+        font-weight: 600;
+      }
+    }
+    .login-mobile-tip {
+      color: #75859a;
+      font-size: 12px;
     }
     .login-btn-submit {
       width: 100%;

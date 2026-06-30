@@ -15,11 +15,23 @@ Vue.use(Router)
 // 开发环境不使用懒加载, 因为懒加载页面太多的话会造成webpack热更新太慢, 所以只有生产环境使用懒加载
 const _import = require('./import-' + process.env.NODE_ENV)
 
+const requireToken = (to, from, next) => {
+  let token = Vue.cookie.get('token')
+  if (!token || !/\S/.test(token)) {
+    clearLoginInfo()
+    next({ name: 'login', query: { redirect: encodeURIComponent(to.fullPath), mobile: '1' } })
+  } else {
+    next()
+  }
+}
+
 // 全局路由(无需嵌套上左右整体布局)
 const globalRoutes = [
   { path: '/404', component: _import('common/404'), name: '404', meta: { title: '404未找到' } },
   { path: '/login', component: _import('common/login'), name: 'login', meta: { title: '登录' } },
-  { path: '/sale-upload/:token', component: _import('common/sale-upload'), name: 'sale-upload', meta: { title: '销售单上传' } }
+  { path: '/sale-upload/:token', component: _import('common/sale-upload'), name: 'sale-upload', meta: { title: '销售单上传' } },
+  { path: '/mobile-home', component: _import('common/mobile-home'), name: 'mobile-home', meta: { title: '手机工作台' }, beforeEnter: requireToken },
+  { path: '/mobile/inventory-cost', component: _import('modules/erp/inventory-cost-mobile'), name: 'mobile-inventory-cost', meta: { title: '库存成本' }, beforeEnter: requireToken }
 ]
 
 // 主入口路由(需嵌套上左右整体布局)
