@@ -84,6 +84,7 @@
       :visible.sync="detailDialogVisible"
       width="92vw"
       custom-class="inventory-cost-detail-dialog"
+      @opened="layoutDetailTable"
       append-to-body>
       <div v-if="currentRow" class="detail-summary">
         <span>产品编码：{{ currentRow.productCode || '-' }}</span>
@@ -108,13 +109,13 @@
           分摊费用组成：{{ feeSummaryText }}
         </div>
       </div>
-      <el-table :data="detailList" border stripe v-loading="detailLoading" height="430">
+      <el-table ref="detailTable" :data="detailList" border stripe v-loading="detailLoading" height="430" :fit="false" class="inventory-cost-detail-table">
         <el-table-column type="index" label="序号" width="60" align="center" header-align="center"></el-table-column>
         <el-table-column prop="costType" label="费用类型" width="120" show-overflow-tooltip></el-table-column>
-        <el-table-column prop="costName" label="费用名称" min-width="150" show-overflow-tooltip></el-table-column>
-        <el-table-column prop="sourceNo" label="来源单号" min-width="150" show-overflow-tooltip></el-table-column>
-        <el-table-column prop="contractNo" label="合同号" min-width="150" show-overflow-tooltip></el-table-column>
-        <el-table-column prop="containerNo" label="柜号" min-width="130" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="costName" label="费用名称" width="170" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="sourceNo" label="来源单号" width="170" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="contractNo" label="合同号" width="170" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="containerNo" label="柜号" width="140" show-overflow-tooltip></el-table-column>
         <el-table-column prop="factoryNo" label="厂号" width="100" align="center" header-align="center"></el-table-column>
         <el-table-column label="生产日期" width="115" align="center" header-align="center">
           <template slot-scope="scope">{{ dateText(scope.row.productionDate) }}</template>
@@ -135,10 +136,10 @@
         <el-table-column label="合同剩余重量(KG)" width="145" align="right" header-align="center">
           <template slot-scope="scope">{{ numberText(scope.row.totalBasisWeightKg, 2) }}</template>
         </el-table-column>
-        <el-table-column label="计算公式" min-width="320" show-overflow-tooltip>
+        <el-table-column label="计算公式" width="420" show-overflow-tooltip>
           <template slot-scope="scope">{{ detailFormula(scope.row) }}</template>
         </el-table-column>
-        <el-table-column prop="remark" label="说明" min-width="260" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="remark" label="说明" width="320" show-overflow-tooltip></el-table-column>
       </el-table>
     </el-dialog>
   </div>
@@ -221,12 +222,21 @@
         }).then(({data}) => {
           if (data && data.code === 0) {
             this.detailList = data.list || []
+            this.layoutDetailTable()
           } else {
             this.detailList = []
             this.$message.error((data && data.msg) || '获取成本明细失败')
           }
         }).finally(() => {
           this.detailLoading = false
+          this.layoutDetailTable()
+        })
+      },
+      layoutDetailTable () {
+        this.$nextTick(() => {
+          if (this.$refs.detailTable && this.$refs.detailTable.doLayout) {
+            this.$refs.detailTable.doLayout()
+          }
         })
       },
       resetQuery () {
