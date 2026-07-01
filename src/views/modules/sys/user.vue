@@ -55,6 +55,14 @@
         label="绑定二批主体">
       </el-table-column>
       <el-table-column
+        prop="roleNames"
+        header-align="center"
+        align="center"
+        min-width="180"
+        show-overflow-tooltip
+        label="绑定角色">
+      </el-table-column>
+      <el-table-column
         prop="status"
         header-align="center"
         align="center"
