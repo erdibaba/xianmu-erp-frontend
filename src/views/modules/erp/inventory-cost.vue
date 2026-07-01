@@ -92,6 +92,22 @@
         <span>货权：{{ currentRow.ownershipName || '-' }}</span>
         <span>成本价：{{ numberText(currentRow.costPriceKg, 6) }} 元/KG</span>
       </div>
+      <div v-if="currentRow" class="cost-formula-box">
+        <div class="formula-title">成本价计算公式</div>
+        <div class="formula-main">
+          成本价 = 成本总额 ÷ 当前可售重量 =
+          {{ moneyText(currentRow.totalCostAmount) }} ÷ {{ numberText(currentRow.availableWeightKg, 2) }} =
+          {{ numberText(currentRow.costPriceKg, 6) }} 元/KG
+        </div>
+        <div class="formula-sub">
+          成本总额 = 采购成本 + 分摊费用 =
+          {{ moneyText(currentRow.purchaseAmount) }} + {{ moneyText(currentRow.allocatedFeeAmount) }} =
+          {{ moneyText(currentRow.totalCostAmount) }}
+        </div>
+        <div v-if="feeSummaryText" class="formula-sub">
+          分摊费用组成：{{ feeSummaryText }}
+        </div>
+      </div>
       <el-table :data="detailList" border stripe v-loading="detailLoading" height="430">
         <el-table-column type="index" label="序号" width="60" align="center" header-align="center"></el-table-column>
         <el-table-column prop="costType" label="费用类型" width="120" show-overflow-tooltip></el-table-column>
@@ -119,6 +135,9 @@
         <el-table-column label="合同剩余重量(KG)" width="145" align="right" header-align="center">
           <template slot-scope="scope">{{ numberText(scope.row.totalBasisWeightKg, 2) }}</template>
         </el-table-column>
+        <el-table-column label="计算公式" min-width="320" show-overflow-tooltip>
+          <template slot-scope="scope">{{ detailFormula(scope.row) }}</template>
+        </el-table-column>
         <el-table-column prop="remark" label="说明" min-width="260" show-overflow-tooltip></el-table-column>
       </el-table>
     </el-dialog>
@@ -145,6 +164,17 @@
         detailLoading: false,
         detailList: [],
         currentRow: null
+      }
+    },
+    computed: {
+      feeSummaryText () {
+        const summary = {}
+        ;(this.detailList || []).forEach(item => {
+          if (item.costType === '采购成本') return
+          const key = item.costType || '其他费用'
+          summary[key] = (summary[key] || 0) + Number(item.allocatedAmount || 0)
+        })
+        return Object.keys(summary).map(key => `${key}${this.moneyText(summary[key])}`).join('，')
       }
     },
     activated () {
@@ -256,6 +286,17 @@
       dateText (value) {
         if (!value) return '-'
         return String(value).slice(0, 10)
+      },
+      detailFormula (row) {
+        const costType = row.costType || ''
+        if (costType === '采购成本') {
+          return `采购成本 = 当前剩余重量${this.numberText(row.basisWeightKg, 2)}KG × 含税采购单价，计入${this.moneyText(row.allocatedAmount)}`
+        }
+        const totalBasis = Number(row.totalBasisWeightKg || 0)
+        if (totalBasis > 0) {
+          return `分摊金额 = 来源金额${this.moneyText(row.sourceAmount)} × 本行剩余重量${this.numberText(row.basisWeightKg, 2)}KG ÷ 合同剩余重量${this.numberText(row.totalBasisWeightKg, 2)}KG = ${this.moneyText(row.allocatedAmount)}`
+        }
+        return `分摊金额 = ${this.moneyText(row.allocatedAmount)}`
       }
     }
   }
@@ -281,6 +322,30 @@
     border: 1px solid #ebeef5;
     border-radius: 4px;
     color: #303133;
+  }
+
+  .cost-formula-box {
+    margin-bottom: 12px;
+    padding: 12px 14px;
+    border: 1px solid #cdeee9;
+    border-radius: 6px;
+    background: #f0fbf9;
+    color: #2c3e3b;
+    line-height: 1.7;
+  }
+
+  .formula-title {
+    margin-bottom: 4px;
+    color: #0f8f83;
+    font-weight: 700;
+  }
+
+  .formula-main {
+    font-weight: 650;
+  }
+
+  .formula-sub {
+    color: #5f6f6c;
   }
 
   /deep/ .inventory-cost-detail-dialog {

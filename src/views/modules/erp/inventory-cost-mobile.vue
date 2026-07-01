@@ -98,6 +98,17 @@
           <span>{{ currentRow.productName || '-' }}</span>
           <em>{{ currentRow.ownershipName || '-' }}</em>
         </div>
+        <div v-if="currentRow" class="mobile-formula-card">
+          <strong>成本价公式</strong>
+          <span>
+            {{ moneyText(currentRow.totalCostAmount) }} ÷ {{ numberText(currentRow.availableWeightKg, 2) }}KG =
+            {{ numberText(currentRow.costPriceKg, 6) }} 元/KG
+          </span>
+          <em>
+            成本总额 = 采购成本{{ moneyText(currentRow.purchaseAmount) }} + 分摊费用{{ moneyText(currentRow.allocatedFeeAmount) }}
+          </em>
+          <em v-if="feeSummaryText">分摊费用：{{ feeSummaryText }}</em>
+        </div>
         <div v-loading="detailLoading" class="detail-card-list">
           <el-empty v-if="!detailList.length && !detailLoading" description="暂无费用明细"></el-empty>
           <div v-for="(item, index) in detailList" :key="index" class="detail-card">
@@ -112,6 +123,7 @@
             <div class="detail-line">生产日期：{{ dateText(item.productionDate) }} / 过期日期：{{ dateText(item.expiryDate) }}</div>
             <div class="detail-line">剩余箱数：{{ numberText(item.availableBoxes, 0) }}</div>
             <div class="detail-line">本行重量：{{ numberText(item.basisWeightKg, 2) }} KG</div>
+            <div class="detail-formula">{{ detailFormula(item) }}</div>
             <div v-if="item.remark" class="detail-remark">{{ item.remark }}</div>
           </div>
         </div>
@@ -140,6 +152,17 @@
         detailLoading: false,
         detailList: [],
         currentRow: null
+      }
+    },
+    computed: {
+      feeSummaryText () {
+        const summary = {}
+        ;(this.detailList || []).forEach(item => {
+          if (item.costType === '采购成本') return
+          const key = item.costType || '其他费用'
+          summary[key] = (summary[key] || 0) + Number(item.allocatedAmount || 0)
+        })
+        return Object.keys(summary).map(key => `${key}${this.moneyText(summary[key])}`).join('，')
       }
     },
     activated () {
@@ -254,6 +277,16 @@
       dateText (value) {
         if (!value) return '-'
         return String(value).slice(0, 10)
+      },
+      detailFormula (item) {
+        if ((item.costType || '') === '采购成本') {
+          return `采购成本 = 剩余重量${this.numberText(item.basisWeightKg, 2)}KG × 含税采购单价，计入${this.moneyText(item.allocatedAmount)}`
+        }
+        const totalBasis = Number(item.totalBasisWeightKg || 0)
+        if (totalBasis > 0) {
+          return `分摊 = ${this.moneyText(item.sourceAmount)} × ${this.numberText(item.basisWeightKg, 2)} ÷ ${this.numberText(item.totalBasisWeightKg, 2)} = ${this.moneyText(item.allocatedAmount)}`
+        }
+        return `分摊 = ${this.moneyText(item.allocatedAmount)}`
       }
     }
   }
@@ -447,6 +480,32 @@
     font-style: normal;
   }
 
+  .mobile-formula-card {
+    display: grid;
+    gap: 5px;
+    margin-bottom: 10px;
+    padding: 10px 12px;
+    border: 1px solid rgba(23, 179, 163, 0.22);
+    border-radius: 14px;
+    background: #f0fbf9;
+  }
+
+  .mobile-formula-card strong {
+    color: #0b7d88;
+  }
+
+  .mobile-formula-card span {
+    color: #1f2d2b;
+    font-weight: 700;
+  }
+
+  .mobile-formula-card em {
+    color: #60706d;
+    font-size: 12px;
+    font-style: normal;
+    line-height: 1.45;
+  }
+
   .detail-card-list {
     min-height: 220px;
     max-height: 62vh;
@@ -468,11 +527,19 @@
   }
 
   .detail-line,
+  .detail-formula,
   .detail-remark {
     margin-top: 6px;
     color: #606f6d;
     font-size: 12px;
     line-height: 1.45;
+  }
+
+  .detail-formula {
+    padding: 7px 8px;
+    border-radius: 10px;
+    background: #f0fbf9;
+    color: #0b7d88;
   }
 
   .detail-remark {
