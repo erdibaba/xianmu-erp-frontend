@@ -218,6 +218,56 @@
       @recognized="recognizedHandle"
       @uploaded="attachmentUploadedHandle">
     </presale-upload-dialog>
+
+    <el-dialog
+      title="确认函产品主数据确认"
+      :close-on-click-modal="false"
+      :visible.sync="confirmProductSyncVisible"
+      width="1080px">
+      <el-alert
+        title="识别到确认函中有产品需要新增、补全名称或补全别名。请核对无误后再同步，避免 OCR 识别错误写入产品档案。"
+        type="warning"
+        show-icon
+        :closable="false"
+        class="confirm-product-sync-tip">
+      </el-alert>
+      <el-table :data="confirmProductSyncList" border size="mini" max-height="430">
+        <el-table-column label="#" width="50" align="center">
+          <template slot-scope="scope">{{ scope.$index + 1 }}</template>
+        </el-table-column>
+        <el-table-column prop="actionText" label="处理方式" width="120" align="center"></el-table-column>
+        <el-table-column label="主产品代码" width="140" align="center">
+          <template slot-scope="scope">
+            <el-input v-model.trim="scope.row.productCode" size="mini"></el-input>
+          </template>
+        </el-table-column>
+        <el-table-column label="确认函编码" width="150" align="center">
+          <template slot-scope="scope">
+            <el-input v-model.trim="scope.row.sourceProductCode" size="mini"></el-input>
+          </template>
+        </el-table-column>
+        <el-table-column prop="currentName" label="当前中文名" min-width="160" show-overflow-tooltip></el-table-column>
+        <el-table-column label="确认函中文名" min-width="190">
+          <template slot-scope="scope">
+            <el-input v-model.trim="scope.row.recognizedName" size="mini"></el-input>
+          </template>
+        </el-table-column>
+        <el-table-column prop="currentNameEn" label="当前英文名" min-width="210" show-overflow-tooltip></el-table-column>
+        <el-table-column label="确认函英文名" min-width="260">
+          <template slot-scope="scope">
+            <el-input v-model.trim="scope.row.recognizedNameEn" size="mini"></el-input>
+          </template>
+        </el-table-column>
+        <el-table-column prop="brandName" label="品牌方" min-width="170" show-overflow-tooltip></el-table-column>
+      </el-table>
+      <span slot="footer" class="dialog-footer">
+        <el-button
+          type="primary"
+          :loading="confirmProductSyncLoading"
+          :disabled="confirmProductSyncLoading"
+          @click="confirmProductSync()">确认同步并带入编辑</el-button>
+      </span>
+    </el-dialog>
   </div>
 </template>
 
@@ -245,6 +295,11 @@ export default {
       uploadType: 'confirm',
       currentOrderId: 0,
       currentConfirmId: 0,
+      pendingRecognizedResult: null,
+      confirmProductSyncVisible: false,
+      confirmProductSyncLoading: false,
+      confirmProductSyncList: [],
+      productList: [],
       createVisible: false,
       createForm: {
         presaleOrderId: ''
@@ -327,6 +382,202 @@ export default {
       const customer = item.customerReference || ''
       return `${contractNo}${customer ? ' - ' + customer : ''}`
     },
+    normalizeProductCode (code) {
+      if (!code) return ''
+      return String(code).replace(/[A-Za-z]+$/g, '')
+    },
+    normalizeEnglishName (value) {
+      if (!value) return ''
+      return String(value)
+        .replace(/^(SYB[-\s]+)/i, '')
+        .replace(/[^A-Za-z0-9]+/g, ' ')
+        .trim()
+        .replace(/\s+/g, ' ')
+        .toUpperCase()
+    },
+    loadProductList () {
+      return this.$http({
+        url: this.$http.adornUrl('/erp/product/select'),
+        method: 'get',
+        params: this.$http.adornParams()
+      }).then(({ data }) => {
+        this.productList = (data && data.list) || []
+      })
+    },
+    hasProductAlias (product, code) {
+      const target = String(code || '').trim().toUpperCase()
+      if (!target) return false
+      return String((product && product.aliasCodes) || '')
+        .split(',')
+        .some(alias => alias.trim().toUpperCase() === target)
+    },
+    findProductByConfirmCode (code) {
+      const sourceCode = String(code || '').trim()
+      if (!sourceCode) return null
+      const normalizedCode = this.normalizeProductCode(sourceCode)
+      return this.productList.find(item => String(item.productCode || '').trim() === sourceCode) ||
+        this.productList.find(item => String(item.productCode || '').trim() === normalizedCode) ||
+        this.productList.find(item => this.hasProductAlias(item, sourceCode)) ||
+        null
+    },
+    buildActionText (product, missingMasterAlias, missingSourceAlias, missingName, missingNameEn, differentNameEn) {
+      if (!product) return '新增'
+      const actions = []
+      if (missingMasterAlias || missingSourceAlias) actions.push('别名')
+      if (missingName || missingNameEn || differentNameEn) actions.push('名称')
+      return `补全${actions.join('/')}`
+    },
+    buildConfirmProductSyncRows (result) {
+      const orderDraft = (result && result.orderDraft) || {}
+      const itemList = orderDraft.itemList || []
+      const brandName = orderDraft.brandName || ''
+      const rowMap = {}
+      itemList.forEach(item => {
+        const sourceProductCode = String(item.sourceProductCode || item.productCode || '').trim()
+        const productCode = this.normalizeProductCode(sourceProductCode)
+        const rowKey = productCode + '|' + sourceProductCode.toUpperCase()
+        if (!productCode || productCode.indexOf('/') !== -1 || rowMap[rowKey]) {
+          return
+        }
+        const product = this.findProductByConfirmCode(sourceProductCode)
+        const recognizedName = String(item.productName || '').trim()
+        const recognizedNameEn = String(item.productNameEn || '').trim()
+        if (!product) {
+          rowMap[rowKey] = {
+            actionText: '新增',
+            originalProductCode: productCode,
+            originalSourceProductCode: sourceProductCode,
+            productCode,
+            sourceProductCode,
+            currentName: '',
+            currentNameEn: '',
+            recognizedName,
+            recognizedNameEn,
+            brandName
+          }
+          return
+        }
+        const masterCode = String(product.productCode || productCode).trim()
+        const currentName = String(product.productName || '').trim()
+        const currentNameEn = String(product.productNameEn || '').trim()
+        const missingMasterAlias = !this.hasProductAlias(product, masterCode)
+        const missingSourceAlias = !this.hasProductAlias(product, sourceProductCode)
+        const missingName = !currentName && !!recognizedName
+        const missingNameEn = !currentNameEn && !!recognizedNameEn
+        const differentNameEn = !!recognizedNameEn && !!currentNameEn && this.normalizeEnglishName(currentNameEn) !== this.normalizeEnglishName(recognizedNameEn)
+        if (missingMasterAlias || missingSourceAlias || missingName || missingNameEn || differentNameEn) {
+          rowMap[rowKey] = {
+            actionText: this.buildActionText(product, missingMasterAlias, missingSourceAlias, missingName, missingNameEn, differentNameEn),
+            originalProductCode: productCode,
+            originalSourceProductCode: sourceProductCode,
+            productCode: masterCode,
+            sourceProductCode,
+            currentName,
+            currentNameEn,
+            recognizedName,
+            recognizedNameEn,
+            brandName
+          }
+        }
+      })
+      return Object.keys(rowMap).map(key => rowMap[key])
+    },
+    applyConfirmProductSyncEdits (result) {
+      const orderDraft = (result && result.orderDraft) || {}
+      const itemList = orderDraft.itemList || []
+      this.confirmProductSyncList.forEach(row => {
+        const originalProductCode = String(row.originalProductCode || '').trim()
+        const originalSourceProductCode = String(row.originalSourceProductCode || '').trim()
+        itemList.forEach(item => {
+          const itemSourceCode = String(item.sourceProductCode || item.productCode || '').trim()
+          const itemProductCode = this.normalizeProductCode(itemSourceCode)
+          const matched = itemProductCode === originalProductCode || itemSourceCode === originalSourceProductCode
+          if (!matched) return
+          item.productCode = String(row.productCode || '').trim()
+          item.sourceProductCode = String(row.sourceProductCode || row.productCode || '').trim()
+          item.productName = String(row.recognizedName || '').trim()
+          item.productNameEn = String(row.recognizedNameEn || '').trim()
+        })
+      })
+      return result
+    },
+    buildConfirmProductSyncRequest (result) {
+      const syncKeys = {}
+      this.confirmProductSyncList.forEach(row => {
+        if (row.originalProductCode) syncKeys[String(row.originalProductCode)] = true
+        if (row.originalSourceProductCode) syncKeys[String(row.originalSourceProductCode)] = true
+        if (row.productCode) syncKeys[String(row.productCode)] = true
+        if (row.sourceProductCode) syncKeys[String(row.sourceProductCode)] = true
+      })
+      const request = JSON.parse(JSON.stringify(result || {}))
+      const orderDraft = request.orderDraft || (request.orderDraft = {})
+      orderDraft.itemList = (orderDraft.itemList || []).filter(item => {
+        const sourceCode = String(item.sourceProductCode || item.productCode || '').trim()
+        const productCode = this.normalizeProductCode(sourceCode)
+        return !!(syncKeys[sourceCode] || syncKeys[productCode])
+      })
+      return request
+    },
+    syncConfirmProductMaster (result) {
+      const orderDraft = (result && result.orderDraft) || {}
+      return this.$http({
+        url: this.$http.adornUrl('/erp/presale/sync-confirm-products'),
+        method: 'post',
+        data: this.$http.adornData(orderDraft)
+      }).then(({ data }) => {
+        if (!data || data.code !== 0) {
+          return Promise.reject(new Error((data && data.msg) || '产品主数据同步失败'))
+        }
+      })
+    },
+    validateConfirmProductSyncRows () {
+      const invalidRow = this.confirmProductSyncList.find(item => !String(item.productCode || '').trim())
+      if (invalidRow) {
+        this.$message.error('主产品代码不能为空')
+        return false
+      }
+      return true
+    },
+    prepareConfirmProductSync (result) {
+      return this.loadProductList().then(() => {
+        const rows = this.buildConfirmProductSyncRows(result)
+        if (!rows.length) {
+          this.openRecognizedResult(result)
+          return
+        }
+        this.pendingRecognizedResult = result
+        this.confirmProductSyncList = rows
+        this.confirmProductSyncVisible = true
+      })
+    },
+    confirmProductSync () {
+      if (this.confirmProductSyncLoading) {
+        return
+      }
+      const result = this.pendingRecognizedResult
+      if (!result) {
+        this.confirmProductSyncVisible = false
+        return
+      }
+      if (!this.validateConfirmProductSyncRows()) {
+        return
+      }
+      const editedResult = this.applyConfirmProductSyncEdits(result)
+      const syncRequest = this.buildConfirmProductSyncRequest(editedResult)
+      this.confirmProductSyncLoading = true
+      this.syncConfirmProductMaster(syncRequest).then(() => {
+        this.$message.success('产品主数据同步成功')
+        this.pendingRecognizedResult = null
+        this.confirmProductSyncVisible = false
+        return this.loadProductList()
+      }).then(() => {
+        this.openRecognizedResult(editedResult)
+      }).catch(() => {
+        this.$message.error('产品主数据同步失败，请核对后重试')
+      }).finally(() => {
+        this.confirmProductSyncLoading = false
+      })
+    },
     uploadNewConfirm () {
       if (!this.createForm.presaleOrderId) {
         this.$message.warning('请选择关联预售单')
@@ -368,7 +619,7 @@ export default {
         this.$refs.uploadDialog.init()
       })
     },
-    recognizedHandle (result) {
+    openRecognizedResult (result) {
       this.dialogVisible = true
       this.$nextTick(() => {
         if (this.uploadType === 'packing') {
@@ -377,6 +628,13 @@ export default {
           this.$refs.dialog.initFromConfirmResult(this.currentOrderId, result, this.currentConfirmId)
         }
       })
+    },
+    recognizedHandle (result) {
+      if (this.uploadType === 'confirm') {
+        this.prepareConfirmProductSync(result)
+        return
+      }
+      this.openRecognizedResult(result)
     },
     attachmentUploadedHandle () {
       this.getDataList()
