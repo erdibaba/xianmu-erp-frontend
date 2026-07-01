@@ -235,14 +235,14 @@
               </el-input-number>
             </template>
           </el-table-column>
-          <el-table-column v-if="isFunderPayment" label="出资日期" width="150">
+          <el-table-column v-if="isFunderPayment" label="出资日期" width="180">
             <template slot-scope="scope">
               <el-date-picker
                 v-model="scope.row.xianmuContributionDate"
                 type="date"
                 value-format="yyyy-MM-dd"
                 placeholder="选择日期"
-                style="width: 125px">
+                style="width: 155px">
               </el-date-picker>
             </template>
           </el-table-column>
