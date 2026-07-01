@@ -1263,6 +1263,7 @@ export default {
         row._recognizedProductName = row.productName || ''
         row._recognizedProductNameEn = row.productNameEn || ''
         row.batchList = (item.batchList || []).map(batch => Object.assign(defaultPackingBatch(), batch))
+        this.sortPackingBatchList(row)
         this.recalculatePackingItemFromBatches(row)
         if (row.productCode) {
           this.fillEstimateProductByCode(row)
@@ -1394,6 +1395,7 @@ export default {
         batchRow.weight = this.toNumber(batch.weight)
         return batchRow
       })
+      this.sortPackingBatchList(row)
       this.recalculatePackingItemFromBatches(row)
       return row
     },
@@ -1556,6 +1558,7 @@ export default {
       row.productNameEn = product.productNameEn || row.productNameEn || ''
     },
     handlePackingBatchChange (row) {
+      this.sortPackingBatchList(row)
       this.recalculatePackingItemFromBatches(row)
     },
     addPackingItemRow () {
@@ -1597,6 +1600,25 @@ export default {
       const batchList = row.batchList || []
       batchList.splice(index, 1)
       this.recalculatePackingItemFromBatches(row)
+    },
+    sortPackingBatchList (row) {
+      if (!row || !row.batchList || row.batchList.length <= 1) {
+        return
+      }
+      row.batchList.sort((left, right) => {
+        const leftDate = this.sortDateValue(left.productionDate)
+        const rightDate = this.sortDateValue(right.productionDate)
+        if (leftDate !== rightDate) return leftDate - rightDate
+        const leftExpiry = this.sortDateValue(left.expiryDate)
+        const rightExpiry = this.sortDateValue(right.expiryDate)
+        if (leftExpiry !== rightExpiry) return leftExpiry - rightExpiry
+        return this.toNumber(left.boxCount) - this.toNumber(right.boxCount)
+      })
+    },
+    sortDateValue (value) {
+      if (!value) return Number.MAX_SAFE_INTEGER
+      const time = new Date(value).getTime()
+      return isNaN(time) ? Number.MAX_SAFE_INTEGER : time
     },
     recalculatePackingItemFromBatches (row) {
       const batchList = row.batchList || []
