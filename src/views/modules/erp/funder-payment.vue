@@ -331,10 +331,10 @@
               </el-date-picker>
             </template>
           </el-table-column>
-          <el-table-column v-if="!isFunderPayment" label="尾款已付" width="130" align="right">
+          <el-table-column v-if="!isFunderPayment" label="已付合计" width="130" align="right">
             <template slot-scope="scope">{{ money(xianmuPaidAmount(scope.row)) }}</template>
           </el-table-column>
-          <el-table-column v-if="!isFunderPayment" label="尾款待付" width="130" align="right">
+          <el-table-column v-if="!isFunderPayment" label="待付金额" width="130" align="right">
             <template slot-scope="scope">{{ money(xianmuRemainAmount(scope.row)) }}</template>
           </el-table-column>
         </el-table>
@@ -357,8 +357,8 @@
               <el-descriptions-item label="确认函合同号">{{ xianmuAllocation.confirmContractNo || '-' }}</el-descriptions-item>
               <el-descriptions-item label="采购方">{{ xianmuAllocation.customerReference || '-' }}</el-descriptions-item>
               <el-descriptions-item label="确认函总金额">{{ money(xianmuAllocation.allocationAmount) }}</el-descriptions-item>
-              <el-descriptions-item label="尾款已付">{{ money(xianmuPaidAmount(xianmuAllocation)) }}</el-descriptions-item>
-              <el-descriptions-item label="尾款待付">{{ money(xianmuRemainAmount(xianmuAllocation)) }}</el-descriptions-item>
+              <el-descriptions-item label="已付合计">{{ money(xianmuPaidAmount(xianmuAllocation)) }}</el-descriptions-item>
+              <el-descriptions-item label="待付金额">{{ money(xianmuRemainAmount(xianmuAllocation)) }}</el-descriptions-item>
             </el-descriptions>
             <el-row :gutter="18" class="installment-row">
               <el-col :span="12">
@@ -466,7 +466,7 @@
         <el-table-column v-if="detailData.paymentType === 2" label="尾款日期" width="120" align="center">
           <template slot-scope="scope">{{ scope.row.xianmuBalanceDate || '-' }}</template>
         </el-table-column>
-        <el-table-column v-if="detailData.paymentType === 2" label="尾款待付" width="130" align="right">
+        <el-table-column v-if="detailData.paymentType === 2" label="待付金额" width="130" align="right">
           <template slot-scope="scope">{{ money(xianmuRemainAmount(scope.row)) }}</template>
         </el-table-column>
       </el-table>
@@ -594,10 +594,13 @@ export default {
       return `${index}-${kind}`
     },
     xianmuPaidAmount (row) {
-      return this.roundMoney(Number(row.xianmuBalanceModifiedAmount || 0))
+      return this.roundMoney(Number(row.xianmuDepositModifiedAmount || 0) + Number(row.xianmuBalanceModifiedAmount || 0))
     },
     xianmuRemainAmount (row) {
-      return this.roundMoney(Number(row.allocationAmount || 0) - this.xianmuPaidAmount(row))
+      return Math.max(0, this.roundMoney(Number(row.allocationAmount || 0) - this.xianmuPaidAmount(row)))
+    },
+    xianmuExpectedBalanceAmount (row) {
+      return Math.max(0, this.roundMoney(Number(row.allocationAmount || 0) - Number(row.xianmuDepositModifiedAmount || 0)))
     },
     rateLabel (item) {
       return item.annualInterestRate === null || item.annualInterestRate === undefined ? '未维护' : item.annualInterestRate + '%'
@@ -913,17 +916,26 @@ export default {
         const allocationAmount = Number(row.allocationAmount || 0)
         const depositAmount = Number(row.xianmuDepositModifiedAmount || 0)
         const balanceAmount = Number(row.xianmuBalanceModifiedAmount || 0)
+        const expectedBalanceAmount = this.xianmuExpectedBalanceAmount(row)
         if (!row.xianmuDepositFilePath || !row.xianmuDepositDate || depositAmount <= 0) {
           this.$message.error(`第${index + 1}行必须先上传定金凭证，并填写定金日期和金额`)
           return false
         }
+        if (this.roundMoney(depositAmount) > this.roundMoney(allocationAmount)) {
+          this.$message.error(`第${index + 1}行定金金额不能大于客户订单确认函总金额`)
+          return false
+        }
         const hasBalance = !!row.xianmuBalanceFilePath || !!row.xianmuBalanceDate || balanceAmount > 0
+        if (hasBalance && expectedBalanceAmount <= 0) {
+          this.$message.error(`第${index + 1}行定金已覆盖客户订单确认函总金额，无需再上传尾款`)
+          return false
+        }
         if (hasBalance && (!row.xianmuBalanceFilePath || !row.xianmuBalanceDate || balanceAmount <= 0)) {
           this.$message.error(`第${index + 1}行已填写尾款时，尾款凭证、日期和金额都必须完整`)
           return false
         }
-        if (hasBalance && this.roundMoney(balanceAmount) !== this.roundMoney(allocationAmount)) {
-          this.$message.error(`第${index + 1}行尾款金额必须等于客户订单确认函总金额`)
+        if (hasBalance && this.roundMoney(balanceAmount) !== this.roundMoney(expectedBalanceAmount)) {
+          this.$message.error(`第${index + 1}行尾款金额必须等于客户订单确认函总金额减定金金额`)
           return false
         }
         recognizedTotal += Number(row.xianmuDepositRecognizedAmount || 0) + Number(row.xianmuBalanceRecognizedAmount || 0)
