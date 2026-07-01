@@ -182,7 +182,7 @@ export default {
         : (this.saleOrder.itemList || [])
       const usedMap = {}
       ;(this.saleOrder.outboundBatchList || []).forEach(batch => {
-        if (Number(batch.status || 0) !== 3) return
+        if (Number(batch.status || 0) === 9) return
         ;(batch.planItemList || []).forEach(item => {
           const key = String(item.saleOrderItemId)
           usedMap[key] = Number(usedMap[key] || 0) + Number(item.plannedBoxes || 0)

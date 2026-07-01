@@ -558,7 +558,7 @@
                 </el-steps>
                 <div class="outbound-flow-actions">
                   <el-button
-                    v-if="attachmentEditable && !currentOutboundBatch && !outboundCompleted"
+                    v-if="attachmentEditable && !outboundCompleted"
                     size="mini"
                     type="primary"
                     :loading="outboundBatchLoading"
@@ -619,8 +619,25 @@
                     @click="voidOutboundBatch">
                     删除当前批次
                   </el-button>
-                  <span v-if="hasOpenOutboundBatch" class="sub-title-tip">当前批次未完成前，不能新增下一批。</span>
+                  <span v-if="openOutboundBatchList.length > 1" class="sub-title-tip">请先点选要处理的批次，再上传回单、水单或确认完成。</span>
                   <span v-if="attachmentEditable && currentOutboundBatch && currentOutboundBatchEditable" class="sub-title-tip">{{ bankVoucherSupportTip }}</span>
+                </div>
+              </div>
+            </div>
+            <div v-if="openOutboundBatchList.length" class="outbound-open-batch-list">
+              <div
+                v-for="batch in openOutboundBatchList"
+                :key="batch.id"
+                :class="['outbound-open-batch-card', String(activeOutboundBatchId) === String(batch.id) ? 'is-active' : '']"
+                @click="selectOutboundBatch(batch)">
+                <div class="open-batch-title">
+                  <strong>{{ batch.batchNo || '-' }}</strong>
+                  <el-tag size="mini" :type="outboundBatchTagType(batch)">{{ formatOutboundBatchStatus(batch.status) }}</el-tag>
+                </div>
+                <div class="open-batch-meta">
+                  <span>{{ batch.ownershipName || '-' }}</span>
+                  <span>{{ batch.driverName || '-' }}</span>
+                  <span>{{ formatInteger(batch.shippedTotalBoxes) }}箱 / {{ formatNumber(batch.shippedTotalWeight, 3) }}KG</span>
                 </div>
               </div>
             </div>
@@ -1310,18 +1327,20 @@ export default {
       return days ? `${days}天` : '-'
     },
     currentOutboundBatch () {
-      const list = this.dataForm.outboundBatchList || []
-      return list.find(item => {
-        const status = Number(item.status || 0)
-        return status !== 3 && status !== 9
-      }) || null
+      const list = this.openOutboundBatchList
+      if (!list.length) return null
+      const active = list.find(item => String(item.id) === String(this.activeOutboundBatchId))
+      return active || list[0]
     },
-    hasOpenOutboundBatch () {
+    openOutboundBatchList () {
       const list = this.dataForm.outboundBatchList || []
-      return list.some(item => {
+      return list.filter(item => {
         const status = Number(item.status || 0)
         return status !== 3 && status !== 9
       })
+    },
+    hasOpenOutboundBatch () {
+      return this.openOutboundBatchList.length > 0
     },
     currentOutboundBatchEditable () {
       if (!this.currentOutboundBatch) return false
@@ -1330,11 +1349,7 @@ export default {
     },
     currentOutboundBatchTagType () {
       if (!this.currentOutboundBatch) return 'info'
-      const status = Number(this.currentOutboundBatch.status || 0)
-      if (status === 3) return 'success'
-      if (status === 9) return 'info'
-      if (status === 2) return 'warning'
-      return 'danger'
+      return this.outboundBatchTagType(this.currentOutboundBatch)
     },
     currentOutboundReceiptFiles () {
       const batch = this.currentOutboundBatch
@@ -1685,6 +1700,7 @@ export default {
     },
     normalizeForm (form) {
       const source = form || {}
+      const previousActiveOutboundBatchId = this.activeOutboundBatchId
       const result = Object.assign(this.defaultForm(), source)
       result.contractSignDate = this.normalizeDateValue(source.contractSignDate)
       result.fileList = source.fileList || []
@@ -1698,10 +1714,12 @@ export default {
       }
       result.outboundSummaryList = (source.outboundSummaryList || []).map(item => Object.assign({}, item))
       result.outboundBatchList = (source.outboundBatchList || []).map(item => this.normalizeOutboundBatch(item))
-      const openBatch = result.outboundBatchList.find(item => {
+      const openBatchList = result.outboundBatchList.filter(item => {
         const status = Number(item.status || 0)
         return status !== 3 && status !== 9
       })
+      const activeOpenBatch = openBatchList.find(item => String(item.id) === String(previousActiveOutboundBatchId))
+      const openBatch = activeOpenBatch || openBatchList[0]
       if (openBatch) {
         this.activeOutboundBatchId = openBatch.id
         result.outboundReceipt = this.normalizeOutboundReceipt(openBatch.receipt)
@@ -1795,6 +1813,18 @@ export default {
       const batch = this.currentOutboundBatch
       this.dataForm.outboundReceipt = batch ? this.normalizeOutboundReceipt(batch.receipt) : null
       this.layoutOutboundTables()
+    },
+    selectOutboundBatch (batch) {
+      if (!batch || !batch.id) return
+      this.activeOutboundBatchId = batch.id
+      this.setActiveOutboundBatch()
+    },
+    outboundBatchTagType (batch) {
+      const status = Number((batch && batch.status) || 0)
+      if (status === 3) return 'success'
+      if (status === 9) return 'info'
+      if (status === 2) return 'warning'
+      return 'danger'
     },
     layoutOutboundTables () {
       this.$nextTick(() => {
@@ -3007,6 +3037,45 @@ export default {
   gap: 8px;
   padding-top: 10px;
   border-top: 1px dashed #d9ecff;
+}
+
+.outbound-open-batch-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+  margin: 10px 0 12px;
+}
+
+.outbound-open-batch-card {
+  cursor: pointer;
+  padding: 10px 12px;
+  border: 1px solid #dcdfe6;
+  border-radius: 6px;
+  background: #fff;
+  transition: border-color .2s, box-shadow .2s, background .2s;
+}
+
+.outbound-open-batch-card:hover,
+.outbound-open-batch-card.is-active {
+  border-color: #1f6fbf;
+  background: #f4f9ff;
+  box-shadow: 0 2px 10px rgba(31, 111, 191, .12);
+}
+
+.open-batch-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.open-batch-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  color: #606266;
+  font-size: 12px;
 }
 
 .outbound-batch-info {
