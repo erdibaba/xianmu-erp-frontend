@@ -210,6 +210,31 @@
                 </template>
               </el-table-column>
             </el-table>
+            <div class="linked-confirm-section-title">预售产品确认进度</div>
+            <el-table
+              :data="linkedConfirmProductRows"
+              border
+              size="small"
+              height="320"
+              empty-text="暂无预售产品明细">
+              <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
+              <el-table-column prop="sourceProductCode" label="预售产品编码" min-width="150" show-overflow-tooltip></el-table-column>
+              <el-table-column prop="productName" label="产品中文名称" min-width="170" show-overflow-tooltip></el-table-column>
+              <el-table-column prop="productNameEn" label="产品英文名称" min-width="220" show-overflow-tooltip></el-table-column>
+              <el-table-column label="预售重量(KG)" width="140" align="right">
+                <template slot-scope="scope">{{ money(scope.row.presaleWeightKg) }}</template>
+              </el-table-column>
+              <el-table-column label="已确认重量(KG)" width="150" align="right">
+                <template slot-scope="scope">{{ money(scope.row.confirmedWeightKg) }}</template>
+              </el-table-column>
+              <el-table-column label="剩余未确认(KG)" width="150" align="right">
+                <template slot-scope="scope">
+                  <span :class="{ 'weight-warning': scope.row.remainingWeightKg < 0 }">{{ money(scope.row.remainingWeightKg) }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="confirmPercent" label="确认进度" width="110" align="center"></el-table-column>
+              <el-table-column prop="confirmContractNosText" label="关联确认函合同号" min-width="220" show-overflow-tooltip></el-table-column>
+            </el-table>
           </div>
         </el-tab-pane>
 
@@ -1104,6 +1129,56 @@ export default {
         return row
       })
     },
+    linkedConfirmProductRows () {
+      const confirmItemMap = {}
+      ;(this.dataForm.confirmList || []).forEach(confirm => {
+        const contractNo = confirm.contractNo || ''
+        ;(confirm.itemList || []).forEach(item => {
+          const codes = this.extractMatchProductCodes(item.sourceProductCode || item.productCode)
+          codes.forEach(code => {
+            if (!confirmItemMap[code]) {
+              confirmItemMap[code] = {
+                weightKg: 0,
+                contractNos: []
+              }
+            }
+            confirmItemMap[code].weightKg += this.toNumber(item.quantity)
+            if (contractNo && confirmItemMap[code].contractNos.indexOf(contractNo) === -1) {
+              confirmItemMap[code].contractNos.push(contractNo)
+            }
+          })
+        })
+      })
+      return (this.dataForm.itemList || []).map(item => {
+        const matchCodes = this.extractMatchProductCodes(item.sourceProductCode || item.productCode)
+        const confirmed = matchCodes.reduce((result, code) => {
+          const summary = confirmItemMap[code]
+          if (!summary) {
+            return result
+          }
+          result.weightKg += summary.weightKg
+          summary.contractNos.forEach(contractNo => {
+            if (result.contractNos.indexOf(contractNo) === -1) {
+              result.contractNos.push(contractNo)
+            }
+          })
+          return result
+        }, { weightKg: 0, contractNos: [] })
+        const presaleWeightKg = this.resolvePresaleItemWeightKg(item)
+        const remainingWeightKg = presaleWeightKg - confirmed.weightKg
+        const confirmPercent = presaleWeightKg ? ((confirmed.weightKg / presaleWeightKg) * 100).toFixed(2) + '%' : '0.00%'
+        return {
+          sourceProductCode: item.sourceProductCode || item.productCode || '',
+          productName: item.productName || item._recognizedProductName || '',
+          productNameEn: item.productNameEn || item._recognizedProductNameEn || '',
+          presaleWeightKg,
+          confirmedWeightKg: confirmed.weightKg,
+          remainingWeightKg,
+          confirmPercent,
+          confirmContractNosText: confirmed.contractNos.join(', ')
+        }
+      })
+    },
     confirmTotalWeightKg () {
       return this.linkedConfirmRows.reduce((sum, item) => sum + this.toNumber(item.confirmWeightKg), 0)
     },
@@ -1774,6 +1849,27 @@ export default {
       if (!code) return ''
       return String(code).replace(/[A-Za-z]+$/g, '')
     },
+    extractMatchProductCodes (code) {
+      if (!code) return []
+      const result = []
+      String(code)
+        .split(/[/,，;；\s]+/)
+        .map(value => this.normalizeProductCode(value).trim())
+        .filter(value => value && /^\d+$/.test(value))
+        .forEach(value => {
+          if (result.indexOf(value) === -1) {
+            result.push(value)
+          }
+        })
+      return result
+    },
+    resolvePresaleItemWeightKg (item) {
+      const kg = this.toNumber(item.quantityKg)
+      if (kg) {
+        return kg
+      }
+      return this.tonToKg(item.quantityTon)
+    },
     normalizeEnglishName (value) {
       if (!value) return ''
       return String(value)
@@ -2010,6 +2106,17 @@ export default {
 
 .linked-confirm-alert {
   margin-top: 10px;
+}
+
+.linked-confirm-section-title {
+  margin: 16px 0 8px;
+  color: #1f5f73;
+  font-weight: 700;
+}
+
+.weight-warning {
+  color: #f56c6c;
+  font-weight: 700;
 }
 
 .linked-confirm-detail-table {
