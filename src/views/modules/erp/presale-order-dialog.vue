@@ -1139,10 +1139,18 @@ export default {
             if (!confirmItemMap[code]) {
               confirmItemMap[code] = {
                 weightKg: 0,
-                contractNos: []
+                contractNos: [],
+                productName: '',
+                productNameEn: ''
               }
             }
             confirmItemMap[code].weightKg += this.toNumber(item.quantity)
+            if (!confirmItemMap[code].productName && item.productName) {
+              confirmItemMap[code].productName = item.productName
+            }
+            if (!confirmItemMap[code].productNameEn && item.productNameEn) {
+              confirmItemMap[code].productNameEn = item.productNameEn
+            }
             if (contractNo && confirmItemMap[code].contractNos.indexOf(contractNo) === -1) {
               confirmItemMap[code].contractNos.push(contractNo)
             }
@@ -1157,20 +1165,26 @@ export default {
             return result
           }
           result.weightKg += summary.weightKg
+          if (!result.productName && summary.productName) {
+            result.productName = summary.productName
+          }
+          if (!result.productNameEn && summary.productNameEn) {
+            result.productNameEn = summary.productNameEn
+          }
           summary.contractNos.forEach(contractNo => {
             if (result.contractNos.indexOf(contractNo) === -1) {
               result.contractNos.push(contractNo)
             }
           })
           return result
-        }, { weightKg: 0, contractNos: [] })
+        }, { weightKg: 0, contractNos: [], productName: '', productNameEn: '' })
         const presaleWeightKg = this.resolvePresaleItemWeightKg(item)
         const remainingWeightKg = presaleWeightKg - confirmed.weightKg
         const confirmPercent = presaleWeightKg ? ((confirmed.weightKg / presaleWeightKg) * 100).toFixed(2) + '%' : '0.00%'
         return {
           sourceProductCode: item.sourceProductCode || item.productCode || '',
-          productName: item.productName || item._recognizedProductName || '',
-          productNameEn: item.productNameEn || item._recognizedProductNameEn || '',
+          productName: item.productName || confirmed.productName || item._recognizedProductName || '',
+          productNameEn: item.productNameEn || confirmed.productNameEn || item._recognizedProductNameEn || '',
           presaleWeightKg,
           confirmedWeightKg: confirmed.weightKg,
           remainingWeightKg,
