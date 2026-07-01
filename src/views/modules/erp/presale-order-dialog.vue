@@ -1044,7 +1044,7 @@ export default {
       return this.partnerList.filter(item => this.hasBusinessRole(item, 'BRAND'))
     },
     internalPartnerList () {
-      return this.partnerList.filter(item => this.hasBusinessRole(item, 'INTERNAL'))
+      return this.partnerList.filter(item => this.hasBusinessRole(item, 'INTERNAL') || this.hasBusinessRole(item, 'FUNDER'))
     },
     buyerPartnerList () {
       return this.partnerList.filter(item => this.hasBusinessRole(item, 'FUNDER') || this.hasBusinessRole(item, 'INTERNAL'))
@@ -1323,7 +1323,7 @@ export default {
     normalizeForm (form) {
       const result = Object.assign(defaultForm(), form || {})
       if (!result.customerPartnerId && result.customerReference) {
-        result.customerPartnerId = this.findPartnerIdByName(result.customerReference, ['INTERNAL'])
+        result.customerPartnerId = this.findPartnerIdByName(result.customerReference, ['INTERNAL', 'FUNDER'])
       }
       result.itemList = (form.itemList || []).map(item => {
         const row = Object.assign(defaultEstimateItem(), item)
@@ -1366,8 +1366,8 @@ export default {
       const resolvedBrandName = this.resolveDefaultBrandName(draft.brandName)
       const form = defaultForm()
       form.sellerContractNo = draft.contractNo || ''
-      form.customerReference = draft.partnerName || ''
-      form.customerPartnerId = this.findPartnerIdByName(form.customerReference, ['INTERNAL'])
+      form.customerReference = draft.buyerPartnerName || draft.partnerName || ''
+      form.customerPartnerId = this.findPartnerIdByName(form.customerReference, ['INTERNAL', 'FUNDER'])
       form.brandId = this.findPartnerIdByName(resolvedBrandName, ['BRAND'])
       form.brandName = resolvedBrandName
       form.estimateFilePath = result.savedFilePath || ''
