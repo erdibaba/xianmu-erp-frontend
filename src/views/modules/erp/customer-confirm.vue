@@ -84,7 +84,7 @@
               size="small"
               @click="uploadCustomsHandle(scope.row)">上传报关单</el-button>
             <el-button
-              v-if="isAuth('erp:tradeorder:save')"
+              v-if="isAuth('erp:tradeorder:save') && !scope.row.quarantineUploaded"
               type="text"
               size="small"
               @click="uploadQuarantineHandle(scope.row)">上传检疫证明</el-button>
