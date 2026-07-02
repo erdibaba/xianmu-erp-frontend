@@ -81,7 +81,7 @@
 
         <el-row :gutter="20">
           <el-col :span="6">
-            <el-form-item label="销售">
+            <el-form-item label="销售" prop="salespersonId">
               <el-select
                 v-model="dataForm.salespersonId"
                 :disabled="contentReadonly"
@@ -1296,6 +1296,7 @@ export default {
       dataRule: {
         saleType: [{ required: true, message: '请选择销售类型', trigger: 'change' }],
         secondaryPartnerId: [{ required: true, message: '请选择二批商', trigger: 'change' }],
+        salespersonId: [{ required: true, message: '请选择销售', trigger: 'change' }],
         warehouseId: [{ required: true, message: '请选择仓库', trigger: 'change' }],
         contractSignDate: [{ required: true, message: '请选择签订日期', trigger: 'change' }]
       }
