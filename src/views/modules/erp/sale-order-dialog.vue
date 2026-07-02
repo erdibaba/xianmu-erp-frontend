@@ -836,10 +836,11 @@
             </el-row>
             <div v-if="dataForm.outboundSummaryList && dataForm.outboundSummaryList.length" class="outbound-adjustment-summary">
               <span>整单多退少补汇总：</span>
-              <strong :class="outboundAdjustmentTotal >= 0 ? 'refund' : 'supplement'">
+              <strong v-if="outboundAdjustmentReady" :class="outboundAdjustmentTotal >= 0 ? 'refund' : 'supplement'">
                 {{ outboundAdjustmentTotal >= 0 ? '应退款' : '应补款' }} ¥{{ Math.abs(outboundAdjustmentTotal).toFixed(2) }}
               </strong>
-              <span class="summary-tip">按所有有效出库批次汇总计算；正数表示少出需退款，负数表示多出需补收。</span>
+              <strong v-else class="pending-adjustment">待整单出库完成后计算</strong>
+              <span class="summary-tip">按所有有效出库批次汇总，整单箱数匹配完成后再计算金额，避免部分出库阶段误判。</span>
             </div>
             <el-table
               v-if="dataForm.outboundSummaryList && dataForm.outboundSummaryList.length"
@@ -878,9 +879,10 @@
               </el-table-column>
               <el-table-column label="应退/应补" width="115" align="right">
                 <template slot-scope="scope">
-                  <span :class="Number(scope.row.adjustmentAmount || 0) >= 0 ? 'refund' : 'supplement'">
+                  <span v-if="outboundAdjustmentReady" :class="Number(scope.row.adjustmentAmount || 0) >= 0 ? 'refund' : 'supplement'">
                     {{ formatNumber(scope.row.adjustmentAmount, 2) }}
                   </span>
+                  <span v-else class="pending-adjustment">待整单完成</span>
                 </template>
               </el-table-column>
             </el-table>
@@ -1093,9 +1095,10 @@
               </el-table-column>
               <el-table-column label="应退/应补" width="115" align="right">
                 <template slot-scope="scope">
-                  <span :class="calcOutboundAdjustmentAmount(scope.row) >= 0 ? 'refund' : 'supplement'">
+                  <span v-if="outboundAdjustmentReady" :class="calcOutboundAdjustmentAmount(scope.row) >= 0 ? 'refund' : 'supplement'">
                     {{ formatNumber(calcOutboundAdjustmentAmount(scope.row), 2) }}
                   </span>
+                  <span v-else class="pending-adjustment">待整单完成</span>
                 </template>
               </el-table-column>
               <el-table-column label="WMS单号" width="130">
@@ -1477,9 +1480,13 @@ export default {
       return receipt.itemList.reduce((total, item) => total + Number(item.shippedQty || 0), 0)
     },
     outboundAdjustmentTotal () {
+      if (!this.outboundAdjustmentReady) return 0
       const summaryList = this.dataForm.outboundSummaryList || []
       const total = summaryList.reduce((sum, item) => sum + this.toNumber(item.adjustmentAmount), 0)
       return Number(total.toFixed(2))
+    },
+    outboundAdjustmentReady () {
+      return this.outboundReceiptMatched
     },
     outboundReceiptMatchMessage () {
       const summaryList = this.dataForm.outboundSummaryList || []
@@ -3281,6 +3288,10 @@ export default {
 
 .supplement {
   color: #0b8f72;
+}
+
+.pending-adjustment {
+  color: #909399;
 }
 
 .contract-link-wrap {
