@@ -892,7 +892,7 @@ export default {
       const text = String(skuCode || '').toUpperCase()
       const fMatch = text.match(/F(\d{5})/)
       if (fMatch) {
-        return `F${fMatch[1]}`
+        return fMatch[1]
       }
       const match = text.match(/C?(\d{5})/)
       return match ? match[1] : ''
@@ -901,7 +901,7 @@ export default {
       const text = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '')
       const fMatch = text.match(/^F(\d{5})/)
       if (fMatch) {
-        return `F${fMatch[1]}`
+        return fMatch[1]
       }
       return text.replace(/[^0-9]/g, '')
     },
