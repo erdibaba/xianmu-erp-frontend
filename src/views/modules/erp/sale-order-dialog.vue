@@ -2469,6 +2469,7 @@ export default {
           this.$message.error(itemError)
           return false
         }
+        const isCreate = !this.dataForm.id
         this.saveLoading = true
         this.withGlobalLoading(this.$http({
           url: this.$http.adornUrl('/erp/saleorder/save'),
@@ -2478,7 +2479,7 @@ export default {
           if (data && data.code === 0) {
             this.$message.success('保存成功')
             this.visible = false
-            this.$emit('refreshDataList')
+            this.$emit('refreshDataList', { created: isCreate })
           } else {
             this.$message.error((data && data.msg) || '保存失败')
           }

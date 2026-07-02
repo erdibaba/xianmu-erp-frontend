@@ -150,7 +150,7 @@
     <sale-order-dialog
       v-if="dialogVisible"
       ref="dialog"
-      @refreshDataList="getDataList">
+      @refreshDataList="handleDialogRefresh">
     </sale-order-dialog>
 
     <el-dialog
@@ -261,6 +261,12 @@ export default {
     this.getDataList()
   },
   methods: {
+    handleDialogRefresh (payload) {
+      if (payload && payload.created) {
+        this.pageIndex = 1
+      }
+      this.getDataList()
+    },
     getDataList () {
       this.dataListLoading = true
       this.$http({
