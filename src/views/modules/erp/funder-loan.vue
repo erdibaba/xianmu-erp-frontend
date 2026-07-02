@@ -319,6 +319,8 @@
           <el-table-column label="出库箱数" width="90" align="right"><template slot-scope="scope">{{ scope.row.shippedBoxes || 0 }}</template></el-table-column>
           <el-table-column label="计费重量KG" width="120" align="right"><template slot-scope="scope">{{ number3(scope.row.feeWeight || scope.row.shippedWeight) }}</template></el-table-column>
           <el-table-column label="确认函单价" width="110" align="right"><template slot-scope="scope">{{ number6(scope.row.unitPriceInclTax) }}</template></el-table-column>
+          <el-table-column label="结算销售单价" width="130" align="right"><template slot-scope="scope">{{ number6(scope.row.settlementUnitPrice || scope.row.unitPriceInclTax) }}</template></el-table-column>
+          <el-table-column label="货值金额" width="120" align="right"><template slot-scope="scope">{{ money(scope.row.costAmount) }}</template></el-table-column>
           <el-table-column label="系统还本" width="120" align="right"><template slot-scope="scope">{{ money(scope.row.systemPrincipalAmount) }}</template></el-table-column>
           <el-table-column label="确认还本" width="120" align="right"><template slot-scope="scope">{{ money(scope.row.confirmedPrincipalAmount) }}</template></el-table-column>
           <el-table-column prop="loanDays" label="计息天数" width="90" align="right"></el-table-column>
@@ -509,7 +511,7 @@ export default {
         { name: '手续费/装卸费', amount: f.handlingFeeAmount, formula: '各明细行按：出库重量KG ÷ 1000 × 装卸费单价（按仓库费用历史和业务日期取价）计算后汇总。' },
         { name: '扫码费', amount: this.effectiveCodeScanFee, formula: '开关打开时，各明细行按对应仓库费用历史维护的扫码费方式和单价计算；开关关闭时为0。' },
         { name: '印花税', amount: f.stampTaxAmount, formula: '各明细行按：出库重量KG × 确认函含税单价 × 0.0006 计算后汇总。' },
-        { name: '保证金/押金', amount: f.depositAmount, formula: '各明细行按：货值金额 × 25%；货值金额 = 出库重量KG × 确认函含税单价。' },
+        { name: '保证金/押金', amount: f.depositAmount, formula: '各明细行按：货值金额 × 25%；货值金额 = 计费重量KG × 结算销售单价。' },
         { name: '补税点费用', amount: f.taxAdjustAmount, formula: '人工录入费用，计入其他资方费用。' },
         { name: '毛重费用', amount: f.grossWeightFeeAmount, formula: '各明细行按：先用 产品总净重 ÷ 确认单整单净重 × 报关单确认毛重 得到产品总毛重，再按 产品总毛重 ÷ 产品总箱数 × 本次出库箱数 得到本次计费毛重，最后按 本次计费毛重KG ÷ 1000 × 毛重费率 × 计费天数 计算后汇总。' },
         { name: '其他费用', amount: f.otherFeeAmount, formula: '人工补充费用，计入其他资方费用。' }
@@ -610,7 +612,7 @@ export default {
       return `计费重量${this.number3(weight)}KG × 确认函含税单价${this.number6(item.unitPriceInclTax)} × 0.0006 = ${this.money(item.stampTaxAmount)}`
     },
     itemDepositFormula (item) {
-      return `货值金额${this.money(item.costAmount)} × 25% = ${this.money(item.depositAmount)}`
+      return `货值金额${this.money(item.costAmount)}（计费重量${this.number3(this.feeWeight(item))}KG × 结算销售单价${this.number6(item.settlementUnitPrice || item.unitPriceInclTax)}） × 25% = ${this.money(item.depositAmount)}`
     },
     itemGrossWeightFormula (item) {
       if (!Number(item.grossWeightFeeAmount || 0)) {
