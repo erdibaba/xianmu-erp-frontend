@@ -8,14 +8,25 @@
     <div class="batch-dialog" v-loading="loading">
       <el-form :model="form" ref="form" :rules="rules" label-width="90px">
         <el-row :gutter="16">
-          <el-col :span="8">
+          <el-col :span="7">
             <el-form-item label="货权" prop="ownershipName">
               <el-select v-model="form.ownershipName" placeholder="请选择货权" style="width: 100%;" @change="ownershipChange">
                 <el-option v-for="item in ownershipOptions" :key="item" :label="item" :value="item"></el-option>
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :span="5">
+            <el-form-item label="出库时间" prop="outboundDate">
+              <el-date-picker
+                v-model="form.outboundDate"
+                type="date"
+                value-format="yyyy-MM-dd"
+                placeholder="选择日期"
+                style="width: 100%;">
+              </el-date-picker>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
             <el-form-item label="司机" prop="driverId">
               <el-select
                 v-model="form.driverId"
@@ -134,7 +145,8 @@ export default {
       driverOptions: [],
       form: {
         driverId: '',
-        ownershipName: ''
+        ownershipName: '',
+        outboundDate: ''
       },
       driverForm: {
         driverName: '',
@@ -143,6 +155,7 @@ export default {
       },
       rules: {
         ownershipName: [{ required: true, message: '请选择货权', trigger: 'change' }],
+        outboundDate: [{ required: true, message: '请选择出库时间', trigger: 'change' }],
         driverId: [{ required: true, message: '请选择司机', trigger: 'change' }]
       },
       driverRules: {
@@ -162,10 +175,17 @@ export default {
     }
   },
   methods: {
+    pad2 (value) {
+      return value < 10 ? '0' + value : '' + value
+    },
+    todayDate () {
+      const now = new Date()
+      return now.getFullYear() + '-' + this.pad2(now.getMonth() + 1) + '-' + this.pad2(now.getDate())
+    },
     init (saleOrder) {
       this.visible = true
       this.saleOrder = saleOrder || {}
-      this.form = { driverId: '', ownershipName: '' }
+      this.form = { driverId: '', ownershipName: '', outboundDate: this.todayDate() }
       this.driverOptions = []
       this.buildCandidates()
       if (this.ownershipOptions.length === 1) {
@@ -276,6 +296,7 @@ export default {
           saleOrderId: this.saleOrder.id,
           driverId: this.form.driverId,
           ownershipName: this.form.ownershipName,
+          outboundDate: this.form.outboundDate,
           planItemList: selected.map(row => ({
             saleOrderItemId: row.id,
             plannedBoxes: Number(row.plannedBoxes),

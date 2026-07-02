@@ -636,6 +636,7 @@
                 </div>
                 <div class="open-batch-meta">
                   <span>{{ batch.ownershipName || '-' }}</span>
+                  <span>出库：{{ formatDateOnly(batch.outboundDate) || '-' }}</span>
                   <span>{{ batch.driverName || '-' }}</span>
                   <span>{{ formatInteger(batch.shippedTotalBoxes) }}箱 / {{ formatNumber(batch.shippedTotalWeight, 3) }}KG</span>
                 </div>
@@ -643,6 +644,7 @@
             </div>
             <div v-if="currentOutboundBatch" class="outbound-batch-info">
               <span><strong>货权：</strong>{{ currentOutboundBatch.ownershipName || '-' }}</span>
+              <span><strong>出库时间：</strong>{{ formatDateOnly(currentOutboundBatch.outboundDate) || '-' }}</span>
               <span><strong>司机：</strong>{{ currentOutboundBatch.driverName || '-' }}</span>
               <span><strong>车牌号：</strong>{{ currentOutboundBatch.plateNo || '-' }}</span>
               <span><strong>手机号：</strong>{{ currentOutboundBatch.driverMobile || '-' }}</span>
@@ -929,6 +931,9 @@
               </el-table-column>
               <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
               <el-table-column prop="batchNo" label="批次号" width="110"></el-table-column>
+              <el-table-column label="出库时间" width="110" align="center">
+                <template slot-scope="scope">{{ formatDateOnly(scope.row.outboundDate) }}</template>
+              </el-table-column>
               <el-table-column prop="ownershipName" label="货权" min-width="130" show-overflow-tooltip></el-table-column>
               <el-table-column prop="driverName" label="司机" width="100" show-overflow-tooltip></el-table-column>
               <el-table-column prop="plateNo" label="车牌号" width="110" show-overflow-tooltip></el-table-column>
@@ -1812,6 +1817,7 @@ export default {
         saleOrderId: '',
         batchNo: '',
         status: 0,
+        outboundDate: '',
         driverId: '',
         driverName: '',
         plateNo: '',
