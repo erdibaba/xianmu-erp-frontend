@@ -210,6 +210,9 @@
                   <div class="product-option-name">{{ item.productName || '-' }} / {{ item.productNameEn || '-' }}</div>
                 </el-option>
               </el-select>
+              <div v-if="!scope.row.productId && scope.row.productCode" class="recognized-product-code">
+                识别编码：{{ scope.row.productCode }}
+              </div>
             </template>
           </el-table-column>
 
@@ -810,6 +813,7 @@ export default {
         _productPageSize: 15,
         _productLoading: false,
         _productOptions: [],
+        _recognizedProductCode: item.productCode || this.extractProductCodeFromSku(item.skuCode),
         _recognizedProductName: item.productName || '',
         _recognizedProductNameEn: item.productNameEn || ''
       }, item))
@@ -822,7 +826,8 @@ export default {
     },
     syncProductRows (itemList) {
       itemList.forEach(row => {
-        const normalizedCode = this.extractProductCodeFromSku(row.skuCode) || String(row.productCode || '').replace(/[^0-9]/g, '')
+        const normalizedCode = this.extractProductCodeFromSku(row.skuCode) || this.normalizeProductCode(row.productCode)
+        row._recognizedProductCode = row._recognizedProductCode || normalizedCode
         const product = row.productId
           ? this.productList.find(item => String(item.id) === String(row.productId))
           : this.productList.find(item => String(item.productCode) === normalizedCode)
@@ -831,7 +836,7 @@ export default {
           return
         }
         row.productId = ''
-        row.productCode = ''
+        row.productCode = row._recognizedProductCode || normalizedCode || ''
         row.productSpec = ''
         row.unit = ''
         row.packingBoxes = 0
@@ -863,6 +868,7 @@ export default {
         _productPageSize: 15,
         _productLoading: false,
         _productOptions: [],
+        _recognizedProductCode: '',
         _recognizedProductName: '',
         _recognizedProductNameEn: ''
       }
@@ -883,18 +889,32 @@ export default {
       this.dataForm.itemList.splice(index, 1)
     },
     extractProductCodeFromSku (skuCode) {
-      const match = String(skuCode || '').match(/C?(\d{5})/i)
+      const text = String(skuCode || '').toUpperCase()
+      const fMatch = text.match(/F(\d{5})/)
+      if (fMatch) {
+        return `F${fMatch[1]}`
+      }
+      const match = text.match(/C?(\d{5})/)
       return match ? match[1] : ''
+    },
+    normalizeProductCode (code) {
+      const text = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '')
+      const fMatch = text.match(/^F(\d{5})/)
+      if (fMatch) {
+        return `F${fMatch[1]}`
+      }
+      return text.replace(/[^0-9]/g, '')
     },
     skuChangeHandle (row) {
       const normalizedCode = this.extractProductCodeFromSku(row.skuCode)
+      row._recognizedProductCode = normalizedCode || row._recognizedProductCode || ''
       const product = this.productList.find(item => String(item.productCode) === normalizedCode)
       if (product) {
         this.applyProductToRow(row, product)
         return
       }
       row.productId = ''
-      row.productCode = ''
+      row.productCode = row._recognizedProductCode || normalizedCode || ''
       row.productSpec = ''
       row.unit = ''
       row.packingBoxes = 0
@@ -953,7 +973,7 @@ export default {
     productSelectChange (row, value) {
       if (!value) {
         row.productId = ''
-        row.productCode = ''
+        row.productCode = row._recognizedProductCode || ''
         row.productSpec = ''
         row.unit = ''
         row.packingBoxes = 0
@@ -965,7 +985,7 @@ export default {
         this.productList.find(item => String(item.id) === String(value))
       if (!product) {
         row.productId = ''
-        row.productCode = ''
+        row.productCode = row._recognizedProductCode || ''
         row.productSpec = ''
         row.unit = ''
         row.packingBoxes = 0
@@ -1252,6 +1272,13 @@ export default {
   color: #909399;
   font-size: 12px;
   line-height: 18px;
+}
+
+.recognized-product-code {
+  margin-top: 4px;
+  color: #E6A23C;
+  font-size: 12px;
+  line-height: 16px;
 }
 
 .driver-option-main {
