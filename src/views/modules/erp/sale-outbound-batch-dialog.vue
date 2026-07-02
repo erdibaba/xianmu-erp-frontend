@@ -50,6 +50,16 @@
             <el-button type="primary" plain @click="quickDriverVisible = true">新增司机</el-button>
           </el-col>
         </el-row>
+        <el-form-item label="备注">
+          <el-input
+            v-model="form.remark"
+            type="textarea"
+            :rows="2"
+            maxlength="500"
+            show-word-limit
+            placeholder="请输入本批次备注">
+          </el-input>
+        </el-form-item>
       </el-form>
 
       <div class="section-title">
@@ -146,7 +156,8 @@ export default {
       form: {
         driverId: '',
         ownershipName: '',
-        outboundDate: ''
+        outboundDate: '',
+        remark: ''
       },
       driverForm: {
         driverName: '',
@@ -185,7 +196,7 @@ export default {
     init (saleOrder) {
       this.visible = true
       this.saleOrder = saleOrder || {}
-      this.form = { driverId: '', ownershipName: '', outboundDate: this.todayDate() }
+      this.form = { driverId: '', ownershipName: '', outboundDate: this.todayDate(), remark: '' }
       this.driverOptions = []
       this.buildCandidates()
       if (this.ownershipOptions.length === 1) {
@@ -297,6 +308,7 @@ export default {
           driverId: this.form.driverId,
           ownershipName: this.form.ownershipName,
           outboundDate: this.form.outboundDate,
+          remark: this.form.remark,
           planItemList: selected.map(row => ({
             saleOrderItemId: row.id,
             plannedBoxes: Number(row.plannedBoxes),

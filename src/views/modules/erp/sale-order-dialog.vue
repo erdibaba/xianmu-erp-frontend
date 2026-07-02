@@ -648,6 +648,7 @@
               <span><strong>司机：</strong>{{ currentOutboundBatch.driverName || '-' }}</span>
               <span><strong>车牌号：</strong>{{ currentOutboundBatch.plateNo || '-' }}</span>
               <span><strong>手机号：</strong>{{ currentOutboundBatch.driverMobile || '-' }}</span>
+              <span><strong>备注：</strong>{{ currentOutboundBatch.remark || '-' }}</span>
             </div>
             <div v-if="currentOutboundBatch && currentOutboundBatch.planItemList && currentOutboundBatch.planItemList.length" class="outbound-section-title">
               <strong>本批次计划及实际核对</strong>
@@ -1823,6 +1824,7 @@ export default {
         plateNo: '',
         driverMobile: '',
         ownershipName: '',
+        remark: '',
         planItemList: [],
         bankSlipFileId: '',
         receiptCount: 0,
