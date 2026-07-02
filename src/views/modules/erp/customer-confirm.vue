@@ -38,6 +38,9 @@
       <el-table-column label="总金额" width="130" align="right">
         <template slot-scope="scope">{{ money(scope.row.totalAmount) }}</template>
       </el-table-column>
+      <el-table-column label="列表总重量(KG)" width="150" align="right">
+        <template slot-scope="scope">{{ quantity(scope.row.totalQuantityKg) }}</template>
+      </el-table-column>
       <el-table-column label="装箱单" width="100" align="center">
         <template slot-scope="scope">
           <el-tag size="small" :type="scope.row.packingUploaded ? 'success' : 'info'">
@@ -710,6 +713,10 @@ export default {
       return value ? String(value).slice(0, 10) : ''
     },
     money (value) {
+      const num = Number(value)
+      return Number.isFinite(num) ? num.toFixed(2) : '0.00'
+    },
+    quantity (value) {
       const num = Number(value)
       return Number.isFinite(num) ? num.toFixed(2) : '0.00'
     }

@@ -343,6 +343,9 @@
                     </div>
                   </template>
                   <div class="confirm-warning">
+                    列表总重量(KG)：{{ money(confirmLineTotalQuantityKg) }}
+                  </div>
+                  <div class="confirm-warning">
                     列表总值汇总(含税)：{{ money(confirmLineTotalInclTax) }}
                   </div>
                   
@@ -746,6 +749,7 @@
           <div class="detail-cell"><span>采购方</span><strong>{{ linkedConfirmDetail.buyerPartnerName || '-' }}</strong></div>
           <div class="detail-cell"><span>冷冻/冷鲜</span><strong>{{ linkedConfirmDetail.coldFreshType || '-' }}</strong></div>
           <div class="detail-cell"><span>确认函重量(KG)</span><strong>{{ money(linkedConfirmDetail.confirmWeightKg) }}</strong></div>
+          <div class="detail-cell"><span>列表总重量(KG)</span><strong>{{ money(linkedConfirmDetail.totalQuantityKg) }}</strong></div>
           <div class="detail-cell"><span>总金额</span><strong>{{ money(linkedConfirmDetail.totalAmount) }}</strong></div>
           <div class="detail-cell"><span>币种</span><strong>{{ linkedConfirmDetail.currency || '-' }}</strong></div>
         </div>
@@ -847,6 +851,7 @@ function defaultConfirmInfo () {
     coldFreshType: '',
     expectedArrivalDate: null,
     totalAmount: 0,
+    totalQuantityKg: 0,
     currency: 'CNY',
     filePath: '',
     fileName: '',
@@ -1080,6 +1085,11 @@ export default {
     confirmLineTotalInclTax () {
       return (this.dataForm.confirmInfo.itemList || []).reduce((sum, item) => {
         return sum + this.toNumber(item.lineTotalInclTax)
+      }, 0)
+    },
+    confirmLineTotalQuantityKg () {
+      return (this.dataForm.confirmInfo.itemList || []).reduce((sum, item) => {
+        return sum + this.toNumber(item.quantity)
       }, 0)
     },
     confirmLineTotalExclTax () {
@@ -1416,6 +1426,7 @@ export default {
       confirm.rawText = result.rawText || ''
       confirm.remark = confirm.remark || ''
       confirm.itemList = (draft.itemList || []).map(item => this.buildConfirmItem(item))
+      confirm.totalQuantityKg = this.confirmItemsTotalQuantity(confirm.itemList)
       return confirm
     },
     buildConfirmItem (item) {
@@ -1858,6 +1869,9 @@ export default {
       const divisor = 1 + taxRate / 100
       if (!divisor) return 0
       return Number((total / divisor).toFixed(2))
+    },
+    confirmItemsTotalQuantity (itemList) {
+      return (itemList || []).reduce((sum, item) => sum + this.toNumber(item.quantity), 0)
     },
     normalizeProductCode (code) {
       if (!code) return ''
