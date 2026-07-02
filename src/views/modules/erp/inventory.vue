@@ -7,6 +7,9 @@
             <el-input v-model="spotQuery.keyword" placeholder="产品编码/中文名/英文名" clearable @keyup.enter.native="getSpotList()"></el-input>
           </el-form-item>
           <el-form-item>
+            <el-input v-model="spotQuery.contractNo" placeholder="合同号" clearable @keyup.enter.native="getSpotList()"></el-input>
+          </el-form-item>
+          <el-form-item>
             <el-select v-model="spotQuery.warehouseId" filterable clearable placeholder="请选择仓库" style="width: 190px;" @change="spotWarehouseChange">
               <el-option v-for="item in warehouseList" :key="item.id" :label="item.warehouseName" :value="item.id"></el-option>
             </el-select>
@@ -44,6 +47,9 @@
           <el-table-column prop="productCode" label="产品编码" min-width="110" align="center" header-align="center"></el-table-column>
           <el-table-column prop="productName" label="中文名称" min-width="170" show-overflow-tooltip></el-table-column>
           <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
+          <el-table-column label="涉及合同号" min-width="190" show-overflow-tooltip>
+            <template slot-scope="scope">{{ formatContractNos(scope.row) }}</template>
+          </el-table-column>
           <el-table-column prop="ownershipName" label="货权" min-width="170" show-overflow-tooltip></el-table-column>
           <el-table-column prop="packingBoxes" label="装箱单箱数" width="110" align="right" header-align="center"></el-table-column>
           <el-table-column prop="inboundBoxes" label="入库箱数" width="100" align="right" header-align="center"></el-table-column>
@@ -116,6 +122,9 @@
           <el-table-column prop="productCode" label="产品编码" min-width="110" align="center" header-align="center"></el-table-column>
           <el-table-column prop="productName" label="中文名称" min-width="170" show-overflow-tooltip></el-table-column>
           <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
+          <el-table-column label="涉及合同号" min-width="190" show-overflow-tooltip>
+            <template slot-scope="scope">{{ formatContractNos(scope.row) }}</template>
+          </el-table-column>
           <el-table-column prop="ownershipName" label="货权" min-width="170" show-overflow-tooltip></el-table-column>
           <el-table-column prop="futuresBoxes" label="期货总箱数" width="110" align="right" header-align="center"></el-table-column>
           <el-table-column prop="futuresSoldBoxes" label="已占用箱数" width="110" align="right" header-align="center"></el-table-column>
@@ -276,6 +285,7 @@
         spotQuery: {
           keyword: '',
           warehouseId: '',
+          contractNo: '',
           containerNos: [],
           factoryNo: '',
           onlyAvailable: '1'
@@ -410,6 +420,7 @@
           : {
             productId: row.productId,
             warehouseId: this.spotQuery.warehouseId,
+            contractNo: this.spotQuery.contractNo,
             containerNos: (this.spotQuery.containerNos || []).join(','),
             ownershipName: row.ownershipName || '',
             factoryNo: this.spotQuery.factoryNo,
@@ -435,6 +446,7 @@
         this.spotQuery = {
           keyword: '',
           warehouseId: '',
+          contractNo: '',
           containerNos: [],
           factoryNo: '',
           onlyAvailable: '1'
@@ -466,6 +478,12 @@
           factoryNo: ''
         }
         this.getRecordList()
+      },
+      formatContractNos (row) {
+        if (!row) return '-'
+        if (row.contractNo) return row.contractNo
+        if (row.contractNos) return row.contractNos
+        return '-'
       },
       loadWarehouses () {
         this.$http({
