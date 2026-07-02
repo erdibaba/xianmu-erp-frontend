@@ -211,7 +211,7 @@
                 remote
                 reserve-keyword
                 clearable
-                placeholder="输入批次号/销售单号/货权搜索"
+                placeholder="输入批次号/销售单号/货权/确认函合同号搜索"
                 :remote-method="searchBatchOptions"
                 :loading="batchOptionLoading"
                 style="width:100%"
@@ -219,7 +219,7 @@
                 <el-option
                   v-for="item in batchOptions"
                   :key="item.id"
-                  :label="`${item.batchNo} / ${item.saleOrderNo || '-'} / ${item.ownershipName || '-'}`"
+                  :label="`${item.batchNo} / ${item.saleOrderNo || '-'} / ${item.ownershipName || '-'} / ${item.confirmContractNos || '-'}`"
                   :value="item.id">
                 </el-option>
               </el-select>
