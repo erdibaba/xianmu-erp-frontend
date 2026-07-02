@@ -148,6 +148,13 @@
                   v-if="dataForm.contractUrl"
                   type="text"
                   size="small"
+                  @click="previewContractPdf()">
+                  预览PDF
+                </el-button>
+                <el-button
+                  v-if="dataForm.contractUrl"
+                  type="text"
+                  size="small"
                   @click="copyContractUrl()">
                   复制链接
                 </el-button>
@@ -2865,6 +2872,16 @@ export default {
         return
       }
       window.open(this.dataForm.contractUrl, '_blank')
+    },
+    contractPreviewUrl () {
+      return String(this.dataForm.contractUrl || '').replace('/contract/', '/contract/pdf/preview/')
+    },
+    previewContractPdf () {
+      if (!this.dataForm.contractUrl) {
+        this.$message.error('合同链接不存在')
+        return
+      }
+      window.open(this.contractPreviewUrl(), '_blank')
     },
     copyContractUrl () {
       if (!this.dataForm.contractUrl) {

@@ -9,6 +9,7 @@
         <div class="portal-header__actions">
           <el-button size="small" @click="goLogin">切换账号</el-button>
           <el-button size="small" type="primary" plain @click="openContract">查看合同</el-button>
+          <el-button size="small" type="success" plain @click="previewContractPdf">预览PDF合同</el-button>
         </div>
       </div>
 
@@ -257,6 +258,16 @@ export default {
         return
       }
       window.open(this.saleOrder.contractUrl, '_blank')
+    },
+    contractPreviewUrl () {
+      return String(this.saleOrder.contractUrl || '').replace('/contract/', '/contract/pdf/preview/')
+    },
+    previewContractPdf () {
+      if (!this.saleOrder.contractUrl) {
+        this.$message.error('合同链接不存在')
+        return
+      }
+      window.open(this.contractPreviewUrl(), '_blank')
     },
     downloadPortalFile (row) {
       if (!row || !row.id) {

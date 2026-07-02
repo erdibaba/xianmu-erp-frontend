@@ -81,6 +81,13 @@
             v-if="scope.row.contractUrl"
             type="text"
             size="small"
+            @click="previewContractPdf(scope.row.contractUrl)">
+            预览PDF
+          </el-button>
+          <el-button
+            v-if="scope.row.contractUrl"
+            type="text"
+            size="small"
             @click="copyContractUrl(scope.row.contractUrl)">
             复制链接
           </el-button>
@@ -324,6 +331,16 @@ export default {
         return
       }
       window.open(url, '_blank')
+    },
+    buildContractPreviewUrl (url) {
+      return String(url || '').replace('/contract/', '/contract/pdf/preview/')
+    },
+    previewContractPdf (url) {
+      if (!url) {
+        this.$message.error('合同链接不存在')
+        return
+      }
+      window.open(this.buildContractPreviewUrl(url), '_blank')
     },
     copyContractUrl (url) {
       if (!url) {
