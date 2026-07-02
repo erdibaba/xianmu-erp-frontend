@@ -600,7 +600,7 @@
                     plain
                     :loading="outboundBatchLoading"
                     @click="bindOutboundScanLink">
-                    绑定扫码链接
+                    新增扫码链接
                   </el-button>
                   <el-button
                     v-if="attachmentEditable && currentOutboundBatch && canConfirmOutboundBatch"
@@ -687,11 +687,36 @@
               <el-tag v-if="dataForm.outboundSummaryList && dataForm.outboundSummaryList.length" size="small" :type="outboundReceiptMatched ? 'success' : 'danger'">
                 {{ outboundReceiptMatched ? '整单箱数一致' : '整单待核对' }}
               </el-tag>
-              <el-tag v-if="currentOutboundScan" size="small" type="success">
-                已绑定扫码：{{ currentOutboundScan.orderNum || '-' }} / {{ formatInteger(currentOutboundScan.totalBoxes) }}箱 / {{ formatNumber(currentOutboundScan.totalWeight, 3) }}KG
+              <el-tag v-if="currentOutboundScanList.length" size="small" type="success">
+                已绑定扫码链接：{{ currentOutboundScanList.length }}条 / {{ formatInteger(currentOutboundScanTotalBoxes) }}箱 / {{ formatNumber(currentOutboundScanTotalWeight, 3) }}KG
               </el-tag>
               <span v-if="dataForm.outboundSummaryList && dataForm.outboundSummaryList.length" class="sub-title-tip">{{ outboundReceiptMatchMessage }}</span>
             </div>
+            <el-table
+              v-if="currentOutboundScanList.length"
+              :data="currentOutboundScanList"
+              border
+              size="mini"
+              class="attachment-table outbound-scan-table">
+              <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
+              <el-table-column prop="orderNum" label="顺势云订单号" min-width="150" show-overflow-tooltip></el-table-column>
+              <el-table-column prop="customerName" label="客户名称" min-width="140" show-overflow-tooltip></el-table-column>
+              <el-table-column label="扫码箱数" width="90" align="right">
+                <template slot-scope="scope">{{ formatInteger(scope.row.totalBoxes) }}</template>
+              </el-table-column>
+              <el-table-column label="扫码重量(KG)" width="120" align="right">
+                <template slot-scope="scope">{{ formatNumber(scope.row.totalWeight, 3) }}</template>
+              </el-table-column>
+              <el-table-column label="明细行数" width="90" align="right">
+                <template slot-scope="scope">{{ (scope.row.itemList || []).length }}</template>
+              </el-table-column>
+              <el-table-column prop="scanUrl" label="链接" min-width="220" show-overflow-tooltip></el-table-column>
+              <el-table-column v-if="attachmentEditable && currentOutboundBatchEditable" label="操作" width="80" fixed="right" align="center">
+                <template slot-scope="scope">
+                  <el-button type="text" size="mini" @click="deleteOutboundScanLink(scope.row)">删除</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
             <div v-if="currentOutboundBankSlipVisible" class="bank-slip-panel">
               <div class="outbound-section-title">
                 <strong>二批来款水单确认结果</strong>
@@ -1376,6 +1401,18 @@ export default {
       const batch = this.currentOutboundBatch
       return batch ? batch.scan : null
     },
+    currentOutboundScanList () {
+      const batch = this.currentOutboundBatch
+      if (!batch) return []
+      if (batch.scanList && batch.scanList.length) return batch.scanList
+      return batch.scan ? [batch.scan] : []
+    },
+    currentOutboundScanTotalBoxes () {
+      return this.currentOutboundScanList.reduce((sum, item) => sum + this.toNumber(item.totalBoxes), 0)
+    },
+    currentOutboundScanTotalWeight () {
+      return this.currentOutboundScanList.reduce((sum, item) => sum + this.toNumber(item.totalWeight), 0)
+    },
     currentOutboundHasReceiptFile () {
       return this.currentOutboundReceiptFiles.length > 0
     },
@@ -1800,6 +1837,8 @@ export default {
         bankAmountDiff: 0,
         receipt: null,
         bankSlipFile: null,
+        scan: null,
+        scanList: [],
         receiptFileList: [],
         expenseList: []
       }, batch || {})
@@ -1807,6 +1846,8 @@ export default {
       result.receiptFileList = result.receiptFileList || []
       result.expenseList = result.expenseList || []
       result.planItemList = result.planItemList || []
+      result.scanList = result.scanList && result.scanList.length ? result.scanList : (result.scan ? [result.scan] : [])
+      result.scan = result.scan || (result.scanList.length ? result.scanList[result.scanList.length - 1] : null)
       return result
     },
     setActiveOutboundBatch () {
@@ -2497,11 +2538,10 @@ export default {
     },
     bindOutboundScanLink () {
       if (!this.currentOutboundBatch) return
-      const currentUrl = this.currentOutboundScan && this.currentOutboundScan.scanUrl ? this.currentOutboundScan.scanUrl : ''
-      this.$prompt('请粘贴顺势云扫码链接，系统会抓取箱数和每箱重量，并覆盖当前批次出库明细。', '绑定扫码链接', {
+      this.$prompt('请粘贴顺势云扫码链接，系统会追加保存该链接，并按当前批次所有扫码链接汇总重建出库明细。', '新增扫码链接', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
-        inputValue: currentUrl,
+        inputValue: '',
         inputPlaceholder: 'http://shunshiyun.com/pc/chamaDetails?orderNum=...&imei=...',
         inputValidator: value => {
           if (!value) return '请填写扫码链接'
@@ -2520,11 +2560,41 @@ export default {
           })
         })).then(({ data }) => {
           if (data && data.code === 0) {
-            this.$message.success('扫码链接绑定成功')
+            this.$message.success('扫码链接新增成功')
             this.refreshDetail()
             this.$emit('refreshDataList')
           } else {
-            this.$message.error((data && data.msg) || '扫码链接绑定失败')
+            this.$message.error((data && data.msg) || '扫码链接新增失败')
+          }
+          this.outboundBatchLoading = false
+        }).catch(() => {
+          this.outboundBatchLoading = false
+        })
+      }).catch(() => {})
+    },
+    deleteOutboundScanLink (scan) {
+      if (!this.currentOutboundBatch || !scan || !scan.id) return
+      this.$confirm(`确认删除顺势云扫码链接 ${scan.orderNum || ''}？删除后会按剩余扫码链接重新汇总当前批次出库明细。`, '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        this.outboundBatchLoading = true
+        this.withGlobalLoading(this.$http({
+          url: this.$http.adornUrl('/erp/saleorder/outbound/batch/scan-link/delete'),
+          method: 'post',
+          data: this.$http.adornData({
+            saleOrderId: this.dataForm.id,
+            batchId: this.currentOutboundBatch.id,
+            scanId: scan.id
+          })
+        })).then(({ data }) => {
+          if (data && data.code === 0) {
+            this.$message.success('扫码链接已删除')
+            this.refreshDetail()
+            this.$emit('refreshDataList')
+          } else {
+            this.$message.error((data && data.msg) || '扫码链接删除失败')
           }
           this.outboundBatchLoading = false
         }).catch(() => {
