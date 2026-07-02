@@ -2604,10 +2604,6 @@ export default {
     },
     openOutboundBatchDialog () {
       if (!this.dataForm.id) return
-      if (this.hasOpenOutboundBatch) {
-        this.$message.warning('当前还有未完成批次，请先确认完成或删除后再新增')
-        return
-      }
       this.outboundBatchDialogVisible = true
       this.$nextTick(() => {
         this.$refs.outboundBatchDialog.init(this.dataForm)
