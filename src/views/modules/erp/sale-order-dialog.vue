@@ -1275,7 +1275,7 @@ export default {
       globalLoadingCount: 0,
       currentUploadType: '',
       currentConfirmType: '',
-      bankVoucherSupportTip: '支持浦发银行、建设银行、工商银行、兴业银行、农发行电子回单样本，支持 PDF / JPG / PNG。',
+      bankVoucherSupportTip: '支持浦发银行、建设银行、工商银行、兴业银行、中国银行、农发行电子回单样本，支持 PDF / JPG / PNG。',
       activeOutboundBatchId: '',
       outboundTableVersion: 0,
       secondaryPartnerList: [],
