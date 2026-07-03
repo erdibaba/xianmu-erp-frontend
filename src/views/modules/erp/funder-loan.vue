@@ -322,7 +322,15 @@
           <el-table-column label="出库箱数" width="90" align="right"><template slot-scope="scope">{{ scope.row.shippedBoxes || 0 }}</template></el-table-column>
           <el-table-column label="计费重量KG" width="120" align="right"><template slot-scope="scope">{{ number3(scope.row.feeWeight || scope.row.shippedWeight) }}</template></el-table-column>
           <el-table-column label="确认函单价" width="110" align="right"><template slot-scope="scope">{{ number6(scope.row.unitPriceInclTax) }}</template></el-table-column>
-          <el-table-column label="结算销售单价" width="130" align="right"><template slot-scope="scope">{{ number6(scope.row.settlementUnitPrice || scope.row.unitPriceInclTax) }}</template></el-table-column>
+          <el-table-column label="结算销售单价" width="150" align="right">
+            <template slot-scope="scope">
+              <span>{{ number6(scope.row.settlementUnitPrice || scope.row.unitPriceInclTax) }}</span>
+              <el-popover placement="top" width="460" trigger="click">
+                <div class="settlement-price-explain">{{ itemSettlementPriceFormula(scope.row) }}</div>
+                <i slot="reference" class="el-icon-question settlement-price-icon"></i>
+              </el-popover>
+            </template>
+          </el-table-column>
           <el-table-column label="货值金额" width="120" align="right"><template slot-scope="scope">{{ money(scope.row.costAmount) }}</template></el-table-column>
           <el-table-column label="系统还本" width="120" align="right"><template slot-scope="scope">{{ money(scope.row.systemPrincipalAmount) }}</template></el-table-column>
           <el-table-column label="确认还本" width="120" align="right"><template slot-scope="scope">{{ money(scope.row.confirmedPrincipalAmount) }}</template></el-table-column>
@@ -616,6 +624,15 @@ export default {
     },
     itemDepositFormula (item) {
       return `货值金额${this.money(item.costAmount)}（计费重量${this.number3(this.feeWeight(item))}KG × 结算销售单价${this.number6(item.settlementUnitPrice || item.unitPriceInclTax)}） × 25% = ${this.money(item.depositAmount)}`
+    },
+    itemSettlementPriceFormula (item) {
+      const purchase = this.number6(item.unitPriceInclTax)
+      const markup = this.number6(item.settlementPriceMarkup)
+      const settlement = this.number6(item.settlementUnitPrice || item.unitPriceInclTax)
+      if (this.batchSettlementForm.ruleType !== 'WANXIANG') {
+        return `当前资方规则为${this.ruleName(this.batchSettlementForm.ruleType)}：结算销售单价直接取确认函含税单价，${purchase}。`
+      }
+      return `万翔规则：结算销售单价 = 确认函含税单价 + 单价加价 = ${purchase} + ${markup} = ${settlement}。单价加价由处置费20元/吨、移库费30元/吨、仓储费（按仓库费用历史和冷鲜/冷冻天数取价）以及资金成本（5.5% ÷ 360 × 天数 × 确认函含税单价 × 75%）组成，系统按冷鲜5天、冷冻20天计算，单价加价按分向上取整。`
     },
     itemGrossWeightFormula (item) {
       if (!Number(item.grossWeightFeeAmount || 0)) {
@@ -952,6 +969,8 @@ export default {
 .fee-summary-item { border: 1px solid #ebeef5; border-radius: 4px; padding: 10px 12px; background: #fff; display: flex; align-items: center; justify-content: space-between; color: #606266; }
 .fee-summary-item strong { color: #17b3a3; font-size: 16px; }
 .other-fee-total { margin-top: 10px; text-align: right; font-weight: 700; color: #303133; }
+.settlement-price-icon { margin-left: 6px; color: #17b3a3; cursor: pointer; font-size: 14px; }
+.settlement-price-explain { line-height: 22px; color: #303133; word-break: break-all; }
 /deep/ .batch-settlement-dialog .el-dialog__body { max-height: calc(100vh - 190px); overflow-y: auto; padding-bottom: 12px; }
 .batch-settlement-item-table { margin-top: 4px; }
 </style>
