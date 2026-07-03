@@ -147,6 +147,15 @@
             </el-form-item>
           </el-col>
           <el-col v-if="isFunderPayment" :span="24">
+            <el-form-item label="合同归档">
+              <el-upload action="#" :show-file-list="false" :http-request="uploadPaymentContract" accept=".jpg,.jpeg,.png,.jfif,.bmp,.pdf,.doc,.docx,.xls,.xlsx">
+                <el-button type="primary" plain :loading="contractUploadLoading">上传合同存档</el-button>
+              </el-upload>
+              <span class="file-name">{{ paymentForm.contractFileName || '尚未上传' }}</span>
+              <div class="bank-voucher-tip">仅用于原件存档，暂不做OCR识别。</div>
+            </el-form-item>
+          </el-col>
+          <el-col v-if="isFunderPayment" :span="24">
             <el-form-item label="选择确认函" prop="selectedConfirmIds">
               <el-select
                 v-model="paymentForm.selectedConfirmIds"
@@ -187,6 +196,17 @@
           <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
           <el-table-column prop="presaleOrderNo" label="预销售单号" min-width="170"></el-table-column>
           <el-table-column prop="confirmContractNo" label="确认函合同号" min-width="160"></el-table-column>
+          <el-table-column label="最迟提货日" width="180">
+            <template slot-scope="scope">
+              <el-date-picker
+                v-model="scope.row.latestPickupDate"
+                type="date"
+                value-format="yyyy-MM-dd"
+                placeholder="必填"
+                style="width: 155px">
+              </el-date-picker>
+            </template>
+          </el-table-column>
           <el-table-column prop="customerReference" label="采购方" min-width="180" show-overflow-tooltip></el-table-column>
           <el-table-column label="订单合同金额" width="160" align="right">
             <template slot-scope="scope">{{ money(scope.row.orderContractAmount) }}</template>
@@ -421,11 +441,19 @@
           <el-button type="text" @click="previewVoucher(detailData.id)">预览凭证</el-button>
           <el-button type="text" @click="downloadVoucher(detailData.id, detailData.fileName)">下载凭证</el-button>
         </el-descriptions-item>
+        <el-descriptions-item v-if="detailData.paymentType === 1" label="合同归档">
+          <template v-if="detailData.contractFileName">
+            <el-button type="text" @click="previewContract(detailData.id)">预览合同</el-button>
+            <el-button type="text" @click="downloadContract(detailData.id, detailData.contractFileName)">下载合同</el-button>
+          </template>
+          <span v-else>-</span>
+        </el-descriptions-item>
       </el-descriptions>
       <el-table :data="detailData.allocationList || []" border style="margin-top: 16px">
         <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
         <el-table-column prop="presaleOrderNo" label="预销售单号" min-width="180"></el-table-column>
         <el-table-column prop="confirmContractNo" label="确认函合同号" min-width="180"></el-table-column>
+        <el-table-column v-if="detailData.paymentType === 1" prop="latestPickupDate" label="最迟提货日" width="120" align="center"></el-table-column>
         <el-table-column label="订单合同金额" width="160" align="right">
           <template slot-scope="scope">{{ money(detailOrderContractAmount(scope.row)) }}</template>
         </el-table-column>
@@ -497,6 +525,8 @@ const emptyPayment = (paymentType = PAYMENT_TYPE_FUNDER) => ({
   paymentDate: '',
   filePath: '',
   fileName: '',
+  contractFilePath: '',
+  contractFileName: '',
   rawText: '',
   recognizedReceipt: {},
   selectedConfirmId: null,
@@ -525,6 +555,7 @@ export default {
       internalPayerLoading: false,
       presaleLoading: false,
       recognizeLoading: false,
+      contractUploadLoading: false,
       xianmuContributionLoadingIndex: -1,
       xianmuInstallmentLoadingKey: '',
       submitLoading: false,
@@ -725,6 +756,7 @@ export default {
           presaleOrderNo: option.orderNo,
           sellerContractNo: option.sellerContractNo,
           confirmContractNo: confirm.contractNo,
+          latestPickupDate: '',
           customerReference: option.customerReference || confirm.buyerPartnerName,
           orderContractAmount: this.roundMoney(confirmAmount),
           allocationAmount: this.roundMoney(confirmAmount),
@@ -770,6 +802,7 @@ export default {
         presaleOrderNo: option.orderNo,
         sellerContractNo: option.sellerContractNo,
         confirmContractNo: confirm.contractNo,
+        latestPickupDate: '',
         customerReference: option.customerReference || confirm.buyerPartnerName,
         orderContractAmount: this.roundMoney(confirmAmount),
         allocationAmount: this.roundMoney(confirmAmount),
@@ -840,6 +873,31 @@ export default {
         }
       }).catch(() => this.$message.error('凭证识别请求失败')).finally(() => {
         this.recognizeLoading = false
+        loading.close()
+      })
+    },
+    uploadPaymentContract (request) {
+      const formData = new FormData()
+      formData.append('file', request.file)
+      this.contractUploadLoading = true
+      const loading = this.$loading({ lock: true, text: '正在上传并归档合同...' })
+      this.$http({
+        url: this.$http.adornUrl('/erp/funder-finance/contract/upload'),
+        method: 'post',
+        data: formData,
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 120000
+      }).then(({ data }) => {
+        if (data && data.code === 0) {
+          const contract = data.contract || {}
+          this.paymentForm.contractFilePath = contract.filePath || ''
+          this.paymentForm.contractFileName = contract.fileName || request.file.name
+          this.$message.success('合同已归档')
+        } else {
+          this.$message.error((data && data.msg) || '合同归档失败')
+        }
+      }).catch(() => this.$message.error('合同归档请求失败')).finally(() => {
+        this.contractUploadLoading = false
         loading.close()
       })
     },
@@ -982,6 +1040,11 @@ export default {
             this.$message.error('所选资方未维护年利率，请先到往来单位维护')
             return
           }
+          const missingPickupIndex = (this.paymentForm.allocationList || []).findIndex(item => !item.latestPickupDate)
+          if (missingPickupIndex >= 0) {
+            this.$message.error(`第${missingPickupIndex + 1}行确认函合同必须选择最迟提货日`)
+            return
+          }
           const invalidContributionIndex = (this.paymentForm.allocationList || []).findIndex(item => {
             const contributionAmount = Number(item.xianmuContributionModifiedAmount || 0)
             return !item.xianmuContributionFilePath ||
@@ -1097,6 +1160,25 @@ export default {
     previewVoucher (id) {
       const token = this.$cookie.get('token') || ''
       window.open(this.$http.adornUrl(`/erp/funder-finance/payment/download/${id}?preview=1&token=${encodeURIComponent(token)}`), '_blank')
+    },
+    downloadContract (id, fileName) {
+      const loading = this.$loading({ lock: true, text: '正在下载归档合同...' })
+      this.$http({
+        url: this.$http.adornUrl(`/erp/funder-finance/payment/download-contract/${id}`),
+        method: 'get',
+        responseType: 'blob'
+      }).then(response => {
+        const url = URL.createObjectURL(response.data)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = fileName || '资方全款合同'
+        link.click()
+        URL.revokeObjectURL(url)
+      }).finally(() => loading.close())
+    },
+    previewContract (id) {
+      const token = this.$cookie.get('token') || ''
+      window.open(this.$http.adornUrl(`/erp/funder-finance/payment/download-contract/${id}?preview=1&token=${encodeURIComponent(token)}`), '_blank')
     },
     downloadContributionVoucher (allocationId, fileName) {
       const loading = this.$loading({ lock: true, text: '正在下载鲜牧出资款凭证...' })
