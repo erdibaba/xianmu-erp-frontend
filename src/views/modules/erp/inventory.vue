@@ -50,8 +50,8 @@
           <el-table-column prop="marketCirculationName" label="市场流通名称" min-width="180" show-overflow-tooltip></el-table-column>
           <el-table-column label="鲜转冻标识" width="150" align="center" header-align="center">
             <template slot-scope="scope">
-              <el-tag v-if="scope.row.freshToFrozenStatus === '全部鲜转冻'" size="small" type="danger">全部鲜转冻</el-tag>
-              <div v-else-if="scope.row.freshToFrozenStatus === '部分鲜转冻'" class="fresh-frozen-cell">
+              <el-tag v-if="isAllFreshToFrozen(scope.row)" size="small" type="danger">全部鲜转冻</el-tag>
+              <div v-else-if="isPartialFreshToFrozen(scope.row)" class="fresh-frozen-cell">
                 <el-tag size="small" type="warning">部分鲜转冻</el-tag>
                 <div class="fresh-frozen-summary">
                   {{ scope.row.freshToFrozenBoxes || 0 }}件 / {{ formatWeight(scope.row.freshToFrozenWeightKg) }}KG
@@ -507,6 +507,12 @@
       formatWeight (value) {
         const number = Number(value)
         return isNaN(number) ? '0.00' : number.toFixed(2)
+      },
+      isAllFreshToFrozen (row) {
+        return row && (row.freshToFrozenStatus === 'ALL' || row.freshToFrozenStatus === '全部鲜转冻')
+      },
+      isPartialFreshToFrozen (row) {
+        return row && (row.freshToFrozenStatus === 'PARTIAL' || row.freshToFrozenStatus === '部分鲜转冻')
       },
       loadWarehouses () {
         this.$http({
