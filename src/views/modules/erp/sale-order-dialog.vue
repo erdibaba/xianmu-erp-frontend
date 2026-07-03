@@ -660,6 +660,7 @@
               <span><strong>车牌号：</strong>{{ currentOutboundBatch.plateNo || '-' }}</span>
               <span><strong>手机号：</strong>{{ currentOutboundBatch.driverMobile || '-' }}</span>
               <span><strong>备注：</strong>{{ currentOutboundBatch.remark || '-' }}</span>
+              <el-button size="mini" type="primary" plain @click="downloadPickupDetail(currentOutboundBatch)">下载提货明细</el-button>
             </div>
             <div v-if="currentOutboundBatch && currentOutboundBatch.planItemList && currentOutboundBatch.planItemList.length" class="outbound-section-title">
               <strong>本批次计划及实际核对</strong>
@@ -992,9 +993,10 @@
                   <span v-else class="sub-title-tip">无</span>
                 </template>
               </el-table-column>
-              <el-table-column v-if="attachmentEditable" label="操作" width="95" align="center">
+              <el-table-column label="操作" width="135" align="center">
                 <template slot-scope="scope">
-                  <el-button type="text" size="small" @click="deleteOutboundBatch(scope.row)">删除批次</el-button>
+                  <el-button type="text" size="small" @click="downloadPickupDetail(scope.row)">提货明细</el-button>
+                  <el-button v-if="attachmentEditable" type="text" size="small" @click="deleteOutboundBatch(scope.row)">删除批次</el-button>
                 </template>
               </el-table-column>
             </el-table>
@@ -3006,6 +3008,14 @@ export default {
       }
       const token = this.$cookie.get('token') || ''
       window.open(this.$http.adornUrl(`/erp/saleorder/download/file/${row.id}?token=${encodeURIComponent(token)}`), '_blank')
+    },
+    downloadPickupDetail (batch) {
+      if (!batch || !batch.id) {
+        this.$message.error('缺少出库批次ID')
+        return
+      }
+      const token = this.$cookie.get('token') || ''
+      window.open(this.$http.adornUrl(`/erp/saleorder/outbound/batch/pickup-detail/${batch.id}?token=${encodeURIComponent(token)}`), '_blank')
     },
     previewFile (row) {
       if (!row.id) {
