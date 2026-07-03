@@ -47,6 +47,7 @@
           <el-table-column prop="productCode" label="产品编码" min-width="110" align="center" header-align="center"></el-table-column>
           <el-table-column prop="productName" label="中文名称" min-width="170" show-overflow-tooltip></el-table-column>
           <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="marketCirculationName" label="市场流通名称" min-width="180" show-overflow-tooltip></el-table-column>
           <el-table-column label="涉及合同号" min-width="190" show-overflow-tooltip>
             <template slot-scope="scope">{{ formatContractNos(scope.row) }}</template>
           </el-table-column>
@@ -122,6 +123,7 @@
           <el-table-column prop="productCode" label="产品编码" min-width="110" align="center" header-align="center"></el-table-column>
           <el-table-column prop="productName" label="中文名称" min-width="170" show-overflow-tooltip></el-table-column>
           <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="marketCirculationName" label="市场流通名称" min-width="180" show-overflow-tooltip></el-table-column>
           <el-table-column label="涉及合同号" min-width="190" show-overflow-tooltip>
             <template slot-scope="scope">{{ formatContractNos(scope.row) }}</template>
           </el-table-column>
