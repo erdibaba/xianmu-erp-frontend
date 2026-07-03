@@ -225,6 +225,7 @@
               <el-table-column prop="sourceProductCode" label="预售产品编码" min-width="150" show-overflow-tooltip></el-table-column>
               <el-table-column prop="productName" label="产品中文名称" min-width="170" show-overflow-tooltip></el-table-column>
               <el-table-column prop="productNameEn" label="产品英文名称" min-width="220" show-overflow-tooltip></el-table-column>
+              <el-table-column prop="marketCirculationName" label="市场流通名称" min-width="180" show-overflow-tooltip></el-table-column>
               <el-table-column label="预售重量(KG)" width="140" align="right">
                 <template slot-scope="scope">{{ money(scope.row.presaleWeightKg) }}</template>
               </el-table-column>
@@ -830,6 +831,7 @@ function defaultEstimateItem () {
     productCode: '',
     productName: '',
     productNameEn: '',
+    marketCirculationName: '',
     quantityTon: 0,
     quantityKg: 0,
     priceAmount: 0,
@@ -1210,7 +1212,8 @@ export default {
                 weightKg: 0,
                 contractNos: [],
                 productName: '',
-                productNameEn: ''
+                productNameEn: '',
+                marketCirculationName: ''
               }
             }
             confirmItemMap[code].weightKg += this.toNumber(item.quantity)
@@ -1219,6 +1222,9 @@ export default {
             }
             if (!confirmItemMap[code].productNameEn && item.productNameEn) {
               confirmItemMap[code].productNameEn = item.productNameEn
+            }
+            if (!confirmItemMap[code].marketCirculationName && item.marketCirculationName) {
+              confirmItemMap[code].marketCirculationName = item.marketCirculationName
             }
             if (contractNo && confirmItemMap[code].contractNos.indexOf(contractNo) === -1) {
               confirmItemMap[code].contractNos.push(contractNo)
@@ -1240,13 +1246,16 @@ export default {
           if (!result.productNameEn && summary.productNameEn) {
             result.productNameEn = summary.productNameEn
           }
+          if (!result.marketCirculationName && summary.marketCirculationName) {
+            result.marketCirculationName = summary.marketCirculationName
+          }
           summary.contractNos.forEach(contractNo => {
             if (result.contractNos.indexOf(contractNo) === -1) {
               result.contractNos.push(contractNo)
             }
           })
           return result
-        }, { weightKg: 0, contractNos: [], productName: '', productNameEn: '' })
+        }, { weightKg: 0, contractNos: [], productName: '', productNameEn: '', marketCirculationName: '' })
         const presaleWeightKg = this.resolvePresaleItemWeightKg(item)
         const remainingWeightKg = presaleWeightKg - confirmed.weightKg
         const confirmPercent = presaleWeightKg ? ((confirmed.weightKg / presaleWeightKg) * 100).toFixed(2) + '%' : '0.00%'
@@ -1254,6 +1263,7 @@ export default {
           sourceProductCode: item.sourceProductCode || item.productCode || '',
           productName: item.productName || confirmed.productName || item._recognizedProductName || '',
           productNameEn: item.productNameEn || confirmed.productNameEn || item._recognizedProductNameEn || '',
+          marketCirculationName: item.marketCirculationName || confirmed.marketCirculationName || '',
           presaleWeightKg,
           confirmedWeightKg: confirmed.weightKg,
           remainingWeightKg,
