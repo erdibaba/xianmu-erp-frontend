@@ -48,6 +48,18 @@
           <el-table-column prop="productName" label="中文名称" min-width="170" show-overflow-tooltip></el-table-column>
           <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
           <el-table-column prop="marketCirculationName" label="市场流通名称" min-width="180" show-overflow-tooltip></el-table-column>
+          <el-table-column label="鲜转冻标识" width="150" align="center" header-align="center">
+            <template slot-scope="scope">
+              <el-tag v-if="scope.row.freshToFrozenStatus === '全部鲜转冻'" size="small" type="danger">全部鲜转冻</el-tag>
+              <div v-else-if="scope.row.freshToFrozenStatus === '部分鲜转冻'" class="fresh-frozen-cell">
+                <el-tag size="small" type="warning">部分鲜转冻</el-tag>
+                <div class="fresh-frozen-summary">
+                  {{ scope.row.freshToFrozenBoxes || 0 }}件 / {{ formatWeight(scope.row.freshToFrozenWeightKg) }}KG
+                </div>
+              </div>
+              <span v-else>-</span>
+            </template>
+          </el-table-column>
           <el-table-column label="涉及合同号" min-width="190" show-overflow-tooltip>
             <template slot-scope="scope">{{ formatContractNos(scope.row) }}</template>
           </el-table-column>
@@ -67,11 +79,6 @@
           <el-table-column label="预警" width="90" align="center" header-align="center">
             <template slot-scope="scope">
               <el-tag v-if="scope.row.freshnessWarning" size="small" type="warning">保鲜</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="调整标识" width="100" align="center" header-align="center">
-            <template slot-scope="scope">
-              <el-tag v-if="scope.row.freshToFrozenFlag" size="small" type="danger">鲜转冻</el-tag>
             </template>
           </el-table-column>
           <el-table-column label="操作" width="90" align="center" header-align="center" fixed="right">
@@ -497,6 +504,10 @@
         if (row.contractNos) return row.contractNos
         return '-'
       },
+      formatWeight (value) {
+        const number = Number(value)
+        return isNaN(number) ? '0.00' : number.toFixed(2)
+      },
       loadWarehouses () {
         this.$http({
           url: this.$http.adornUrl('/erp/warehouse/select'),
@@ -585,6 +596,17 @@
   .inventory-danger {
     color: #f56c6c;
     font-weight: 600;
+  }
+
+  .fresh-frozen-cell {
+    line-height: 1.4;
+  }
+
+  .fresh-frozen-summary {
+    margin-top: 3px;
+    color: #606266;
+    font-size: 12px;
+    white-space: nowrap;
   }
 
   .batch-summary {
