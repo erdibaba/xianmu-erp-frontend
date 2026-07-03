@@ -69,6 +69,11 @@
               <el-tag v-if="scope.row.freshnessWarning" size="small" type="warning">保鲜</el-tag>
             </template>
           </el-table-column>
+          <el-table-column label="调整标识" width="100" align="center" header-align="center">
+            <template slot-scope="scope">
+              <el-tag v-if="scope.row.freshToFrozenFlag" size="small" type="danger">鲜转冻</el-tag>
+            </template>
+          </el-table-column>
           <el-table-column label="操作" width="90" align="center" header-align="center" fixed="right">
             <template slot-scope="scope">
               <el-button type="text" size="small" @click="openBatchDialog('spot', scope.row)">详情</el-button>
@@ -228,6 +233,11 @@
           <el-table-column prop="contractNo" label="合同号" min-width="140" show-overflow-tooltip></el-table-column>
           <el-table-column prop="customerName" label="客户" min-width="160" show-overflow-tooltip></el-table-column>
           <el-table-column prop="temperatureZone" label="温区" width="90" align="center" header-align="center"></el-table-column>
+          <el-table-column label="调整标识" width="100" align="center" header-align="center">
+            <template slot-scope="scope">
+              <el-tag v-if="scope.row.freshToFrozenFlag" size="small" type="danger">鲜转冻</el-tag>
+            </template>
+          </el-table-column>
           <el-table-column prop="skuCode" label="SKU" min-width="170" show-overflow-tooltip></el-table-column>
         </template>
         <template v-else>

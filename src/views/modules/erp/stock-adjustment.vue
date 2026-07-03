@@ -17,6 +17,9 @@
           :warehouse-list="warehouseList">
         </adjustment-panel>
       </el-tab-pane>
+      <el-tab-pane label="调整记录" name="RECORDS">
+        <adjustment-record-panel ref="recordPanel"></adjustment-record-panel>
+      </el-tab-pane>
     </el-tabs>
   </div>
 </template>
@@ -608,9 +611,153 @@
     `
   }
 
+  const AdjustmentRecordPanel = {
+    name: 'AdjustmentRecordPanel',
+    data () {
+      return {
+        query: {
+          adjustmentType: '',
+          keyword: '',
+          warehouseName: '',
+          containerNo: '',
+          factoryNo: '',
+          dateRange: []
+        },
+        dataList: [],
+        loading: false
+      }
+    },
+    mounted () {
+      this.getDataList()
+    },
+    methods: {
+      getDataList () {
+        this.loading = true
+        this.$http({
+          url: this.$http.adornUrl('/erp/inventory-adjustment/records'),
+          method: 'get',
+          params: this.$http.adornParams({
+            adjustmentType: this.query.adjustmentType,
+            keyword: this.query.keyword,
+            warehouseName: this.query.warehouseName,
+            containerNo: this.query.containerNo,
+            factoryNo: this.query.factoryNo,
+            dateStart: (this.query.dateRange || [])[0] || '',
+            dateEnd: (this.query.dateRange || [])[1] || ''
+          })
+        }).then(({data}) => {
+          if (data && data.code === 0) {
+            this.dataList = data.list || []
+          } else {
+            this.dataList = []
+            this.$message.error((data && data.msg) || '获取调整记录失败')
+          }
+          this.loading = false
+        }).catch(() => {
+          this.loading = false
+        })
+      },
+      resetQuery () {
+        this.query = {
+          adjustmentType: '',
+          keyword: '',
+          warehouseName: '',
+          containerNo: '',
+          factoryNo: '',
+          dateRange: []
+        }
+        this.getDataList()
+      },
+      formatDate (value) {
+        if (!value) return ''
+        const text = String(value)
+        return text.length >= 10 ? text.substring(0, 10) : text
+      },
+      formatDateTime (value) {
+        if (!value) return ''
+        const text = String(value).replace('T', ' ')
+        return text.length >= 19 ? text.substring(0, 19) : text
+      }
+    },
+    template: `
+      <div class="adjust-record-panel">
+        <el-form :inline="true" :model="query" size="small" class="adjust-record-query">
+          <el-form-item>
+            <el-select v-model="query.adjustmentType" clearable placeholder="调整类型" style="width: 150px;">
+              <el-option label="转仓库" value="WAREHOUSE_TRANSFER"></el-option>
+              <el-option label="冷鲜转冷冻" value="FRESH_TO_FROZEN"></el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-input v-model="query.keyword" placeholder="产品/柜号" clearable @keyup.enter.native="getDataList()"></el-input>
+          </el-form-item>
+          <el-form-item>
+            <el-input v-model="query.warehouseName" placeholder="仓库" clearable @keyup.enter.native="getDataList()"></el-input>
+          </el-form-item>
+          <el-form-item>
+            <el-input v-model="query.containerNo" placeholder="柜号" clearable @keyup.enter.native="getDataList()"></el-input>
+          </el-form-item>
+          <el-form-item>
+            <el-input v-model="query.factoryNo" placeholder="厂号" clearable @keyup.enter.native="getDataList()"></el-input>
+          </el-form-item>
+          <el-form-item>
+            <el-date-picker
+              v-model="query.dateRange"
+              type="daterange"
+              value-format="yyyy-MM-dd"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              range-separator="至"
+              style="width: 240px;">
+            </el-date-picker>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="getDataList()">查询</el-button>
+            <el-button @click="resetQuery()">重置</el-button>
+          </el-form-item>
+        </el-form>
+        <el-table :data="dataList" border stripe height="650" v-loading="loading">
+          <el-table-column type="index" label="序号" width="60" align="center" header-align="center"></el-table-column>
+          <el-table-column prop="adjustmentNo" label="调整单号" min-width="160" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="adjustmentTypeName" label="调整类型" width="110" align="center" header-align="center">
+            <template slot-scope="scope">
+              <el-tag :type="scope.row.adjustmentType === 'FRESH_TO_FROZEN' ? 'warning' : 'success'" size="small">{{ scope.row.adjustmentTypeName }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="createTime" label="调整时间" width="165" align="center" header-align="center">
+            <template slot-scope="scope">{{ formatDateTime(scope.row.createTime) }}</template>
+          </el-table-column>
+          <el-table-column prop="productCode" label="产品编码" width="110" align="center" header-align="center"></el-table-column>
+          <el-table-column prop="productName" label="中文名称" min-width="150" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="sourceWarehouseName" label="原仓库" min-width="150" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="targetWarehouseName" label="目标仓库" min-width="150" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="containerNo" label="柜号" min-width="130" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="factoryNo" label="厂号" width="100" align="center" header-align="center"></el-table-column>
+          <el-table-column prop="sourceTemperatureZone" label="原温区" width="90" align="center" header-align="center"></el-table-column>
+          <el-table-column prop="targetTemperatureZone" label="目标温区" width="90" align="center" header-align="center"></el-table-column>
+          <el-table-column prop="productionDate" label="生产日期" width="115" align="center" header-align="center">
+            <template slot-scope="scope">{{ formatDate(scope.row.productionDate) }}</template>
+          </el-table-column>
+          <el-table-column prop="sourceExpiryDate" label="原过期日期" width="120" align="center" header-align="center">
+            <template slot-scope="scope">{{ formatDate(scope.row.sourceExpiryDate) }}</template>
+          </el-table-column>
+          <el-table-column prop="targetExpiryDate" label="目标过期日期" width="120" align="center" header-align="center">
+            <template slot-scope="scope">{{ formatDate(scope.row.targetExpiryDate) }}</template>
+          </el-table-column>
+          <el-table-column prop="transferBoxes" label="调整箱数" width="100" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="transferWeightKg" label="调整重量KG" width="120" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="fileNames" label="归档原件" min-width="180" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="remark" label="备注" min-width="160" show-overflow-tooltip></el-table-column>
+        </el-table>
+      </div>
+    `
+  }
+
   export default {
     components: {
-      AdjustmentPanel
+      AdjustmentPanel,
+      AdjustmentRecordPanel
     },
     data () {
       return {
