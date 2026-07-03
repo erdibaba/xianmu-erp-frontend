@@ -38,6 +38,13 @@
       <el-table-column label="总金额" width="130" align="right">
         <template slot-scope="scope">{{ money(scope.row.totalAmount) }}</template>
       </el-table-column>
+      <el-table-column label="付款状态" width="100" align="center">
+        <template slot-scope="scope">
+          <el-tag size="small" :type="scope.row.paymentStatus === 1 ? 'success' : 'info'">
+            {{ scope.row.paymentStatus === 1 ? '已付款' : '未付款' }}
+          </el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="列表总重量(KG)" width="150" align="right">
         <template slot-scope="scope">{{ quantity(scope.row.totalQuantityKg) }}</template>
       </el-table-column>
