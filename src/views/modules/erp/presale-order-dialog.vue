@@ -1206,6 +1206,7 @@ export default {
         const contractNo = confirm.contractNo || ''
         ;(confirm.itemList || []).forEach(item => {
           const codes = this.extractMatchProductCodes(item.sourceProductCode || item.productCode)
+          const productMaster = this.findProductByAnyCode(codes, item.sourceProductCode || item.productCode)
           codes.forEach(code => {
             if (!confirmItemMap[code]) {
               confirmItemMap[code] = {
@@ -1226,6 +1227,9 @@ export default {
             if (!confirmItemMap[code].marketCirculationName && item.marketCirculationName) {
               confirmItemMap[code].marketCirculationName = item.marketCirculationName
             }
+            if (!confirmItemMap[code].marketCirculationName && productMaster && productMaster.marketCirculationName) {
+              confirmItemMap[code].marketCirculationName = productMaster.marketCirculationName
+            }
             if (contractNo && confirmItemMap[code].contractNos.indexOf(contractNo) === -1) {
               confirmItemMap[code].contractNos.push(contractNo)
             }
@@ -1234,6 +1238,7 @@ export default {
       })
       return (this.dataForm.itemList || []).map(item => {
         const matchCodes = this.extractMatchProductCodes(item.sourceProductCode || item.productCode)
+        const productMaster = this.findProductByAnyCode(matchCodes, item.sourceProductCode || item.productCode)
         const confirmed = matchCodes.reduce((result, code) => {
           const summary = confirmItemMap[code]
           if (!summary) {
@@ -1263,7 +1268,7 @@ export default {
           sourceProductCode: item.sourceProductCode || item.productCode || '',
           productName: item.productName || confirmed.productName || item._recognizedProductName || '',
           productNameEn: item.productNameEn || confirmed.productNameEn || item._recognizedProductNameEn || '',
-          marketCirculationName: item.marketCirculationName || confirmed.marketCirculationName || '',
+          marketCirculationName: item.marketCirculationName || confirmed.marketCirculationName || (productMaster && productMaster.marketCirculationName) || '',
           presaleWeightKg,
           confirmedWeightKg: confirmed.weightKg,
           remainingWeightKg,
@@ -1574,6 +1579,33 @@ export default {
     findProductByCode (code) {
       if (!code) return null
       return this.productList.find(item => String(item.productCode) === String(code)) || null
+    },
+    findProductByAnyCode (codes, rawText) {
+      const candidates = []
+      ;(Array.isArray(codes) ? codes : [codes]).forEach(code => {
+        const normalized = this.normalizeProductCode(code).trim()
+        if (normalized && candidates.indexOf(normalized) === -1) {
+          candidates.push(normalized)
+        }
+      })
+      String(rawText || '').replace(/[A-Za-z]*?(\d{3,})[A-Za-z]*/g, (match, code) => {
+        const normalized = this.normalizeProductCode(code).trim()
+        if (normalized && candidates.indexOf(normalized) === -1) {
+          candidates.push(normalized)
+        }
+        return match
+      })
+      if (!candidates.length) return null
+      return this.productList.find(product => {
+        const productCode = this.normalizeProductCode(product.productCode).trim()
+        if (candidates.indexOf(productCode) !== -1) {
+          return true
+        }
+        return String(product.aliasCodes || '')
+          .split(/[,，/;\s]+/)
+          .map(alias => this.normalizeProductCode(alias).trim())
+          .some(alias => alias && candidates.indexOf(alias) !== -1)
+      }) || null
     },
     ensureProductOption (row, product) {
       if (!row || !product) return
