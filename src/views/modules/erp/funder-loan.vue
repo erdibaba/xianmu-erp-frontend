@@ -253,12 +253,12 @@
           </el-col>
           <el-col v-if="batchSettlementForm.ruleType === 'WANXIANG'" :span="8">
             <el-form-item label="补税点费用">
-              <el-input-number v-model="batchSettlementForm.taxAdjustAmount" :min="0" :precision="2" :controls="false" style="width:100%" @change="calculateBatchSettlement"></el-input-number>
+              <el-input :value="money(batchSettlementForm.taxAdjustAmount)" disabled></el-input>
             </el-form-item>
           </el-col>
           <el-col v-if="batchSettlementForm.ruleType === 'WANXIANG'" :span="8">
             <el-form-item label="毛重费用">
-              <el-input-number v-model="batchSettlementForm.grossWeightFeeAmount" :min="0" :precision="2" :controls="false" style="width:100%" @change="calculateBatchSettlement"></el-input-number>
+              <el-input :value="money(batchSettlementForm.grossWeightFeeAmount)" disabled></el-input>
             </el-form-item>
           </el-col>
           <el-col :span="8">
@@ -500,7 +500,7 @@ export default {
     },
     otherBatchFees () {
       const f = this.batchSettlementForm
-      return Number(f.handlingFeeAmount || 0) + Number(this.effectiveCodeScanFee || 0) + Number(f.stampTaxAmount || 0) + Number(f.depositAmount || 0) + Number(f.taxAdjustAmount || 0) + Number(f.grossWeightFeeAmount || 0) + Number(f.otherFeeAmount || 0)
+      return Number(f.handlingFeeAmount || 0) + Number(this.effectiveCodeScanFee || 0) + Number(f.stampTaxAmount || 0) - Number(f.depositAmount || 0) + Number(f.taxAdjustAmount || 0) + Number(f.grossWeightFeeAmount || 0) + Number(f.otherFeeAmount || 0)
     },
     batchFeeTotal () {
       const f = this.batchSettlementForm
@@ -511,7 +511,7 @@ export default {
       return [
         { name: '利息/资金成本', amount: f.interestAmount, formula: this.sumFormula('各明细行利息/资金成本', f.interestAmount) },
         { name: '仓储费用', amount: f.storageFeeAmount, formula: this.sumFormula('各明细行仓储费用', f.storageFeeAmount) },
-        { name: '其他资方费用', amount: this.otherBatchFees, formula: `手续费${this.money(f.handlingFeeAmount)} + 扫码费${this.money(this.effectiveCodeScanFee)} + 印花税${this.money(f.stampTaxAmount)} + 保证金/押金${this.money(f.depositAmount)} + 补税点费用${this.money(f.taxAdjustAmount)} + 毛重费用${this.money(f.grossWeightFeeAmount)} + 其他费用${this.money(f.otherFeeAmount)} = ${this.money(this.otherBatchFees)}` }
+        { name: '其他资方费用', amount: this.otherBatchFees, formula: `手续费${this.money(f.handlingFeeAmount)} + 扫码费${this.money(this.effectiveCodeScanFee)} + 印花税${this.money(f.stampTaxAmount)} - 保证金/押金${this.money(f.depositAmount)} + 补税点费用${this.money(f.taxAdjustAmount)} + 毛重费用${this.money(f.grossWeightFeeAmount)} + 其他费用${this.money(f.otherFeeAmount)} = ${this.money(this.otherBatchFees)}` }
       ]
     },
     batchFeeFormulaRows () {
@@ -522,8 +522,8 @@ export default {
         { name: '手续费/装卸费', amount: f.handlingFeeAmount, formula: '各明细行按：出库重量KG ÷ 1000 × 装卸费单价（按仓库费用历史和业务日期取价）计算后汇总。' },
         { name: '扫码费', amount: this.effectiveCodeScanFee, formula: '开关打开时，各明细行按对应仓库费用历史维护的扫码费方式和单价计算；开关关闭时为0。' },
         { name: '印花税', amount: f.stampTaxAmount, formula: '各明细行按：出库重量KG × 确认函含税单价 × 0.0006 计算后汇总。' },
-        { name: '保证金/押金', amount: f.depositAmount, formula: '各明细行按：货值金额 × 25%；货值金额 = 计费重量KG × 结算销售单价。' },
-        { name: '补税点费用', amount: f.taxAdjustAmount, formula: '人工录入费用，计入其他资方费用。' },
+        { name: '保证金/押金', amount: f.depositAmount, formula: '各明细行按：货值金额 × 25%；货值金额 = 计费重量KG × 结算销售单价。保证金/押金在应付金额里按减项处理。' },
+        { name: '补税点费用', amount: f.taxAdjustAmount, formula: '万翔规则自动计算：先计算 出库金额 + 应补仓储费 + 抄码费 + 印花税，与 采购单价 + 银蕨资金成本 对应金额的差额，再按 1.082152 / 1.048552 补税点系数折算差额。' },
         { name: '毛重费用', amount: f.grossWeightFeeAmount, formula: '各明细行按：先用 产品总净重 ÷ 确认单整单净重 × 报关单确认毛重 得到产品总毛重，再按 产品总毛重 ÷ 产品总箱数 × 本次出库箱数 得到本次计费毛重，最后按 本次计费毛重KG ÷ 1000 × 毛重费率 × 计费天数 计算后汇总。' },
         { name: '其他费用', amount: f.otherFeeAmount, formula: '人工补充费用，计入其他资方费用。' }
       ]
@@ -623,7 +623,7 @@ export default {
       return `计费重量${this.number3(weight)}KG × 确认函含税单价${this.number6(item.unitPriceInclTax)} × 0.0006 = ${this.money(item.stampTaxAmount)}`
     },
     itemDepositFormula (item) {
-      return `货值金额${this.money(item.costAmount)}（计费重量${this.number3(this.feeWeight(item))}KG × 结算销售单价${this.number6(item.settlementUnitPrice || item.unitPriceInclTax)}） × 25% = ${this.money(item.depositAmount)}`
+      return `货值金额${this.money(item.costAmount)}（计费重量${this.number3(this.feeWeight(item))}KG × 结算销售单价${this.number6(item.settlementUnitPrice || item.unitPriceInclTax)}） × 25% = ${this.money(item.depositAmount)}，在应付金额中作为减项。`
     },
     itemSettlementPriceFormula (item) {
       const purchase = this.number6(item.unitPriceInclTax)
@@ -632,7 +632,13 @@ export default {
       if (this.batchSettlementForm.ruleType !== 'WANXIANG') {
         return `当前资方规则为${this.ruleName(this.batchSettlementForm.ruleType)}：结算销售单价直接取确认函含税单价，${purchase}。`
       }
-      return `万翔规则：结算销售单价 = 确认函含税单价 + 单价加价 = ${purchase} + ${markup} = ${settlement}。单价加价由处置费20元/吨、移库费30元/吨、仓储费（按仓库费用历史和冷鲜/冷冻天数取价）以及资金成本（5.5% ÷ 360 × 天数 × 确认函含税单价 × 75%）组成，系统按冷鲜5天、冷冻20天计算，单价加价按分向上取整。`
+      const extensionDays = Number(item.extensionPickupDays || 0)
+      const overdueDays = Number(item.overduePickupDays || 0)
+      const base = this.number6(item.baseSettlementUnitPrice || item.unitPriceInclTax)
+      const extensionRate = this.number6(item.extensionPickupFeeRate || 0)
+      const overdueRate = this.number6(item.overduePickupFeeRate || 0)
+      const latest = item.latestPickupDate ? `，最迟提货日${item.latestPickupDate}` : ''
+      return `万翔规则：基础销售单价${base}，超过冷鲜5天/冷冻20天后，延期费率${extensionRate}元/KG/天 × ${extensionDays}天；超过最迟提货日后，超期费率${overdueRate}元/KG/天 × ${overdueDays}天${latest}。结算销售单价 = 确认函含税单价${purchase} + 总单价加价${markup} = ${settlement}。`
     },
     itemGrossWeightFormula (item) {
       if (!Number(item.grossWeightFeeAmount || 0)) {
