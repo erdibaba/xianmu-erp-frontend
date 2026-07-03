@@ -319,7 +319,7 @@
                       </el-form-item>
                     </el-col>
                     <el-col :span="8">
-                      <el-form-item label="总金额(CNY)" prop="totalAmount">
+                      <el-form-item :label="confirmTotalAmountLabel" prop="totalAmount">
                         <el-input v-model.number="dataForm.confirmInfo.totalAmount" :disabled="readonly"></el-input>
                       </el-form-item>
                     </el-col>
@@ -354,7 +354,7 @@
                     列表总重量(KG)：{{ money(confirmLineTotalQuantityKg) }}
                   </div>
                   <div class="confirm-warning">
-                    列表总值汇总(含税)：{{ money(confirmLineTotalInclTax) }}
+                    列表总值汇总({{ confirmTaxRateInclText }})：{{ money(confirmLineTotalInclTax) }}
                   </div>
                   
                 </div>
@@ -426,9 +426,14 @@
                   <el-input v-model.number="scope.row.unitPriceInclTax" :disabled="readonly"></el-input>
                 </template>
               </el-table-column>
-              <el-table-column label="总值(含税)" min-width="120">
+              <el-table-column :label="confirmLineTotalInclTaxLabel" min-width="140">
                 <template slot-scope="scope">
                   <el-input v-model.number="scope.row.lineTotalInclTax" :disabled="readonly"></el-input>
+                </template>
+              </el-table-column>
+              <el-table-column label="税额" min-width="110">
+                <template slot-scope="scope">
+                  <span>{{ money(calcLineTaxAmount(scope.row)) }}</span>
                 </template>
               </el-table-column>
               <el-table-column label="总值(未税)" min-width="120">
@@ -792,8 +797,11 @@
           <el-table-column label="单价(含税)" width="120" align="right">
             <template slot-scope="scope">{{ money(scope.row.unitPriceInclTax) }}</template>
           </el-table-column>
-          <el-table-column label="总值(含税)" width="130" align="right">
+          <el-table-column :label="linkedConfirmDetailLineTotalInclTaxLabel" width="150" align="right">
             <template slot-scope="scope">{{ money(scope.row.lineTotalInclTax) }}</template>
+          </el-table-column>
+          <el-table-column label="税额" width="120" align="right">
+            <template slot-scope="scope">{{ money(calcLineTaxAmount(scope.row)) }}</template>
           </el-table-column>
         </el-table>
       </div>
@@ -1116,6 +1124,37 @@ export default {
       return (this.dataForm.confirmInfo.itemList || []).reduce((sum, item) => {
         return sum + this.calcLineTotalExclTax(item)
       }, 0)
+    },
+    confirmTaxRateText () {
+      const rates = []
+      ;((this.dataForm.confirmInfo || {}).itemList || []).forEach(item => {
+        const rate = this.toNumber(item.taxRate || 9)
+        const text = Number.isInteger(rate) ? String(rate) : String(rate)
+        if (rates.indexOf(text) === -1) {
+          rates.push(text)
+        }
+      })
+      return rates.length ? rates.join('%/') + '%' : '9%'
+    },
+    confirmTaxRateInclText () {
+      return `含税${this.confirmTaxRateText}`
+    },
+    confirmTotalAmountLabel () {
+      return `总金额(CNY，${this.confirmTaxRateInclText})`
+    },
+    confirmLineTotalInclTaxLabel () {
+      return `总值(${this.confirmTaxRateInclText})`
+    },
+    linkedConfirmDetailLineTotalInclTaxLabel () {
+      const rates = []
+      ;((this.linkedConfirmDetail || {}).itemList || []).forEach(item => {
+        const rate = this.toNumber(item.taxRate || 9)
+        const text = Number.isInteger(rate) ? String(rate) : String(rate)
+        if (rates.indexOf(text) === -1) {
+          rates.push(text)
+        }
+      })
+      return `总值(含税${rates.length ? rates.join('%/') + '%' : '9%'})`
     },
     confirmAmountDiff () {
       const totalCents = Math.round(this.confirmLineTotalInclTax * 100)
@@ -1698,7 +1737,11 @@ export default {
     addConfirmItemRow () {
       const confirmInfo = this.dataForm.confirmInfo || (this.dataForm.confirmInfo = defaultConfirmInfo())
       const itemList = confirmInfo.itemList || (confirmInfo.itemList = [])
-      itemList.push(defaultConfirmItem())
+      const row = defaultConfirmItem()
+      if (itemList.length) {
+        row.taxRate = this.toNumber(itemList[0].taxRate || 9)
+      }
+      itemList.push(row)
     },
     removeConfirmItemRow (index) {
       const itemList = (this.dataForm.confirmInfo || {}).itemList || []
@@ -1889,6 +1932,10 @@ export default {
       const divisor = 1 + taxRate / 100
       if (!divisor) return 0
       return Number((total / divisor).toFixed(2))
+    },
+    calcLineTaxAmount (row) {
+      const total = this.toNumber(row.lineTotalInclTax)
+      return Number((total - this.calcLineTotalExclTax(row)).toFixed(2))
     },
     confirmItemsTotalQuantity (itemList) {
       return (itemList || []).reduce((sum, item) => sum + this.toNumber(item.quantity), 0)
