@@ -17,6 +17,10 @@
               <el-button
                 v-if="dataForm.id && dataForm.estimateFilePath"
                 type="text"
+                @click="previewFile(`/erp/presale/download/estimate/${dataForm.id}`)">预览预售销售单原件</el-button>
+              <el-button
+                v-if="dataForm.id && dataForm.estimateFilePath"
+                type="text"
                 @click="downloadFile(`/erp/presale/download/estimate/${dataForm.id}`)">下载预售销售单原件</el-button>
             </div>
             <div class="tab-scroll-area">
@@ -244,6 +248,10 @@
               <el-button
                 v-if="dataForm.id && dataForm.confirmInfo && dataForm.confirmInfo.filePath"
                 type="text"
+                @click="previewFile(`/erp/presale/download/confirm/${dataForm.id}`)">预览客户订单确认函原件</el-button>
+              <el-button
+                v-if="dataForm.id && dataForm.confirmInfo && dataForm.confirmInfo.filePath"
+                type="text"
                 @click="downloadFile(`/erp/presale/download/confirm/${dataForm.id}`)">下载客户订单确认函原件</el-button>
             </div>
             <el-empty v-if="!hasConfirmData" description="暂未上传客户订单确认函"></el-empty>
@@ -449,6 +457,10 @@
               <el-button
                 v-if="dataForm.id && dataForm.packingInfo && dataForm.packingInfo.filePath"
                 type="text"
+                @click="previewFile(`/erp/presale/download/packing/${dataForm.id}`)">预览装箱单原件</el-button>
+              <el-button
+                v-if="dataForm.id && dataForm.packingInfo && dataForm.packingInfo.filePath"
+                type="text"
                 @click="downloadFile(`/erp/presale/download/packing/${dataForm.id}`)">下载装箱单原件</el-button>
             </div>
             <el-empty v-if="!hasPackingData" description="暂未上传装箱单"></el-empty>
@@ -642,6 +654,10 @@
               <el-button
                 v-if="dataForm.id && dataForm.customsInfo && dataForm.customsInfo.filePath"
                 type="text"
+                @click="previewFile(`/erp/presale/download/customs/${dataForm.id}`)">预览报关单原件</el-button>
+              <el-button
+                v-if="dataForm.id && dataForm.customsInfo && dataForm.customsInfo.filePath"
+                type="text"
                 @click="downloadFile(`/erp/presale/download/customs/${dataForm.id}`)">下载报关单原件</el-button>
               <el-button
                 v-if="dataForm.id"
@@ -715,8 +731,12 @@
                     </template>
                   </el-table-column>
                   <el-table-column prop="filePath" label="归档路径" min-width="260"></el-table-column>
-                  <el-table-column label="操作" width="100" align="center" fixed="right">
+                  <el-table-column label="操作" width="120" align="center" fixed="right">
                     <template slot-scope="scope">
+                      <el-button
+                        type="text"
+                        size="small"
+                        @click="previewFile(`/erp/presale/download/attachment/${scope.row.id}`)">预览</el-button>
                       <el-button
                         type="text"
                         size="small"
@@ -1951,6 +1971,11 @@ export default {
     downloadFile (url) {
       const token = this.$cookie.get('token') || ''
       const link = `${window.SITE_CONFIG.baseUrl}${url}?token=${encodeURIComponent(token)}`
+      window.open(link, '_blank')
+    },
+    previewFile (url) {
+      const token = this.$cookie.get('token') || ''
+      const link = `${window.SITE_CONFIG.baseUrl}${url}?preview=1&token=${encodeURIComponent(token)}`
       window.open(link, '_blank')
     },
     reuploadAttachment (type) {

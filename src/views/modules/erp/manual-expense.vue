@@ -159,6 +159,7 @@
                 <el-table-column prop="createTime" label="上传时间" width="160" align="center"></el-table-column>
                 <el-table-column label="操作" width="120" align="center">
                   <template slot-scope="scope">
+                    <el-button type="text" size="mini" @click="previewFile(scope.row)">预览</el-button>
                     <el-button type="text" size="mini" @click="downloadFile(scope.row)">下载</el-button>
                   </template>
                 </el-table-column>
@@ -424,6 +425,10 @@
       downloadFile (file) {
         const token = this.$cookie.get('token') || ''
         window.open(this.$http.adornUrl(`/erp/manual-expense/download/file/${file.id}?token=${encodeURIComponent(token)}`), '_blank')
+      },
+      previewFile (file) {
+        const token = this.$cookie.get('token') || ''
+        window.open(this.$http.adornUrl(`/erp/manual-expense/download/file/${file.id}?preview=1&token=${encodeURIComponent(token)}`), '_blank')
       },
       dateText (value) {
         return value ? String(value).substring(0, 10) : '-'

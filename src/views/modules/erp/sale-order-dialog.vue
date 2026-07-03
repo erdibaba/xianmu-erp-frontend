@@ -415,8 +415,9 @@
               <el-table-column label="上传时间" width="170" align="center">
                 <template slot-scope="scope">{{ formatDateTime(scope.row.createTime) }}</template>
               </el-table-column>
-              <el-table-column label="下载" width="100" align="center">
+              <el-table-column label="操作" width="120" align="center">
                 <template slot-scope="scope">
+                  <el-button type="text" size="small" @click="previewFile(scope.row)">预览</el-button>
                   <el-button type="text" size="small" @click="downloadFile(scope.row)">下载</el-button>
                 </template>
               </el-table-column>
@@ -452,8 +453,9 @@
               <el-table-column label="上传时间" width="170" align="center">
                 <template slot-scope="scope">{{ formatDateTime(scope.row.createTime) }}</template>
               </el-table-column>
-              <el-table-column label="下载" width="100" align="center">
+              <el-table-column label="操作" width="120" align="center">
                 <template slot-scope="scope">
+                  <el-button type="text" size="small" @click="previewFile(scope.row)">预览</el-button>
                   <el-button type="text" size="small" @click="downloadFile(scope.row)">下载</el-button>
                 </template>
               </el-table-column>
@@ -489,8 +491,9 @@
               <el-table-column label="上传时间" width="170" align="center">
                 <template slot-scope="scope">{{ formatDateTime(scope.row.createTime) }}</template>
               </el-table-column>
-              <el-table-column label="下载" width="100" align="center">
+              <el-table-column label="操作" width="120" align="center">
                 <template slot-scope="scope">
+                  <el-button type="text" size="small" @click="previewFile(scope.row)">预览</el-button>
                   <el-button type="text" size="small" @click="downloadFile(scope.row)">下载</el-button>
                 </template>
               </el-table-column>
@@ -526,8 +529,9 @@
               <el-table-column label="上传时间" width="170" align="center">
                 <template slot-scope="scope">{{ formatDateTime(scope.row.createTime) }}</template>
               </el-table-column>
-              <el-table-column label="下载" width="100" align="center">
+              <el-table-column label="操作" width="120" align="center">
                 <template slot-scope="scope">
+                  <el-button type="text" size="small" @click="previewFile(scope.row)">预览</el-button>
                   <el-button type="text" size="small" @click="downloadFile(scope.row)">下载</el-button>
                 </template>
               </el-table-column>
@@ -966,6 +970,14 @@
                     :key="file.id"
                     type="text"
                     size="small"
+                    @click="previewFile(file)">
+                    预览{{ file.lineNo || '' }}
+                  </el-button>
+                  <el-button
+                    v-for="file in scope.row.receiptFileList"
+                    :key="`download-${file.id}`"
+                    type="text"
+                    size="small"
                     @click="downloadFile(file)">
                     下载{{ file.lineNo || '' }}
                   </el-button>
@@ -975,6 +987,7 @@
               <el-table-column label="水单" min-width="130">
                 <template slot-scope="scope">
                   <el-button v-if="scope.row.bankSlipFile" type="text" size="small" @click="openBankSlipDetail(scope.row)">查看水单</el-button>
+                  <el-button v-if="scope.row.bankSlipFile" type="text" size="small" @click="previewFile(scope.row.bankSlipFile)">预览水单</el-button>
                   <el-button v-if="scope.row.bankSlipFile" type="text" size="small" @click="downloadFile(scope.row.bankSlipFile)">下载水单</el-button>
                   <span v-else class="sub-title-tip">无</span>
                 </template>
@@ -1132,8 +1145,9 @@
               <el-table-column label="上传时间" width="170" align="center">
                 <template slot-scope="scope">{{ formatDateTime(scope.row.createTime) }}</template>
               </el-table-column>
-              <el-table-column label="下载" width="100" align="center">
+              <el-table-column label="操作" width="120" align="center">
                 <template slot-scope="scope">
+                  <el-button type="text" size="small" @click="previewFile(scope.row)">预览</el-button>
                   <el-button type="text" size="small" @click="downloadFile(scope.row)">下载</el-button>
                 </template>
               </el-table-column>
@@ -1148,8 +1162,9 @@
               <el-table-column label="上传时间" width="170" align="center">
                 <template slot-scope="scope">{{ formatDateTime(scope.row.createTime) }}</template>
               </el-table-column>
-              <el-table-column label="下载" width="100" align="center">
+              <el-table-column label="操作" width="120" align="center">
                 <template slot-scope="scope">
+                  <el-button type="text" size="small" @click="previewFile(scope.row)">预览</el-button>
                   <el-button type="text" size="small" @click="downloadFile(scope.row)">下载</el-button>
                 </template>
               </el-table-column>
@@ -1178,8 +1193,9 @@
               <el-table-column label="上传时间" width="170" align="center">
                 <template slot-scope="scope">{{ formatDateTime(scope.row.createTime) }}</template>
               </el-table-column>
-              <el-table-column label="下载" width="100" align="center">
+              <el-table-column label="操作" width="120" align="center">
                 <template slot-scope="scope">
+                  <el-button type="text" size="small" @click="previewFile(scope.row)">预览</el-button>
                   <el-button type="text" size="small" @click="downloadFile(scope.row)">下载</el-button>
                 </template>
               </el-table-column>
@@ -1249,6 +1265,9 @@
           确认金额与本批次应收金额存在差异，请核对；该差异已保存，不影响批次完成状态。
         </div>
         <div class="bank-slip-detail-actions">
+          <el-button v-if="bankSlipDetailBatch.bankSlipFile" size="mini" type="primary" plain @click="previewFile(bankSlipDetailBatch.bankSlipFile)">
+            预览水单原件
+          </el-button>
           <el-button v-if="bankSlipDetailBatch.bankSlipFile" size="mini" type="primary" plain @click="downloadFile(bankSlipDetailBatch.bankSlipFile)">
             下载水单原件
           </el-button>
@@ -2987,6 +3006,14 @@ export default {
       }
       const token = this.$cookie.get('token') || ''
       window.open(this.$http.adornUrl(`/erp/saleorder/download/file/${row.id}?token=${encodeURIComponent(token)}`), '_blank')
+    },
+    previewFile (row) {
+      if (!row.id) {
+        this.$message.error('缺少文件ID')
+        return
+      }
+      const token = this.$cookie.get('token') || ''
+      window.open(this.$http.adornUrl(`/erp/saleorder/download/file/${row.id}?preview=1&token=${encodeURIComponent(token)}`), '_blank')
     },
     deleteFile (row) {
       if (!row || !row.id) return

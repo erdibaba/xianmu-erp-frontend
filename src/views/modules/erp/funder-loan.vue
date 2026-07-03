@@ -110,8 +110,11 @@
         <el-table-column label="金额核对" width="100" align="center">
           <template slot-scope="scope"><el-tag :type="scope.row.amountMatched === 1 ? 'success' : 'danger'" size="small">{{ scope.row.amountMatched === 1 ? '一致' : '有差异' }}</el-tag></template>
         </el-table-column>
-        <el-table-column fixed="right" label="凭证" width="90" align="center">
-          <template slot-scope="scope"><el-button type="text" size="small" @click="downloadRepayment(scope.row.id, scope.row.fileName)">下载</el-button></template>
+        <el-table-column fixed="right" label="凭证" width="120" align="center">
+          <template slot-scope="scope">
+            <el-button type="text" size="small" @click="previewRepayment(scope.row.id)">预览</el-button>
+            <el-button type="text" size="small" @click="downloadRepayment(scope.row.id, scope.row.fileName)">下载</el-button>
+          </template>
         </el-table-column>
       </el-table>
     </el-dialog>
@@ -927,6 +930,10 @@ export default {
         link.click()
         URL.revokeObjectURL(url)
       }).finally(() => loading.close())
+    },
+    previewRepayment (id) {
+      const token = this.$cookie.get('token') || ''
+      window.open(this.$http.adornUrl(`/erp/funder-finance/repayment/download/${id}?preview=1&token=${encodeURIComponent(token)}`), '_blank')
     }
   }
 }

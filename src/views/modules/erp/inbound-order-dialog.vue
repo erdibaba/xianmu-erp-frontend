@@ -331,8 +331,9 @@
       <el-table :data="dataForm.fileList" border size="mini" class="archive-dialog-table">
         <el-table-column prop="fileName" label="文件名称" min-width="180" show-overflow-tooltip></el-table-column>
         <el-table-column prop="filePath" label="归档路径" min-width="280" show-overflow-tooltip></el-table-column>
-        <el-table-column label="下载" width="100" align="center">
+        <el-table-column label="操作" width="120" align="center">
           <template slot-scope="scope">
+            <el-button type="text" size="small" @click="previewFile(scope.row)">预览</el-button>
             <el-button type="text" size="small" @click="downloadFile(scope.row)">下载</el-button>
           </template>
         </el-table-column>
@@ -1095,6 +1096,14 @@ export default {
       }
       const token = this.$cookie.get('token') || ''
       window.open(this.$http.adornUrl(`/erp/inbound/download/file/${row.id}?token=${encodeURIComponent(token)}`), '_blank')
+    },
+    previewFile (row) {
+      if (!row.id) {
+        this.$message.error('缺少归档文件ID')
+        return
+      }
+      const token = this.$cookie.get('token') || ''
+      window.open(this.$http.adornUrl(`/erp/inbound/download/file/${row.id}?preview=1&token=${encodeURIComponent(token)}`), '_blank')
     },
     dataFormSubmit () {
       if (this.readonly) {

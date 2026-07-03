@@ -59,6 +59,7 @@
             补尾款
           </el-button>
           <el-button type="text" size="small" @click="openDetail(scope.row.id)">详情</el-button>
+          <el-button type="text" size="small" @click="previewVoucher(scope.row.id)">预览凭证</el-button>
           <el-button type="text" size="small" @click="downloadVoucher(scope.row.id, scope.row.fileName)">下载凭证</el-button>
         </template>
       </el-table-column>
@@ -417,6 +418,7 @@
         <el-descriptions-item label="确认金额">{{ money(detailData.modifiedAmount) }}</el-descriptions-item>
         <el-descriptions-item label="状态">{{ paymentStatusName(detailData.status) }}</el-descriptions-item>
         <el-descriptions-item label="归档原件">
+          <el-button type="text" @click="previewVoucher(detailData.id)">预览凭证</el-button>
           <el-button type="text" @click="downloadVoucher(detailData.id, detailData.fileName)">下载凭证</el-button>
         </el-descriptions-item>
       </el-descriptions>
@@ -444,6 +446,13 @@
         </el-table-column>
         <el-table-column v-if="detailData.paymentType === 1" label="出资凭证" width="120" align="center">
           <template slot-scope="scope">
+            <el-button
+              v-if="scope.row.xianmuContributionFileName"
+              type="text"
+              size="small"
+              @click="previewContributionVoucher(scope.row.id)">
+              预览
+            </el-button>
             <el-button
               v-if="scope.row.xianmuContributionFileName"
               type="text"
@@ -1085,6 +1094,10 @@ export default {
         URL.revokeObjectURL(url)
       }).finally(() => loading.close())
     },
+    previewVoucher (id) {
+      const token = this.$cookie.get('token') || ''
+      window.open(this.$http.adornUrl(`/erp/funder-finance/payment/download/${id}?preview=1&token=${encodeURIComponent(token)}`), '_blank')
+    },
     downloadContributionVoucher (allocationId, fileName) {
       const loading = this.$loading({ lock: true, text: '正在下载鲜牧出资款凭证...' })
       this.$http({
@@ -1099,6 +1112,10 @@ export default {
         link.click()
         URL.revokeObjectURL(url)
       }).finally(() => loading.close())
+    },
+    previewContributionVoucher (allocationId) {
+      const token = this.$cookie.get('token') || ''
+      window.open(this.$http.adornUrl(`/erp/funder-finance/allocation/download/contribution/${allocationId}?preview=1&token=${encodeURIComponent(token)}`), '_blank')
     }
   }
 }
