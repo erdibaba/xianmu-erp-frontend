@@ -789,6 +789,42 @@
                 </el-col>
               </el-row>
             </div>
+            <div v-if="currentOutboundBatch" class="secondary-fee-panel">
+              <div class="outbound-section-title">
+                <strong>二批超期费用</strong>
+                <span class="sub-title-tip">利息按二批商阶梯年化分段计算，库费按仓库二批收费标准计算。</span>
+              </div>
+              <div class="secondary-fee-cards">
+                <div class="secondary-fee-card">
+                  <span>计息天数</span>
+                  <strong>{{ formatInteger(currentOutboundBatch.secondaryInterestDays) }}天</strong>
+                </div>
+                <div class="secondary-fee-card">
+                  <span>二批利息</span>
+                  <strong>¥{{ formatNumber(currentOutboundBatch.secondaryInterestAmount, 2) }}</strong>
+                </div>
+                <div class="secondary-fee-card">
+                  <span>库费天数</span>
+                  <strong>{{ formatInteger(currentOutboundBatch.secondaryStorageDays) }}天</strong>
+                </div>
+                <div class="secondary-fee-card">
+                  <span>二批库费</span>
+                  <strong>¥{{ formatNumber(currentOutboundBatch.secondaryStorageAmount, 2) }}</strong>
+                </div>
+                <div class="secondary-fee-card total">
+                  <span>费用合计</span>
+                  <strong>¥{{ formatNumber(currentOutboundBatch.secondaryFeeAmount, 2) }}</strong>
+                </div>
+              </div>
+              <el-input
+                v-if="currentOutboundBatch.secondaryFeeRemark"
+                :value="currentOutboundBatch.secondaryFeeRemark"
+                type="textarea"
+                :rows="2"
+                disabled
+                class="secondary-fee-remark">
+              </el-input>
+            </div>
             <div v-if="currentOutboundBatch && currentOutboundBatch.expenseList && currentOutboundBatch.expenseList.length" class="outbound-section-title">
               <strong>本批次支出费用</strong>
               <span class="sub-title-tip">批次确认完成后自动生成冷库费。</span>
@@ -963,6 +999,9 @@
               </el-table-column>
               <el-table-column label="费用金额" width="110" align="right">
                 <template slot-scope="scope">¥{{ formatBatchExpenseAmount(scope.row) }}</template>
+              </el-table-column>
+              <el-table-column label="二批费用" width="110" align="right">
+                <template slot-scope="scope">¥{{ formatNumber(scope.row.secondaryFeeAmount, 2) }}</template>
               </el-table-column>
               <el-table-column label="归档原件" min-width="180">
                 <template slot-scope="scope">
@@ -1879,6 +1918,12 @@ export default {
         bankSerialNoModified: '',
         bankExpectedAmount: 0,
         bankAmountDiff: 0,
+        secondaryInterestDays: 0,
+        secondaryInterestAmount: 0,
+        secondaryStorageDays: 0,
+        secondaryStorageAmount: 0,
+        secondaryFeeAmount: 0,
+        secondaryFeeRemark: '',
         receipt: null,
         bankSlipFile: null,
         scan: null,
@@ -3290,6 +3335,44 @@ export default {
   color: #e23b3b;
   font-size: 12px;
   line-height: 18px;
+}
+
+.secondary-fee-panel {
+  margin: 8px 0 12px;
+}
+
+.secondary-fee-cards {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.secondary-fee-card {
+  padding: 10px 12px;
+  border: 1px solid #dbe7f3;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.secondary-fee-card span {
+  display: block;
+  margin-bottom: 4px;
+  color: #909399;
+  font-size: 12px;
+}
+
+.secondary-fee-card strong {
+  color: #303133;
+  font-size: 16px;
+}
+
+.secondary-fee-card.total {
+  border-color: #17b3a3;
+  background: #f0fbf9;
+}
+
+.secondary-fee-remark {
+  margin-top: 8px;
 }
 
 .bank-slip-detail-header {

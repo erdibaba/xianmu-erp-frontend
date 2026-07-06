@@ -74,6 +74,46 @@
               style="width: 100%;"></el-input-number>
           </el-form-item>
         </el-col>
+        <el-col :span="24" v-if="showSecondaryFields">
+          <div class="rate-rule-header">
+            <span>二批阶梯年化规则</span>
+            <el-button type="text" @click="addInterestRateRule">新增规则</el-button>
+          </div>
+          <el-table :data="dataForm.interestRateList" border size="mini" class="rate-rule-table">
+            <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
+            <el-table-column label="起始天数" width="120">
+              <template slot-scope="scope">
+                <el-input-number v-model="scope.row.startDay" :min="1" :precision="0" :controls="false" size="mini"></el-input-number>
+              </template>
+            </el-table-column>
+            <el-table-column label="结束天数" width="120">
+              <template slot-scope="scope">
+                <el-input-number v-model="scope.row.endDay" :min="1" :precision="0" :controls="false" size="mini" placeholder="空=以后"></el-input-number>
+              </template>
+            </el-table-column>
+            <el-table-column label="年化(%)" width="130">
+              <template slot-scope="scope">
+                <el-input-number v-model="scope.row.annualRate" :min="0" :precision="4" :controls="false" size="mini"></el-input-number>
+              </template>
+            </el-table-column>
+            <el-table-column label="备注" min-width="180">
+              <template slot-scope="scope">
+                <el-input v-model="scope.row.remark" size="mini" maxlength="500"></el-input>
+              </template>
+            </el-table-column>
+            <el-table-column label="状态" width="90" align="center">
+              <template slot-scope="scope">
+                <el-switch v-model="scope.row.status" :active-value="1" :inactive-value="0"></el-switch>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="70" align="center">
+              <template slot-scope="scope">
+                <el-button type="text" size="mini" @click="removeInterestRateRule(scope.$index)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+          <div class="rate-rule-tip">自然天从检疫证日期当天算第1天；系统会先扣除冷库减免天数，再按命中的自然天阶梯分段计息。</div>
+        </el-col>
         <el-col :span="12" v-if="showFunderFields">
           <el-form-item label="资方账期天数">
             <el-input-number
@@ -197,6 +237,10 @@ const defaultForm = () => ({
   riskLevel: 'NORMAL',
   riskRemark: '',
   riskMarkDate: '',
+  interestRateList: [
+    { startDay: 8, endDay: 30, annualRate: 9.6, remark: '默认：第8-30天（含30天）按9.6%', status: 1 },
+    { startDay: 31, endDay: null, annualRate: 18, remark: '默认：第31天起按18%', status: 1 }
+  ],
   remark: '',
   status: 1
 })
@@ -222,6 +266,9 @@ export default {
     showAnnualInterestRate () {
       return (this.dataForm.businessRoles || []).some(role => role === 'FUNDER' || role === 'SECONDARY')
     },
+    showSecondaryFields () {
+      return (this.dataForm.businessRoles || []).some(role => role === 'SECONDARY')
+    },
     showFunderFields () {
       return (this.dataForm.businessRoles || []).some(role => role === 'FUNDER')
     }
@@ -244,6 +291,9 @@ export default {
               this.dataForm = Object.assign(defaultForm(), data.partner || {})
               this.dataForm.businessRoles = this.dataForm.businessRole ? this.dataForm.businessRole.split(',') : []
               this.dataForm.coldStorageFreeDays = this.dataForm.coldStorageFreeDays || 7
+              if (!this.dataForm.interestRateList || !this.dataForm.interestRateList.length) {
+                this.dataForm.interestRateList = defaultForm().interestRateList
+              }
             } else {
               this.$message.error(data.msg || '获取往来单位失败')
             }
@@ -265,6 +315,21 @@ export default {
       this.dataForm.wecomChatName = group ? group.groupName : ''
       this.dataForm.wecomChatOwner = group ? group.owner : ''
     },
+    addInterestRateRule () {
+      if (!this.dataForm.interestRateList) {
+        this.$set(this.dataForm, 'interestRateList', [])
+      }
+      this.dataForm.interestRateList.push({
+        startDay: 1,
+        endDay: null,
+        annualRate: 0,
+        remark: '',
+        status: 1
+      })
+    },
+    removeInterestRateRule (index) {
+      this.dataForm.interestRateList.splice(index, 1)
+    },
     dataFormSubmit () {
       this.$refs.dataForm.validate((valid) => {
         if (!valid) {
@@ -272,7 +337,8 @@ export default {
         }
         const payload = Object.assign({}, this.dataForm, {
           businessRole: (this.dataForm.businessRoles || []).join(','),
-          coldStorageFreeDays: this.dataForm.coldStorageFreeDays || 7
+          coldStorageFreeDays: this.dataForm.coldStorageFreeDays || 7,
+          interestRateList: this.showSecondaryFields ? (this.dataForm.interestRateList || []) : []
         })
         delete payload.partnerType
         this.$http({
@@ -299,3 +365,28 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.rate-rule-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 4px 0 8px 110px;
+  font-weight: 600;
+}
+
+.rate-rule-table {
+  margin-left: 110px;
+  width: calc(100% - 110px);
+}
+
+.rate-rule-table .el-input-number {
+  width: 100%;
+}
+
+.rate-rule-tip {
+  margin: 6px 0 14px 110px;
+  color: #909399;
+  font-size: 12px;
+}
+</style>

@@ -56,6 +56,18 @@
                 </el-input-number>
               </el-descriptions-item>
             </template>
+            <template v-if="uploadType === 'quarantine'">
+              <el-descriptions-item label="识别检疫证日期">{{ resultData.recognizedQuarantineDate || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="确认检疫证日期">
+                <el-date-picker
+                  v-model="resultData.confirmedQuarantineDate"
+                  type="date"
+                  value-format="yyyy-MM-dd"
+                  size="mini"
+                  style="width: 180px;">
+                </el-date-picker>
+              </el-descriptions-item>
+            </template>
           </template>
           <template v-else>
             <el-descriptions-item label="识别类型">{{ resultData.docType || '-' }}</el-descriptions-item>
@@ -84,6 +96,7 @@
       <el-button @click="visible = false">取消</el-button>
       <el-button v-if="!isArchiveUpload" type="primary" :disabled="!resultData" @click="confirmHandle()">带入编辑</el-button>
       <el-button v-else-if="uploadType === 'customs'" type="primary" :loading="loading" :disabled="!resultData" @click="confirmCustomsUpload()">确认覆盖保存</el-button>
+      <el-button v-else-if="uploadType === 'quarantine'" type="primary" :loading="loading" :disabled="!resultData" @click="confirmQuarantineUpload()">确认保存</el-button>
       <el-button v-else type="primary" :disabled="!resultData" @click="visible = false">完成</el-button>
     </span>
   </el-dialog>
@@ -111,7 +124,8 @@ export default {
       loading: false,
       fileList: [],
       resultData: null,
-      pendingCustomsFile: null
+      pendingCustomsFile: null,
+      pendingQuarantineFiles: []
     }
   },
   computed: {
@@ -142,7 +156,7 @@ export default {
         return '上传报关单原件后，系统会先识别毛重；请核对确认毛重后再覆盖保存归档。'
       }
       if (this.uploadType === 'quarantine') {
-        return '上传检疫证明原件，系统仅做归档存储，不进行 OCR 识别；重新上传会覆盖当前确认函下已归档的检疫证明。'
+        return '上传检疫证明原件，系统会识别检疫证日期；请核对确认日期后再保存归档。'
       }
       return '上传预售销售单 PDF，识别后带入“预售销售单”页签，用户修改后保存，原始记录会长期保留。'
     },
@@ -182,6 +196,7 @@ export default {
       this.fileList = []
       this.resultData = null
       this.pendingCustomsFile = null
+      this.pendingQuarantineFiles = []
     },
     beforeUpload (file) {
       const allow = this.isArchiveUpload
@@ -208,6 +223,9 @@ export default {
       if (this.uploadType === 'customs') {
         const files = this.fileList.map(item => item.raw || item).filter(Boolean)
         this.recognizeCustomsRequest({ files })
+      } else if (this.uploadType === 'quarantine') {
+        const files = this.fileList.map(item => item.raw || item).filter(Boolean)
+        this.recognizeQuarantineRequest({ files })
       } else if (this.isArchiveUpload) {
         const files = this.fileList.map(item => item.raw || item).filter(Boolean)
         this.uploadArchiveRequest({ files })
@@ -215,6 +233,37 @@ export default {
         const files = this.fileList.map(item => item.raw || item).filter(Boolean)
         this.recognizeRequest({ files })
       }
+    },
+    recognizeQuarantineRequest (option) {
+      const files = option.files || (option.file ? [option.file] : [])
+      const file = files[0]
+      if (!file) return
+      this.pendingQuarantineFiles = files
+      this.loading = true
+      const formData = new FormData()
+      formData.append('file', file)
+      this.$http({
+        url: this.$http.adornUrl('/erp/presale/recognize-quarantine'),
+        method: 'post',
+        timeout: 1000 * 180,
+        data: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      }).then(({ data }) => {
+        if (data && data.code === 0) {
+          this.resultData = data.attachment || {}
+          if (!this.resultData.recognizedQuarantineDate) {
+            this.$message.warning('未识别到检疫证日期，请人工选择确认日期后再保存')
+          }
+        } else {
+          this.$message.error((data && data.msg) || '检疫证明识别失败')
+        }
+        this.loading = false
+      }).catch(() => {
+        this.loading = false
+        this.$message.error('检疫证明识别失败，请检查文件或后端服务')
+      })
     },
     handleRequest () {},
     recognizeCustomsRequest (option) {
@@ -299,6 +348,9 @@ export default {
         if (this.uploadType === 'customs' && option.confirmedGrossWeight !== undefined && option.confirmedGrossWeight !== null) {
           formData.append('confirmedGrossWeight', option.confirmedGrossWeight)
         }
+        if (this.uploadType === 'quarantine' && option.confirmedQuarantineDate) {
+          formData.append('confirmedQuarantineDate', option.confirmedQuarantineDate)
+        }
         return this.$http({
           url: this.$http.adornUrl('/erp/presale/upload-attachment'),
           method: 'post',
@@ -341,6 +393,20 @@ export default {
       this.uploadArchiveRequest({
         files: [this.pendingCustomsFile],
         confirmedGrossWeight: this.resultData.confirmedGrossWeight
+      })
+    },
+    confirmQuarantineUpload () {
+      if (!this.pendingQuarantineFiles.length) {
+        this.$message.error('请先识别检疫证明文件')
+        return
+      }
+      if (!this.resultData || !this.resultData.confirmedQuarantineDate) {
+        this.$message.error('请选择确认检疫证日期')
+        return
+      }
+      this.uploadArchiveRequest({
+        files: this.pendingQuarantineFiles,
+        confirmedQuarantineDate: this.resultData.confirmedQuarantineDate
       })
     }
   }

@@ -46,6 +46,16 @@
           </el-form-item>
         </el-col>
         <el-col :span="8">
+          <el-form-item label="二批冷冻库费(元/吨/天)" prop="secondaryFrozenStorageFee">
+            <el-input-number v-model="dataForm.secondaryFrozenStorageFee" :precision="2" :min="0" :controls="false" style="width: 100%;"></el-input-number>
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+          <el-form-item label="二批冷鲜库费(元/吨/天)" prop="secondaryChilledStorageFee">
+            <el-input-number v-model="dataForm.secondaryChilledStorageFee" :precision="2" :min="0" :controls="false" style="width: 100%;"></el-input-number>
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
           <el-form-item label="扫码费方式" prop="scanFeeUnit">
             <el-select v-model="dataForm.scanFeeUnit" style="width: 100%;">
               <el-option label="按吨" value="TON"></el-option>
@@ -192,6 +202,8 @@
       <el-table-column prop="chilledStorageFee" label="仓储冷藏费(元/吨)" width="150" align="right" header-align="center"></el-table-column>
       <el-table-column prop="frozenColdFee" label="冷链冷冻装卸费(元/吨)" width="180" align="right" header-align="center"></el-table-column>
       <el-table-column prop="chilledColdFee" label="冷链冷藏装卸费(元/吨)" width="180" align="right" header-align="center"></el-table-column>
+      <el-table-column prop="secondaryFrozenStorageFee" label="二批冷冻库费(元/吨/天)" width="180" align="right" header-align="center"></el-table-column>
+      <el-table-column prop="secondaryChilledStorageFee" label="二批冷鲜库费(元/吨/天)" width="180" align="right" header-align="center"></el-table-column>
       <el-table-column label="扫码费方式" width="110" align="center" header-align="center">
         <template slot-scope="scope">{{ scanFeeUnitLabel(scope.row.scanFeeUnit) }}</template>
       </el-table-column>
@@ -244,6 +256,8 @@
     chilledStorageFee: 0,
     frozenColdFee: 0,
     chilledColdFee: 0,
+    secondaryFrozenStorageFee: 0,
+    secondaryChilledStorageFee: 0,
     scanFeeUnit: 'TON',
     scanFeeRate: 0,
     weightBasis: 'NET',
@@ -284,6 +298,12 @@
           ],
           chilledColdFee: [
             { required: true, message: '冷链冷藏装卸费不能为空', trigger: 'blur' }
+          ],
+          secondaryFrozenStorageFee: [
+            { required: true, message: '二批冷冻库费不能为空', trigger: 'blur' }
+          ],
+          secondaryChilledStorageFee: [
+            { required: true, message: '二批冷鲜库费不能为空', trigger: 'blur' }
           ],
           scanFeeUnit: [
             { required: true, message: '扫码费方式不能为空', trigger: 'change' }

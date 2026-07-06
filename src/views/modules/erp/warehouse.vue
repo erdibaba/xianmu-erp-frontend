@@ -21,6 +21,8 @@
       <el-table-column prop="chilledStorageFee" label="仓储冷藏(元/吨)" width="130" align="right" header-align="center"></el-table-column>
       <el-table-column prop="frozenColdFee" label="冷链冷冻装卸费(元/吨)" width="170" align="right" header-align="center"></el-table-column>
       <el-table-column prop="chilledColdFee" label="冷链冷藏装卸费(元/吨)" width="170" align="right" header-align="center"></el-table-column>
+      <el-table-column prop="secondaryFrozenStorageFee" label="二批冷冻库费" width="130" align="right" header-align="center"></el-table-column>
+      <el-table-column prop="secondaryChilledStorageFee" label="二批冷鲜库费" width="130" align="right" header-align="center"></el-table-column>
       <el-table-column prop="feeUnit" label="计费单位" width="100" align="center" header-align="center"></el-table-column>
       <el-table-column label="扫码费" width="90" align="center" header-align="center">
         <template slot-scope="scope">

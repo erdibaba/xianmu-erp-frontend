@@ -736,6 +736,8 @@
                       {{ formatDateTime(scope.row.updateTime || scope.row.createTime) }}
                     </template>
                   </el-table-column>
+                  <el-table-column prop="recognizedQuarantineDate" label="识别检疫日期" width="130" align="center"></el-table-column>
+                  <el-table-column prop="confirmedQuarantineDate" label="确认检疫日期" width="130" align="center"></el-table-column>
                   <el-table-column prop="filePath" label="归档路径" min-width="260"></el-table-column>
                   <el-table-column label="操作" width="120" align="center" fixed="right">
                     <template slot-scope="scope">
