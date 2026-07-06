@@ -89,6 +89,98 @@
         </el-table>
       </el-tab-pane>
 
+      <el-tab-pane label="柜号产品库存" name="spotContainerProduct">
+        <el-form :inline="true" :model="spotContainerProductQuery" size="small">
+          <el-form-item>
+            <el-input v-model="spotContainerProductQuery.keyword" placeholder="产品编码/中文名/英文名" clearable @keyup.enter.native="getSpotContainerProductList()"></el-input>
+          </el-form-item>
+          <el-form-item>
+            <el-input v-model="spotContainerProductQuery.contractNo" placeholder="合同号" clearable @keyup.enter.native="getSpotContainerProductList()"></el-input>
+          </el-form-item>
+          <el-form-item>
+            <el-select v-model="spotContainerProductQuery.warehouseId" filterable clearable placeholder="请选择仓库" style="width: 190px;" @change="spotContainerProductWarehouseChange">
+              <el-option v-for="item in warehouseList" :key="item.id" :label="item.warehouseName" :value="item.id"></el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-select
+              v-model="spotContainerProductQuery.containerNos"
+              multiple
+              filterable
+              remote
+              clearable
+              reserve-keyword
+              :disabled="!spotContainerProductQuery.warehouseId"
+              :loading="spotContainerProductContainerLoading"
+              :remote-method="remoteSearchSpotContainerProductContainers"
+              placeholder="请选择柜号"
+              style="width: 260px;">
+              <el-option v-for="item in spotContainerProductContainerOptions" :key="item" :label="item" :value="item"></el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-input v-model="spotContainerProductQuery.factoryNo" placeholder="厂号" clearable @keyup.enter.native="getSpotContainerProductList()"></el-input>
+          </el-form-item>
+          <el-form-item>
+            <el-checkbox v-model="spotContainerProductQuery.onlyAvailable" true-label="1" false-label="0">只看可售库存</el-checkbox>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="getSpotContainerProductList()">查询</el-button>
+            <el-button @click="resetSpotContainerProductQuery()">重置</el-button>
+          </el-form-item>
+        </el-form>
+
+        <el-table :data="spotContainerProductList" border stripe v-loading="spotContainerProductLoading" height="620">
+          <el-table-column type="index" label="序号" width="60" align="center" header-align="center"></el-table-column>
+          <el-table-column prop="warehouseName" label="仓库" min-width="140" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="containerNo" label="柜号" min-width="130" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="productCode" label="产品编码" min-width="110" align="center" header-align="center"></el-table-column>
+          <el-table-column prop="marketCirculationName" label="市场流通名称" min-width="180" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="productName" label="中文名称" min-width="170" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="ownershipName" label="货权" min-width="170" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="temperatureZone" label="温区" width="90" align="center" header-align="center"></el-table-column>
+          <el-table-column label="涉及合同号" min-width="190" show-overflow-tooltip>
+            <template slot-scope="scope">{{ formatContractNos(scope.row) }}</template>
+          </el-table-column>
+          <el-table-column prop="factoryNos" label="厂号汇总" min-width="120" show-overflow-tooltip></el-table-column>
+          <el-table-column label="鲜转冻标识" width="150" align="center" header-align="center">
+            <template slot-scope="scope">
+              <el-tag v-if="isAllFreshToFrozen(scope.row)" size="small" type="danger">全部鲜转冻</el-tag>
+              <div v-else-if="isPartialFreshToFrozen(scope.row)" class="fresh-frozen-cell">
+                <el-tag size="small" type="warning">部分鲜转冻</el-tag>
+                <div class="fresh-frozen-summary">
+                  {{ scope.row.freshToFrozenBoxes || 0 }}件 / {{ formatWeight(scope.row.freshToFrozenWeightKg) }}KG
+                </div>
+              </div>
+              <span v-else>-</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="packingBoxes" label="装箱单箱数" width="110" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="inboundBoxes" label="入库箱数" width="100" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="allocatedBoxes" label="已占用箱数" width="110" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="availableBoxes" label="可售箱数" width="100" align="right" header-align="center">
+            <template slot-scope="scope">
+              <span :class="{ 'inventory-danger': Number(scope.row.availableBoxes) < 0 }">{{ scope.row.availableBoxes }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="inboundWeightKg" label="入库总重量(KG)" width="135" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="allocatedWeightKg" label="已占用重量(KG)" width="135" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="damageWeightKg" label="报损重量(KG)" width="120" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="availableWeightKg" label="可售重量(KG)" width="120" align="right" header-align="center"></el-table-column>
+          <el-table-column label="预警" width="90" align="center" header-align="center">
+            <template slot-scope="scope">
+              <el-tag v-if="scope.row.freshnessWarning" size="small" type="warning">保鲜</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="90" align="center" header-align="center" fixed="right">
+            <template slot-scope="scope">
+              <el-button type="text" size="small" @click="openBatchDialog('spotContainerProduct', scope.row)">详情</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-tab-pane>
+
       <el-tab-pane label="期货库存" name="futures">
         <el-form :inline="true" :model="futuresQuery" size="small">
           <el-form-item>
@@ -300,8 +392,17 @@
         activeTab: 'spot',
         warehouseList: [],
         spotContainerOptions: [],
+        spotContainerProductContainerOptions: [],
         futuresContainerOptions: [],
         spotQuery: {
+          keyword: '',
+          warehouseId: '',
+          contractNo: '',
+          containerNos: [],
+          factoryNo: '',
+          onlyAvailable: '1'
+        },
+        spotContainerProductQuery: {
           keyword: '',
           warehouseId: '',
           contractNo: '',
@@ -326,12 +427,15 @@
           factoryNo: ''
         },
         spotList: [],
+        spotContainerProductList: [],
         futuresList: [],
         recordList: [],
         batchList: [],
         spotLoading: false,
+        spotContainerProductLoading: false,
         futuresLoading: false,
         spotContainerLoading: false,
+        spotContainerProductContainerLoading: false,
         futuresContainerLoading: false,
         recordLoading: false,
         batchLoading: false,
@@ -352,6 +456,8 @@
       getDataList () {
         if (this.activeTab === 'futures') {
           this.getFuturesList()
+        } else if (this.activeTab === 'spotContainerProduct') {
+          this.getSpotContainerProductList()
         } else if (this.activeTab === 'records') {
           this.getRecordList()
         } else {
@@ -377,6 +483,27 @@
           this.spotLoading = false
         }).catch(() => {
           this.spotLoading = false
+        })
+      },
+      getSpotContainerProductList () {
+        this.spotContainerProductLoading = true
+        const params = Object.assign({}, this.spotContainerProductQuery, {
+          containerNos: this.spotContainerProductQuery.containerNos.join(',')
+        })
+        this.$http({
+          url: this.$http.adornUrl('/erp/inventory/spot/by-container-product'),
+          method: 'get',
+          params: this.$http.adornParams(params)
+        }).then(({data}) => {
+          if (data && data.code === 0) {
+            this.spotContainerProductList = data.list || []
+          } else {
+            this.spotContainerProductList = []
+            this.$message.error((data && data.msg) || '获取柜号产品库存失败')
+          }
+          this.spotContainerProductLoading = false
+        }).catch(() => {
+          this.spotContainerProductLoading = false
         })
       },
       getFuturesList () {
@@ -420,9 +547,10 @@
       },
       openBatchDialog (type, row) {
         this.currentInventoryRow = row
-        this.currentBatchType = type
+        const isSpotLike = type === 'spot' || type === 'spotContainerProduct'
+        this.currentBatchType = isSpotLike ? 'spot' : 'futures'
         this.batchList = []
-        this.batchDialogTitle = type === 'futures' ? '期货库存来源详情' : '现货库存来源详情'
+        this.batchDialogTitle = type === 'futures' ? '期货库存来源详情' : (type === 'spotContainerProduct' ? '柜号产品库存来源详情' : '现货库存来源详情')
         this.batchDialogVisible = true
         this.batchLoading = true
         const url = type === 'futures' ? '/erp/inventory/futures/batches' : '/erp/inventory/spot/batches'
@@ -435,6 +563,16 @@
             ownershipName: row.ownershipName || '',
             factoryNo: this.futuresQuery.factoryNo,
             onlyAvailable: this.futuresQuery.onlyAvailable
+          }
+          : type === 'spotContainerProduct'
+          ? {
+            productId: row.productId,
+            warehouseId: row.warehouseId,
+            contractNo: this.spotContainerProductQuery.contractNo,
+            containerNos: row.containerNo || '',
+            ownershipName: row.ownershipName || '',
+            factoryNo: this.spotContainerProductQuery.factoryNo,
+            onlyAvailable: this.spotContainerProductQuery.onlyAvailable
           }
           : {
             productId: row.productId,
@@ -473,6 +611,19 @@
         this.spotContainerOptions = []
         this.spotList = []
         this.getSpotList()
+      },
+      resetSpotContainerProductQuery () {
+        this.spotContainerProductQuery = {
+          keyword: '',
+          warehouseId: '',
+          contractNo: '',
+          containerNos: [],
+          factoryNo: '',
+          onlyAvailable: '1'
+        }
+        this.spotContainerProductContainerOptions = []
+        this.spotContainerProductList = []
+        this.getSpotContainerProductList()
       },
       resetFuturesQuery () {
         this.futuresQuery = {
@@ -529,6 +680,12 @@
         this.spotList = []
         this.remoteSearchSpotContainers('')
       },
+      spotContainerProductWarehouseChange () {
+        this.spotContainerProductQuery.containerNos = []
+        this.spotContainerProductContainerOptions = []
+        this.spotContainerProductList = []
+        this.remoteSearchSpotContainerProductContainers('')
+      },
       futuresWarehouseChange () {
         this.futuresQuery.containerNos = []
         this.futuresContainerOptions = []
@@ -538,15 +695,21 @@
       remoteSearchSpotContainers (keyword) {
         this.remoteSearchContainers('spot', keyword)
       },
+      remoteSearchSpotContainerProductContainers (keyword) {
+        this.remoteSearchContainers('spotContainerProduct', keyword)
+      },
       remoteSearchFuturesContainers (keyword) {
         this.remoteSearchContainers('futures', keyword)
       },
       remoteSearchContainers (inventoryType, keyword) {
         const isFutures = inventoryType === 'futures'
-        const query = isFutures ? this.futuresQuery : this.spotQuery
+        const isSpotContainerProduct = inventoryType === 'spotContainerProduct'
+        const query = isFutures ? this.futuresQuery : (isSpotContainerProduct ? this.spotContainerProductQuery : this.spotQuery)
         if (!query.warehouseId) {
           if (isFutures) {
             this.futuresContainerOptions = []
+          } else if (isSpotContainerProduct) {
+            this.spotContainerProductContainerOptions = []
           } else {
             this.spotContainerOptions = []
           }
@@ -554,6 +717,8 @@
         }
         if (isFutures) {
           this.futuresContainerLoading = true
+        } else if (isSpotContainerProduct) {
+          this.spotContainerProductContainerLoading = true
         } else {
           this.spotContainerLoading = true
         }
@@ -572,6 +737,9 @@
           if (isFutures) {
             this.futuresContainerOptions = options
             this.futuresContainerLoading = false
+          } else if (isSpotContainerProduct) {
+            this.spotContainerProductContainerOptions = options
+            this.spotContainerProductContainerLoading = false
           } else {
             this.spotContainerOptions = options
             this.spotContainerLoading = false
@@ -579,6 +747,8 @@
         }).catch(() => {
           if (isFutures) {
             this.futuresContainerLoading = false
+          } else if (isSpotContainerProduct) {
+            this.spotContainerProductContainerLoading = false
           } else {
             this.spotContainerLoading = false
           }
