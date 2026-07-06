@@ -997,7 +997,7 @@
               <el-table-column label="实际重量(KG)" width="125" align="right">
                 <template slot-scope="scope">{{ formatNumber(scope.row.shippedTotalWeight, 3) }}</template>
               </el-table-column>
-              <el-table-column label="费用金额" width="110" align="right">
+              <el-table-column label="出库冷库费" width="120" align="right">
                 <template slot-scope="scope">¥{{ formatBatchExpenseAmount(scope.row) }}</template>
               </el-table-column>
               <el-table-column label="二批费用" width="110" align="right">
