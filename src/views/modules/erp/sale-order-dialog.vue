@@ -1000,8 +1000,8 @@
               <el-table-column label="出库冷库费" width="120" align="right">
                 <template slot-scope="scope">¥{{ formatBatchExpenseAmount(scope.row) }}</template>
               </el-table-column>
-              <el-table-column width="130" align="right">
-                <template slot="header">
+              <el-table-column label="二批费用" width="130" align="right">
+                <template slot="header" slot-scope="scope">
                   <span>二批费用</span>
                   <el-tooltip
                     effect="dark"
