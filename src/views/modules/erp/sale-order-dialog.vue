@@ -1000,7 +1000,16 @@
               <el-table-column label="出库冷库费" width="120" align="right">
                 <template slot-scope="scope">¥{{ formatBatchExpenseAmount(scope.row) }}</template>
               </el-table-column>
-              <el-table-column label="二批费用" width="110" align="right">
+              <el-table-column width="130" align="right">
+                <template slot="header">
+                  <span>二批费用</span>
+                  <el-tooltip
+                    effect="dark"
+                    placement="top"
+                    content="二批费用=二批利息+二批库费；按检疫日期、出库日期、二批减免天数、阶梯年化和仓库二批库费计算，不是水单金额。">
+                    <i class="el-icon-question secondary-fee-help"></i>
+                  </el-tooltip>
+                </template>
                 <template slot-scope="scope">¥{{ formatNumber(scope.row.secondaryFeeAmount, 2) }}</template>
               </el-table-column>
               <el-table-column label="归档原件" min-width="180">
@@ -3373,6 +3382,12 @@ export default {
 
 .secondary-fee-remark {
   margin-top: 8px;
+}
+
+.secondary-fee-help {
+  margin-left: 4px;
+  color: #909399;
+  cursor: help;
 }
 
 .bank-slip-detail-header {
