@@ -253,6 +253,8 @@ export default {
       }).then(({ data }) => {
         if (data && data.code === 0) {
           this.resultData = data.attachment || {}
+          this.resultData.recognizedQuarantineDate = this.normalizeDateOnly(this.resultData.recognizedQuarantineDate)
+          this.resultData.confirmedQuarantineDate = this.normalizeDateOnly(this.resultData.confirmedQuarantineDate)
           if (!this.resultData.recognizedQuarantineDate) {
             this.$message.warning('未识别到检疫证日期，请人工选择确认日期后再保存')
           }
@@ -349,7 +351,7 @@ export default {
           formData.append('confirmedGrossWeight', option.confirmedGrossWeight)
         }
         if (this.uploadType === 'quarantine' && option.confirmedQuarantineDate) {
-          formData.append('confirmedQuarantineDate', option.confirmedQuarantineDate)
+          formData.append('confirmedQuarantineDate', this.normalizeDateOnly(option.confirmedQuarantineDate))
         }
         return this.$http({
           url: this.$http.adornUrl('/erp/presale/upload-attachment'),
@@ -406,8 +408,23 @@ export default {
       }
       this.uploadArchiveRequest({
         files: this.pendingQuarantineFiles,
-        confirmedQuarantineDate: this.resultData.confirmedQuarantineDate
+        confirmedQuarantineDate: this.normalizeDateOnly(this.resultData.confirmedQuarantineDate)
       })
+    },
+    normalizeDateOnly (value) {
+      if (!value) {
+        return ''
+      }
+      if (typeof value === 'string') {
+        return value.length >= 10 ? value.substring(0, 10) : value
+      }
+      const date = new Date(value)
+      if (isNaN(date.getTime())) {
+        return ''
+      }
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      return `${date.getFullYear()}-${month}-${day}`
     }
   }
 }
