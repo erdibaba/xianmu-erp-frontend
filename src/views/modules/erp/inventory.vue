@@ -64,6 +64,12 @@
             <template slot-scope="scope">{{ formatContractNos(scope.row) }}</template>
           </el-table-column>
           <el-table-column prop="ownershipName" label="货权" min-width="170" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="earliestInboundDate" label="最早入库" width="115" align="center" header-align="center">
+            <template slot-scope="scope">{{ formatDate(scope.row.earliestInboundDate || scope.row.inboundDate) }}</template>
+          </el-table-column>
+          <el-table-column prop="latestInboundDate" label="最近入库" width="115" align="center" header-align="center">
+            <template slot-scope="scope">{{ formatDate(scope.row.latestInboundDate || scope.row.inboundDate) }}</template>
+          </el-table-column>
           <el-table-column prop="packingBoxes" label="装箱单箱数" width="110" align="right" header-align="center"></el-table-column>
           <el-table-column prop="inboundBoxes" label="入库箱数" width="100" align="right" header-align="center"></el-table-column>
           <el-table-column prop="allocatedBoxes" label="已占用箱数" width="110" align="right" header-align="center"></el-table-column>
@@ -140,6 +146,12 @@
           <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
           <el-table-column prop="ownershipName" label="货权" min-width="170" show-overflow-tooltip></el-table-column>
           <el-table-column prop="temperatureZone" label="温区" width="90" align="center" header-align="center"></el-table-column>
+          <el-table-column prop="earliestInboundDate" label="最早入库" width="115" align="center" header-align="center">
+            <template slot-scope="scope">{{ formatDate(scope.row.earliestInboundDate || scope.row.inboundDate) }}</template>
+          </el-table-column>
+          <el-table-column prop="latestInboundDate" label="最近入库" width="115" align="center" header-align="center">
+            <template slot-scope="scope">{{ formatDate(scope.row.latestInboundDate || scope.row.inboundDate) }}</template>
+          </el-table-column>
           <el-table-column label="涉及合同号" min-width="190" show-overflow-tooltip>
             <template slot-scope="scope">{{ formatContractNos(scope.row) }}</template>
           </el-table-column>
@@ -338,6 +350,9 @@
             </template>
           </el-table-column>
           <el-table-column prop="skuCode" label="SKU" min-width="170" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="inboundDate" label="入库时间" width="115" align="center" header-align="center">
+            <template slot-scope="scope">{{ formatDate(scope.row.inboundDate) }}</template>
+          </el-table-column>
         </template>
         <template v-else>
           <el-table-column prop="presaleOrderNo" label="预销售单" min-width="150" show-overflow-tooltip></el-table-column>
