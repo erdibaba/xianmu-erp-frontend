@@ -359,6 +359,9 @@
           <el-table-column prop="ownershipName" label="货权" min-width="120" show-overflow-tooltip>
             <template slot-scope="scope">{{ scope.row.ownershipName || '-' }}</template>
           </el-table-column>
+          <el-table-column prop="confirmContractNo" label="确认函合同号" min-width="150" show-overflow-tooltip>
+            <template slot-scope="scope">{{ scope.row.confirmContractNo || '-' }}</template>
+          </el-table-column>
           <el-table-column prop="sourceContainerNo" label="柜号" min-width="120"></el-table-column>
           <el-table-column label="销售价（元/千克）" width="150">
             <template slot-scope="scope">
@@ -397,6 +400,9 @@
           </el-table-column>
           <el-table-column label="入库日期" width="120" align="center">
             <template slot-scope="scope">{{ formatDateOnly(scope.row.inboundDate) }}</template>
+          </el-table-column>
+          <el-table-column label="生产日期" width="120" align="center">
+            <template slot-scope="scope">{{ formatDateOnly(scope.row.productionDate) }}</template>
           </el-table-column>
           <el-table-column label="过期日期" width="120" align="center">
             <template slot-scope="scope">{{ formatDateOnly(scope.row.expiryDate) }}</template>
@@ -1839,7 +1845,10 @@ export default {
         boxes: 0,
         sourceInboundOrderId: '',
         sourceInboundItemId: '',
+        sourcePackingItemId: '',
+        sourcePackingBatchId: '',
         sourceContainerNo: '',
+        confirmContractNo: '',
         warehouseId: '',
         warehouseName: '',
         brandId: '',
@@ -2810,7 +2819,10 @@ export default {
           contractPortCold: item.contractPortCold,
           sourceInboundOrderId: item.sourceInboundOrderId,
           sourceInboundItemId: item.sourceInboundItemId,
+          sourcePackingItemId: item.sourcePackingItemId,
+          sourcePackingBatchId: item.sourcePackingBatchId,
           sourceContainerNo: item.sourceContainerNo,
+          confirmContractNo: item.confirmContractNo,
           warehouseId: item.warehouseId,
           warehouseName: item.warehouseName,
           brandId: item.brandId,
