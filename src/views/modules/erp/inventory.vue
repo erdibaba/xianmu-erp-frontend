@@ -139,6 +139,9 @@
         <el-table :data="spotContainerProductList" border stripe v-loading="spotContainerProductLoading" height="620">
           <el-table-column type="index" label="序号" width="60" align="center" header-align="center"></el-table-column>
           <el-table-column prop="warehouseName" label="仓库" min-width="140" show-overflow-tooltip></el-table-column>
+          <el-table-column label="确认函合同号" min-width="170" show-overflow-tooltip>
+            <template slot-scope="scope">{{ formatContractNos(scope.row) }}</template>
+          </el-table-column>
           <el-table-column prop="containerNo" label="柜号" min-width="130" show-overflow-tooltip></el-table-column>
           <el-table-column prop="productCode" label="产品编码" min-width="110" align="center" header-align="center"></el-table-column>
           <el-table-column prop="marketCirculationName" label="市场流通名称" min-width="180" show-overflow-tooltip></el-table-column>
@@ -151,9 +154,6 @@
           </el-table-column>
           <el-table-column prop="latestInboundDate" label="最近入库" width="115" align="center" header-align="center">
             <template slot-scope="scope">{{ formatDate(scope.row.latestInboundDate || scope.row.inboundDate) }}</template>
-          </el-table-column>
-          <el-table-column label="涉及合同号" min-width="190" show-overflow-tooltip>
-            <template slot-scope="scope">{{ formatContractNos(scope.row) }}</template>
           </el-table-column>
           <el-table-column prop="factoryNos" label="厂号汇总" min-width="120" show-overflow-tooltip></el-table-column>
           <el-table-column label="鲜转冻标识" width="150" align="center" header-align="center">
