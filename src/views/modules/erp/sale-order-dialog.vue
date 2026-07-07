@@ -1993,7 +1993,7 @@ export default {
         url: this.$http.adornUrl('/erp/saleorder/payment-mode/update'),
         method: 'post',
         data: this.$http.adornData({
-          id: this.dataForm.id,
+          saleOrderId: this.dataForm.id,
           paymentMode: mode
         })
       })).then(({ data }) => {
