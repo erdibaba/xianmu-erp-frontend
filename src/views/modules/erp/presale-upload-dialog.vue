@@ -3,6 +3,7 @@
     :title="dialogTitle"
     :close-on-click-modal="false"
     :visible.sync="visible"
+    append-to-body
     width="900px">
     <div class="presale-upload-dialog">
       <el-alert
