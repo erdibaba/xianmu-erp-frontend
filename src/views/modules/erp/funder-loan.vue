@@ -647,7 +647,7 @@ export default {
         { name: '手续费/装卸费', amount: f.handlingFeeAmount, formula: '各明细行按：出库重量KG ÷ 1000 × 装卸费单价（按仓库费用历史和业务日期取价）计算后汇总。' },
         { name: '扫码费', amount: this.effectiveCodeScanFee, formula: '开关打开时，各明细行按对应仓库费用历史维护的扫码费方式和单价计算；开关关闭时为0。' },
         { name: '印花税', amount: f.stampTaxAmount, formula: '各明细行按：出库重量KG × 确认函含税单价 × 0.0006 计算后汇总。' },
-        { name: '保证金/押金', amount: f.depositAmount, formula: '各明细行按：货值金额 × 25%；货值金额 = 计费重量KG × 结算销售单价。保证金/押金在应付金额里按减项处理。' },
+        { name: '保证金/押金', amount: f.depositAmount, formula: '各明细行按：保证金基数 × 25%；保证金基数 = 计费重量KG × 基础销售单价，不包含延期/超期提货费加价。保证金/押金在应付金额里按减项处理。' },
         { name: '补税点费用', amount: f.taxAdjustAmount, formula: '万翔规则自动计算：先计算 出库金额 + 应补仓储费 + 抄码费 + 印花税，与 采购单价 + 银蕨资金成本 对应金额的差额，再按 1.082152 / 1.048552 补税点系数折算差额。' },
         { name: '毛重费用', amount: f.grossWeightFeeAmount, formula: '各明细行按：先用 产品总净重 ÷ 确认单整单净重 × 报关单确认毛重 得到产品总毛重，再按 产品总毛重 ÷ 产品总箱数 × 本次出库箱数 得到本次计费毛重，最后按 本次计费毛重KG ÷ 1000 × 毛重费率 × 计费天数 计算后汇总。' },
         { name: '其他费用', amount: f.otherFeeAmount, formula: '人工补充费用，计入其他资方费用。' }
@@ -748,7 +748,9 @@ export default {
       return `计费重量${this.number3(weight)}KG × 确认函含税单价${this.number6(item.unitPriceInclTax)} × 0.0006 = ${this.money(item.stampTaxAmount)}`
     },
     itemDepositFormula (item) {
-      return `货值金额${this.money(item.costAmount)}（计费重量${this.number3(this.feeWeight(item))}KG × 结算销售单价${this.number6(item.settlementUnitPrice || item.unitPriceInclTax)}） × 25% = ${this.money(item.depositAmount)}，在应付金额中作为减项。`
+      const basePrice = Number(item.baseSettlementUnitPrice || item.unitPriceInclTax || 0)
+      const baseAmount = this.feeWeight(item) * basePrice
+      return `保证金基数${this.money(baseAmount)}（计费重量${this.number3(this.feeWeight(item))}KG × 基础销售单价${this.number6(basePrice)}） × 25% = ${this.money(item.depositAmount)}，在应付金额中作为减项。`
     },
     itemSettlementPriceFormula (item) {
       const purchase = this.number6(item.unitPriceInclTax)
