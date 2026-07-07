@@ -129,13 +129,13 @@
           </el-form-item>
           <el-form-item>
             <el-date-picker
+              class="inventory-date-range"
               v-model="spotContainerProductInboundDateRange"
               type="daterange"
               value-format="yyyy-MM-dd"
               range-separator="至"
               start-placeholder="入库开始"
               end-placeholder="入库结束"
-              style="width: 260px;"
               @change="getSpotContainerProductList()">
             </el-date-picker>
           </el-form-item>
@@ -814,6 +814,15 @@
     color: #606266;
     font-size: 12px;
     white-space: nowrap;
+  }
+
+  .inventory-date-range {
+    width: 340px;
+  }
+
+  /deep/ .inventory-date-range .el-range-separator {
+    width: 28px;
+    padding: 0;
   }
 
   .batch-summary {
