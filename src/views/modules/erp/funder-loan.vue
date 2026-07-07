@@ -22,6 +22,9 @@
       <el-form-item>
         <el-button v-if="isAuth('erp:funderloan:update')" type="success" @click="openBatchSettlement">按出库批次还款</el-button>
       </el-form-item>
+      <el-form-item>
+        <el-button v-if="isAuth('erp:funderloan:update')" type="warning" @click="openSaleOrderSettlement">按销售合同还款</el-button>
+      </el-form-item>
     </el-form>
 
     <el-table :data="dataList" border stripe v-loading="dataListLoading">
@@ -96,7 +99,7 @@
         <el-table-column prop="lineNo" label="序号" width="60" align="center"></el-table-column>
         <el-table-column prop="repaymentNo" label="还款编号" min-width="190"></el-table-column>
         <el-table-column prop="repaymentSource" label="来源" width="100">
-          <template slot-scope="scope">{{ scope.row.repaymentSource === 'BATCH' ? '出库批次' : '手工' }}</template>
+          <template slot-scope="scope">{{ scope.row.repaymentSource === 'BATCH' ? '出库批次' : (scope.row.repaymentSource === 'SALE_ORDER' ? '销售合同' : '手工') }}</template>
         </el-table-column>
         <el-table-column prop="outboundBatchNo" label="出库批次" min-width="140"></el-table-column>
         <el-table-column prop="repaymentDate" label="还款日期" width="120"></el-table-column>
@@ -196,10 +199,10 @@
       </span>
     </el-dialog>
 
-    <el-dialog title="按出库批次还款" :visible.sync="batchSettlementVisible" width="1280px" custom-class="batch-settlement-dialog" :close-on-click-modal="false">
-      <div v-loading="batchSettlementLoading" element-loading-text="正在加载批次还款数据...">
+    <el-dialog :title="batchSettlementDialogTitle" :visible.sync="batchSettlementVisible" width="1280px" custom-class="batch-settlement-dialog" :close-on-click-modal="false">
+      <div v-loading="batchSettlementLoading" :element-loading-text="batchSettlementLoadingText">
         <el-alert
-          title="仅能选择已确认完成且未结算过的出库批次。系统会按出库批次实际出库重量追溯到客户订单确认函小合同，再按资方规则计算并分摊还款。"
+          :title="batchSettlementNotice"
           type="info"
           :closable="false"
           style="margin-bottom:16px">
@@ -207,7 +210,7 @@
         <el-form ref="batchSettlementForm" :model="batchSettlementForm" label-width="150px">
         <el-row :gutter="18">
           <el-col :span="12">
-            <el-form-item label="出库批次" required>
+            <el-form-item v-if="settlementMode === 'BATCH'" label="出库批次" required>
               <el-select
                 v-model="batchSettlementForm.outboundBatchId"
                 filterable
@@ -223,6 +226,26 @@
                   v-for="item in batchOptions"
                   :key="item.id"
                   :label="`${item.confirmContractNos || '-'} / ${item.batchNo} / ${item.saleOrderNo || '-'} / ${item.ownershipName || '-'}`"
+                  :value="item.id">
+                </el-option>
+              </el-select>
+            </el-form-item>
+            <el-form-item v-else label="销售合同" required>
+              <el-select
+                v-model="batchSettlementForm.saleOrderId"
+                filterable
+                remote
+                reserve-keyword
+                clearable
+                placeholder="输入销售单号/确认函合同号/二批商/货权搜索"
+                :remote-method="searchSaleOrderOptions"
+                :loading="batchOptionLoading"
+                style="width:100%"
+                @change="batchSettlementBatchChange">
+                <el-option
+                  v-for="item in saleOrderOptions"
+                  :key="item.id"
+                  :label="`${item.confirmContractNos || '-'} / ${item.orderNo || '-'} / ${item.secondaryPartnerName || '-'} / ${item.funderName || item.ownershipName || '-'}`"
                   :value="item.id">
                 </el-option>
               </el-select>
@@ -262,8 +285,13 @@
             </el-form-item>
           </el-col>
           <el-col :span="8">
-            <el-form-item label="其他费用">
+            <el-form-item :label="settlementMode === 'SALE_ORDER' ? '手续费' : '其他费用'">
               <el-input-number v-model="batchSettlementForm.otherFeeAmount" :min="0" :precision="2" :controls="false" style="width:100%" @change="calculateBatchSettlement"></el-input-number>
+            </el-form-item>
+          </el-col>
+          <el-col v-if="settlementMode === 'SALE_ORDER'" :span="16">
+            <el-form-item label="手续费原因">
+              <el-input v-model="batchSettlementForm.handlingFeeReason" maxlength="200" placeholder="录入手续费时必填" @blur="calculateBatchSettlement"></el-input>
             </el-form-item>
           </el-col>
           <el-col :span="8"><el-form-item label="系统还本"><el-input :value="money(batchSettlementForm.systemPrincipalAmount)" disabled></el-input></el-form-item></el-col>
@@ -341,7 +369,7 @@
       </div>
       <span slot="footer">
         <el-button @click="batchSettlementVisible = false">取消</el-button>
-        <el-button type="primary" :loading="batchSubmitLoading" @click="confirmBatchSettlement">确认批次还款</el-button>
+        <el-button type="primary" :loading="batchSubmitLoading" @click="confirmBatchSettlement">{{ batchSettlementConfirmText }}</el-button>
       </span>
     </el-dialog>
 
@@ -412,6 +440,8 @@ const emptyRepayment = loanId => ({
 
 const emptyBatchSettlement = () => ({
   outboundBatchId: '',
+  saleOrderId: '',
+  settlementSource: 'BATCH',
   settlementDate: new Date().toISOString().slice(0, 10),
   ruleType: '',
   systemPrincipalAmount: 0,
@@ -433,6 +463,7 @@ const emptyBatchSettlement = () => ({
   fileName: '',
   rawText: '',
   remark: '',
+  handlingFeeReason: '',
   itemList: []
 })
 
@@ -455,7 +486,9 @@ export default {
       submitLoading: false,
       batchSettlementVisible: false,
       batchSettlementForm: emptyBatchSettlement(),
+      settlementMode: 'BATCH',
       batchOptions: [],
+      saleOrderOptions: [],
       batchOptionLoading: false,
       batchSettlementLoading: false,
       batchSettlementCalcToken: 0,
@@ -495,6 +528,21 @@ export default {
     }
   },
   computed: {
+    batchSettlementDialogTitle () {
+      return this.settlementMode === 'SALE_ORDER' ? '按销售合同还款' : '按出库批次还款'
+    },
+    batchSettlementLoadingText () {
+      return this.settlementMode === 'SALE_ORDER' ? '正在加载销售合同还款数据...' : '正在加载批次还款数据...'
+    },
+    batchSettlementNotice () {
+      if (this.settlementMode === 'SALE_ORDER') {
+        return '仅能选择已上传客户全款水单、且未按销售合同结算过的销售单。系统会按销售合同下的资方货权明细计算还款，手续费可在本窗口补充。'
+      }
+      return '仅能选择已确认完成且未结算过的出库批次。系统会按出库批次实际出库重量追溯到客户订单确认函小合同，再按资方规则计算并分摊还款。'
+    },
+    batchSettlementConfirmText () {
+      return this.settlementMode === 'SALE_ORDER' ? '确认销售合同还款' : '确认批次还款'
+    },
     amountMismatch () {
       return Math.round(Number(this.repaymentForm.modifiedAmount || 0) * 100) !== Math.round(Number(this.repaymentForm.expectedPaymentAmount || 0) * 100)
     },
@@ -735,10 +783,20 @@ export default {
       this.$nextTick(() => this.$refs.repaymentForm && this.$refs.repaymentForm.clearValidate())
     },
     openBatchSettlement () {
-      this.batchSettlementForm = emptyBatchSettlement()
+      this.settlementMode = 'BATCH'
+      this.batchSettlementForm = Object.assign(emptyBatchSettlement(), { settlementSource: 'BATCH' })
       this.batchSettlementVisible = true
       this.batchSettlementLoading = true
       this.searchBatchOptions('').finally(() => {
+        this.batchSettlementLoading = false
+      })
+    },
+    openSaleOrderSettlement () {
+      this.settlementMode = 'SALE_ORDER'
+      this.batchSettlementForm = Object.assign(emptyBatchSettlement(), { settlementSource: 'SALE_ORDER' })
+      this.batchSettlementVisible = true
+      this.batchSettlementLoading = true
+      this.searchSaleOrderOptions('').finally(() => {
         this.batchSettlementLoading = false
       })
     },
@@ -761,8 +819,26 @@ export default {
     batchSettlementBatchChange () {
       this.calculateBatchSettlement()
     },
+    searchSaleOrderOptions (keyword) {
+      this.batchOptionLoading = true
+      return this.$http({
+        url: this.$http.adornUrl('/erp/funder-finance/loan/sale-order-options'),
+        method: 'get',
+        params: this.$http.adornParams({ keyword })
+      }).then(({ data }) => {
+        if (data && data.code === 0) {
+          this.saleOrderOptions = data.list || []
+        } else {
+          this.$message.error((data && data.msg) || '获取销售合同失败')
+        }
+      }).finally(() => {
+        this.batchOptionLoading = false
+      })
+    },
     calculateBatchSettlement () {
-      if (!this.batchSettlementForm.outboundBatchId || !this.batchSettlementForm.settlementDate) return
+      if (this.settlementMode === 'BATCH' && !this.batchSettlementForm.outboundBatchId) return
+      if (this.settlementMode === 'SALE_ORDER' && !this.batchSettlementForm.saleOrderId) return
+      if (!this.batchSettlementForm.settlementDate) return
       const requestIncludeCodeScanFee = Number(this.batchSettlementForm.includeCodeScanFee || 0)
       const calcToken = ++this.batchSettlementCalcToken
       const keepFile = {
@@ -771,14 +847,16 @@ export default {
         filePath: this.batchSettlementForm.filePath,
         fileName: this.batchSettlementForm.fileName,
         rawText: this.batchSettlementForm.rawText,
-        remark: this.batchSettlementForm.remark
+        remark: this.batchSettlementForm.remark,
+        handlingFeeReason: this.batchSettlementForm.handlingFeeReason
       }
       const requestForm = Object.assign({}, this.batchSettlementForm, {
+        settlementSource: this.settlementMode,
         includeCodeScanFee: requestIncludeCodeScanFee
       })
       this.batchSettlementLoading = true
       this.$http({
-        url: this.$http.adornUrl('/erp/funder-finance/loan/batch-settlement/calculate'),
+        url: this.$http.adornUrl(this.settlementMode === 'SALE_ORDER' ? '/erp/funder-finance/loan/sale-order-settlement/calculate' : '/erp/funder-finance/loan/batch-settlement/calculate'),
         method: 'post',
         data: this.$http.adornData(requestForm)
       }).then(({ data }) => {
@@ -833,12 +911,20 @@ export default {
       })
     },
     confirmBatchSettlement () {
-      if (!this.batchSettlementForm.outboundBatchId) {
+      if (this.settlementMode === 'BATCH' && !this.batchSettlementForm.outboundBatchId) {
         this.$message.error('请选择出库批次')
+        return
+      }
+      if (this.settlementMode === 'SALE_ORDER' && !this.batchSettlementForm.saleOrderId) {
+        this.$message.error('请选择销售合同')
         return
       }
       if (!this.batchSettlementForm.filePath) {
         this.$message.error('请先上传资方还款凭证')
+        return
+      }
+      if (this.settlementMode === 'SALE_ORDER' && Number(this.batchSettlementForm.otherFeeAmount || 0) > 0 && !this.batchSettlementForm.handlingFeeReason) {
+        this.$message.error('录入手续费时必须填写手续费原因')
         return
       }
       if (Number(this.batchSettlementForm.confirmedPaymentAmount || 0) <= 0) {
@@ -846,20 +932,20 @@ export default {
         return
       }
       this.batchSubmitLoading = true
-      const loading = this.$loading({ lock: true, text: '正在确认批次还款...' })
+      const loading = this.$loading({ lock: true, text: this.settlementMode === 'SALE_ORDER' ? '正在确认销售合同还款...' : '正在确认批次还款...' })
       this.$http({
-        url: this.$http.adornUrl('/erp/funder-finance/loan/batch-settlement/confirm'),
+        url: this.$http.adornUrl(this.settlementMode === 'SALE_ORDER' ? '/erp/funder-finance/loan/sale-order-settlement/confirm' : '/erp/funder-finance/loan/batch-settlement/confirm'),
         method: 'post',
-        data: this.$http.adornData(this.batchSettlementForm)
+        data: this.$http.adornData(Object.assign({}, this.batchSettlementForm, { settlementSource: this.settlementMode }))
       }).then(({ data }) => {
         if (data && data.code === 0) {
-          this.$message.success('批次还款已确认')
+          this.$message.success(this.settlementMode === 'SALE_ORDER' ? '销售合同还款已确认' : '批次还款已确认')
           this.batchSettlementVisible = false
           this.getDataList()
         } else {
-          this.$message.error((data && data.msg) || '确认批次还款失败')
+          this.$message.error((data && data.msg) || '确认还款失败')
         }
-      }).catch(() => this.$message.error('确认批次还款请求失败')).finally(() => {
+      }).catch(() => this.$message.error('确认还款请求失败')).finally(() => {
         this.batchSubmitLoading = false
         loading.close()
       })

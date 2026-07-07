@@ -68,6 +68,21 @@
           <el-tag size="small" :type="getStatusType(scope.row.status)">{{ getStatusLabel(scope.row.status) }}</el-tag>
         </template>
       </el-table-column>
+      <el-table-column label="收款方式" width="120" align="center">
+        <template slot-scope="scope">
+          <el-tag size="small" :type="Number(scope.row.paymentMode || 1) === 2 ? 'success' : 'info'">
+            {{ Number(scope.row.paymentMode || 1) === 2 ? '全款付款' : '分批付款' }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="全款水单" width="120" align="center">
+        <template slot-scope="scope">
+          <span v-if="Number(scope.row.paymentMode || 1) !== 2">-</span>
+          <el-tag v-else size="small" :type="Number(scope.row.fullPaymentUploaded || 0) === 1 ? 'success' : 'warning'">
+            {{ Number(scope.row.fullPaymentUploaded || 0) === 1 ? '已上传' : '待上传' }}
+          </el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="合同页面" min-width="180">
         <template slot-scope="scope">
           <el-button

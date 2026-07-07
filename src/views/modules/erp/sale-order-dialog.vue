@@ -135,6 +135,19 @@
             </el-form-item>
           </el-col>
           <el-col :span="6">
+            <el-form-item label="收款方式">
+              <el-select
+                v-model="dataForm.paymentMode"
+                :disabled="readonly || paymentModeLocked"
+                style="width: 100%;"
+                @change="paymentModeChangeHandle">
+                <el-option label="分批付款" :value="1"></el-option>
+                <el-option label="全款付款" :value="2"></el-option>
+              </el-select>
+              <div v-if="paymentModeLocked && !readonly" class="form-tip">已有出库批次，收款方式不可修改</div>
+            </el-form-item>
+          </el-col>
+          <el-col :span="6">
             <el-form-item label="合同页面">
               <div class="contract-link-wrap">
                 <el-button
@@ -391,6 +404,26 @@
         </el-table>
 
         <div v-if="dataForm.id" class="sub-title">合同与付款附件</div>
+        <div v-if="dataForm.id" class="full-payment-summary">
+          <div>
+            <strong>客户全款付款：</strong>
+            <el-tag size="mini" :type="isFullPaymentMode ? 'success' : 'info'">{{ paymentModeLabel }}</el-tag>
+            <el-tag v-if="isFullPaymentMode" size="mini" :type="fullPaymentUploaded ? 'success' : 'warning'">
+              {{ fullPaymentUploaded ? '水单已上传' : '待上传水单' }}
+            </el-tag>
+            <span v-if="isFullPaymentMode && fullPaymentAmountDiffVisible" class="bank-slip-diff-warning inline-warning">
+              全款确认金额与销售单金额存在差异，请核对
+            </span>
+          </div>
+          <el-button
+            v-if="isFullPaymentMode"
+            size="mini"
+            type="primary"
+            plain
+            @click="openFullPaymentDialog">
+            全款付款详情
+          </el-button>
+        </div>
         <el-tabs v-if="dataForm.id" value="signedContract">
           <el-tab-pane label="盖章合同" name="signedContract">
             <div class="attachment-toolbar">
@@ -602,7 +635,7 @@
                     plain
                     :loading="uploadLoading && currentUploadType === 'OUTBOUND_BATCH_BANK_SLIP'"
                     @click="triggerUpload('OUTBOUND_BATCH_BANK_SLIP')">
-                    {{ currentOutboundBankSlipVisible ? '重新识别二批来款水单' : '上传二批来款水单' }}
+                    {{ outboundBankSlipUploadLabel }}
                   </el-button>
                   <el-button
                     v-if="attachmentEditable && currentOutboundBatch && currentOutboundBatchEditable"
@@ -734,8 +767,8 @@
             </el-table>
             <div v-if="currentOutboundBankSlipVisible" class="bank-slip-panel">
               <div class="outbound-section-title">
-                <strong>二批来款水单确认结果</strong>
-                <span class="sub-title-tip">系统已自动带入识别内容，用户只需核对和修改确认结果；金额差异只提示并保存，不拦截批次完成。</span>
+                <strong>{{ outboundBankSlipPanelTitle }}</strong>
+                <span class="sub-title-tip">{{ outboundBankSlipPanelTip }}</span>
               </div>
               <el-row :gutter="16">
                 <el-col :span="24">
@@ -1327,6 +1360,96 @@
         <el-button @click="bankSlipDetailVisible = false">关闭</el-button>
       </span>
     </el-dialog>
+    <el-dialog
+      title="客户全款付款详情"
+      :visible.sync="fullPaymentDialogVisible"
+      width="780px"
+      append-to-body
+      custom-class="bank-slip-detail-dialog">
+      <div class="bank-slip-detail">
+        <div class="bank-slip-detail-header">
+          <span>销售单号：{{ dataForm.orderNo || '-' }}</span>
+          <span>销售单金额：¥{{ formatNumber(dataForm.fullPaymentExpectedAmount, 2) }}</span>
+        </div>
+        <el-alert
+          v-if="!fullPaymentUploaded"
+          title="全款付款模式允许先保存销售单，但上传客户全款水单前不能新增出库批次，也不能按销售合同还款。"
+          type="warning"
+          :closable="false"
+          show-icon>
+        </el-alert>
+        <div class="bank-slip-card full-payment-card">
+          <div class="bank-slip-card-title">确认结果</div>
+          <el-form label-width="90px" size="mini">
+            <el-form-item label="付款人">
+              <el-input v-model="dataForm.fullPaymentPayerNameModified" :disabled="readonly"></el-input>
+            </el-form-item>
+            <el-form-item label="收款人">
+              <el-input v-model="dataForm.fullPaymentPayeeNameModified" :disabled="readonly"></el-input>
+            </el-form-item>
+            <el-row :gutter="10">
+              <el-col :span="12">
+                <el-form-item label="金额">
+                  <el-input v-model="dataForm.fullPaymentAmountModified" :disabled="readonly" placeholder="可粘贴155,794.12"></el-input>
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="付款日期">
+                  <el-date-picker
+                    v-model="dataForm.fullPaymentDateModified"
+                    type="date"
+                    value-format="yyyy-MM-dd"
+                    :disabled="readonly"
+                    placeholder="选择付款日期"
+                    style="width: 100%;">
+                  </el-date-picker>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-form-item label="流水号">
+              <el-input v-model="dataForm.fullPaymentSerialNoModified" :disabled="readonly"></el-input>
+            </el-form-item>
+          </el-form>
+          <div class="bank-slip-diff">
+            <span>销售单应收金额：¥{{ formatNumber(dataForm.fullPaymentExpectedAmount, 2) }}</span>
+            <span>确认金额差异：¥{{ formatNumber(dataForm.fullPaymentAmountDiff, 2) }}</span>
+          </div>
+          <div v-if="fullPaymentAmountDiffVisible" class="bank-slip-diff-warning">
+            确认金额与销售单应收金额存在差异，请核对；该差异会保存，但不影响后续流程。
+          </div>
+        </div>
+        <div class="bank-slip-detail-actions">
+          <el-button
+            v-if="!readonly"
+            size="mini"
+            type="primary"
+            plain
+            :loading="uploadLoading && currentUploadType === 'FULL_PAYMENT_VOUCHER'"
+            @click="triggerFullPaymentUpload">
+            {{ fullPaymentUploaded ? '重新识别全款水单' : '上传全款水单识别' }}
+          </el-button>
+          <el-button
+            v-if="!readonly && fullPaymentUploaded"
+            size="mini"
+            type="primary"
+            plain
+            :loading="fullPaymentSaving"
+            @click="saveFullPaymentVoucher">
+            保存确认结果
+          </el-button>
+          <el-button v-if="dataForm.fullPaymentFile" size="mini" type="primary" plain @click="previewFile(dataForm.fullPaymentFile)">
+            预览水单原件
+          </el-button>
+          <el-button v-if="dataForm.fullPaymentFile" size="mini" type="primary" plain @click="downloadFile(dataForm.fullPaymentFile)">
+            下载水单原件
+          </el-button>
+        </div>
+        <input ref="fullPaymentUploadInput" type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" @change="fullPaymentUploadChangeHandle">
+      </div>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="fullPaymentDialogVisible = false">关闭</el-button>
+      </span>
+    </el-dialog>
     <sale-outbound-batch-dialog
       v-if="outboundBatchDialogVisible"
       ref="outboundBatchDialog"
@@ -1357,6 +1480,8 @@ export default {
       bankSlipSaving: false,
       bankSlipDetailVisible: false,
       bankSlipDetailBatch: null,
+      fullPaymentDialogVisible: false,
+      fullPaymentSaving: false,
       globalLoadingCount: 0,
       currentUploadType: '',
       currentConfirmType: '',
@@ -1409,6 +1534,34 @@ export default {
     attachmentEditable () {
       return !this.readonly && !!this.dataForm.id
     },
+    isFullPaymentMode () {
+      return Number(this.dataForm.paymentMode || 1) === 2
+    },
+    paymentModeLabel () {
+      return this.isFullPaymentMode ? '全款付款' : '分批付款'
+    },
+    paymentModeLocked () {
+      return !!this.dataForm.id && Number(this.dataForm.outboundBatchCount || 0) > 0
+    },
+    fullPaymentUploaded () {
+      return !!(this.dataForm.fullPaymentFileId || this.dataForm.fullPaymentFile)
+    },
+    fullPaymentAmountDiffVisible () {
+      return Math.abs(this.parseAmountValue(this.dataForm.fullPaymentAmountDiff)) >= 0.01
+    },
+    outboundBankSlipUploadLabel () {
+      const base = this.isFullPaymentMode ? '仓储费水单' : '二批来款水单'
+      return this.currentOutboundBankSlipVisible ? `重新识别${base}` : `上传${base}`
+    },
+    outboundBankSlipPanelTitle () {
+      return this.isFullPaymentMode ? '仓储费水单确认结果' : '二批来款水单确认结果'
+    },
+    outboundBankSlipPanelTip () {
+      if (this.isFullPaymentMode) {
+        return '客户已全款付款，当前批次水单只核对仓储费；金额差异只提示并保存，不拦截批次完成。'
+      }
+      return '系统已自动带入识别内容，用户只需核对和修改确认结果；金额差异只提示并保存，不拦截批次完成。'
+    },
     outboundCompleted () {
       return Number(this.dataForm.outboundReceiptConfirmed || 0) === 1 || this.outboundReceiptMatched
     },
@@ -1421,9 +1574,10 @@ export default {
     },
     outboundWorkflowTip () {
       if (this.outboundCompleted) return '整单箱数已匹配，出库流程已完成。'
+      if (this.isFullPaymentMode && !this.fullPaymentUploaded) return '当前为全款付款，请先在“全款付款详情”上传客户全款水单，再新增出库批次。'
       if (!this.currentOutboundBatch) return '先新增一个出库批次，再按步骤上传单据。'
       if (!this.currentOutboundHasReceiptFile) return '当前批次已创建，下一步上传出库回单。'
-      if (!this.currentOutboundBankSlipVisible) return '出库回单已上传，下一步上传二批来款水单。'
+      if (!this.currentOutboundBankSlipVisible) return this.isFullPaymentMode ? '出库回单已上传，下一步上传仓储费水单。' : '出库回单已上传，下一步上传二批来款水单。'
       if (this.canConfirmOutboundBatch) return '单据已齐全，可以确认当前批次完成。'
       return '请先保存并核对当前批次明细，再确认批次完成。'
     },
@@ -1612,6 +1766,25 @@ export default {
         buyerPaymentConfirmed: 0,
         buyerBankConfirmed: 0,
         funderPaymentConfirmed: 0,
+        paymentMode: 1,
+        fullPaymentFileId: '',
+        fullPaymentVoucherTemplate: '',
+        fullPaymentPayerNameRecognized: '',
+        fullPaymentPayerNameModified: '',
+        fullPaymentPayeeNameRecognized: '',
+        fullPaymentPayeeNameModified: '',
+        fullPaymentAmountRecognized: null,
+        fullPaymentAmountModified: null,
+        fullPaymentDateRecognized: '',
+        fullPaymentDateModified: '',
+        fullPaymentSerialNoRecognized: '',
+        fullPaymentSerialNoModified: '',
+        fullPaymentExpectedAmount: 0,
+        fullPaymentAmountDiff: 0,
+        fullPaymentRawText: '',
+        fullPaymentFile: null,
+        fullPaymentUploaded: 0,
+        outboundBatchCount: 0,
         outboundReceiptConfirmed: 0,
         remark: '',
         itemList: [],
@@ -1806,6 +1979,106 @@ export default {
     salespersonLabel (item) {
       if (!item) return ''
       return item.mobile ? `${item.salesName} / ${item.mobile}` : item.salesName
+    },
+    paymentModeChangeHandle (value) {
+      const mode = Number(value || 1)
+      this.dataForm.paymentMode = mode
+      if (!this.dataForm.id) return
+      if (this.paymentModeLocked) {
+        this.$message.warning('已有出库批次，收款方式不可修改')
+        this.refreshDetail()
+        return
+      }
+      this.withGlobalLoading(this.$http({
+        url: this.$http.adornUrl('/erp/saleorder/payment-mode/update'),
+        method: 'post',
+        data: this.$http.adornData({
+          id: this.dataForm.id,
+          paymentMode: mode
+        })
+      })).then(({ data }) => {
+        if (data && data.code === 0) {
+          this.$message.success('收款方式已更新')
+          this.dataForm = this.normalizeForm(data.saleOrder || this.dataForm)
+          this.$emit('refreshDataList')
+        } else {
+          this.$message.error((data && data.msg) || '收款方式更新失败')
+          this.refreshDetail()
+        }
+      }).catch(() => {
+        this.refreshDetail()
+      })
+    },
+    openFullPaymentDialog () {
+      this.fullPaymentDialogVisible = true
+    },
+    triggerFullPaymentUpload () {
+      if (!this.dataForm.id) {
+        this.$message.error('请先保存销售单')
+        return
+      }
+      this.currentUploadType = 'FULL_PAYMENT_VOUCHER'
+      this.$nextTick(() => {
+        if (this.$refs.fullPaymentUploadInput) {
+          this.$refs.fullPaymentUploadInput.value = ''
+          this.$refs.fullPaymentUploadInput.click()
+        }
+      })
+    },
+    fullPaymentUploadChangeHandle (event) {
+      const files = Array.from((event.target && event.target.files) || [])
+      if (!files.length || !this.dataForm.id) return
+      const formData = new FormData()
+      formData.append('saleOrderId', this.dataForm.id)
+      formData.append('file', files[0])
+      this.uploadLoading = true
+      this.withGlobalLoading(this.$http({
+        url: this.$http.adornUrl('/erp/saleorder/full-payment/upload'),
+        method: 'post',
+        data: formData,
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 1000 * 120
+      })).then(({ data }) => {
+        if (data && data.code === 0) {
+          this.$message.success('全款水单识别成功')
+          this.dataForm = this.normalizeForm(data.saleOrder || this.dataForm)
+          this.$emit('refreshDataList')
+        } else {
+          this.$message.error((data && data.msg) || '全款水单识别失败')
+        }
+        this.uploadLoading = false
+        this.currentUploadType = ''
+      }).catch(() => {
+        this.uploadLoading = false
+        this.currentUploadType = ''
+      })
+    },
+    saveFullPaymentVoucher () {
+      if (!this.dataForm.id) return
+      this.fullPaymentSaving = true
+      this.withGlobalLoading(this.$http({
+        url: this.$http.adornUrl('/erp/saleorder/full-payment/save'),
+        method: 'post',
+        data: this.$http.adornData({
+          id: this.dataForm.id,
+          fullPaymentPayerNameModified: this.dataForm.fullPaymentPayerNameModified,
+          fullPaymentPayeeNameModified: this.dataForm.fullPaymentPayeeNameModified,
+          fullPaymentAmountModified: this.parseAmountValue(this.dataForm.fullPaymentAmountModified),
+          fullPaymentDateModified: this.dataForm.fullPaymentDateModified,
+          fullPaymentSerialNoModified: this.dataForm.fullPaymentSerialNoModified
+        })
+      })).then(({ data }) => {
+        if (data && data.code === 0) {
+          this.$message.success('全款水单确认结果已保存')
+          this.dataForm = this.normalizeForm(data.saleOrder || this.dataForm)
+          this.$emit('refreshDataList')
+        } else {
+          this.$message.error((data && data.msg) || '保存失败')
+        }
+        this.fullPaymentSaving = false
+      }).catch(() => {
+        this.fullPaymentSaving = false
+      })
     },
     fetchDetail (id) {
       if (!id) {
@@ -2703,6 +2976,11 @@ export default {
     },
     openOutboundBatchDialog () {
       if (!this.dataForm.id) return
+      if (this.isFullPaymentMode && !this.fullPaymentUploaded) {
+        this.$message.error('当前为全款付款，请先上传客户全款水单后再新增出库批次')
+        this.openFullPaymentDialog()
+        return
+      }
       this.outboundBatchDialogVisible = true
       this.$nextTick(() => {
         this.$refs.outboundBatchDialog.init(this.dataForm)
