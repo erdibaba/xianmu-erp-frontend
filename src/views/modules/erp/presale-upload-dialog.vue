@@ -126,6 +126,7 @@ export default {
       fileList: [],
       resultData: null,
       pendingCustomsFile: null,
+      pendingCustomsFiles: [],
       pendingQuarantineFiles: []
     }
   },
@@ -134,7 +135,7 @@ export default {
       return this.uploadType === 'customs' || this.uploadType === 'quarantine'
     },
     allowMultipleFiles () {
-      return this.uploadType === 'packing' || this.uploadType === 'quarantine'
+      return this.uploadType === 'packing' || this.uploadType === 'customs' || this.uploadType === 'quarantine'
     },
     uploadLimit () {
       return this.allowMultipleFiles ? 20 : 1
@@ -197,6 +198,7 @@ export default {
       this.fileList = []
       this.resultData = null
       this.pendingCustomsFile = null
+      this.pendingCustomsFiles = []
       this.pendingQuarantineFiles = []
     },
     beforeUpload (file) {
@@ -271,12 +273,16 @@ export default {
     handleRequest () {},
     recognizeCustomsRequest (option) {
       const files = option.files || (option.file ? [option.file] : [])
-      const file = files[0]
-      if (!file) return
-      this.pendingCustomsFile = file
+      if (!files.length) return
+      this.pendingCustomsFile = files[0]
+      this.pendingCustomsFiles = files
       this.loading = true
       const formData = new FormData()
-      formData.append('file', file)
+      if (files.length === 1) {
+        formData.append('file', files[0])
+      } else {
+        files.forEach(file => formData.append('files', file))
+      }
       this.$http({
         url: this.$http.adornUrl('/erp/presale/recognize-customs'),
         method: 'post',
@@ -348,8 +354,11 @@ export default {
         }
         formData.append('attachmentType', this.uploadType === 'customs' ? 'CUSTOMS' : 'QUARANTINE')
         formData.append('overwriteExisting', index === 0 ? 'true' : 'false')
-        if (this.uploadType === 'customs' && option.confirmedGrossWeight !== undefined && option.confirmedGrossWeight !== null) {
-          formData.append('confirmedGrossWeight', option.confirmedGrossWeight)
+        if (this.uploadType === 'customs') {
+          const perFileGrossWeight = option.confirmedGrossWeights && option.confirmedGrossWeights.length > index ? option.confirmedGrossWeights[index] : option.confirmedGrossWeight
+          if (perFileGrossWeight !== undefined && perFileGrossWeight !== null) {
+            formData.append('confirmedGrossWeight', perFileGrossWeight)
+          }
         }
         if (this.uploadType === 'quarantine' && option.confirmedQuarantineDate) {
           formData.append('confirmedQuarantineDate', this.normalizeDateOnly(option.confirmedQuarantineDate))
@@ -368,7 +377,7 @@ export default {
         if (!failed) {
           const attachments = responses.map(({ data }) => data.attachment || {})
           this.resultData = this.allowMultipleFiles ? attachments : (attachments[0] || {})
-          this.$message.success(this.allowMultipleFiles ? `已上传 ${attachments.length} 个检疫证明` : (this.uploadType === 'customs' ? '报关单上传成功' : '检疫证明上传成功'))
+          this.$message.success(this.uploadType === 'customs' ? `已上传 ${attachments.length} 个报关单` : (this.allowMultipleFiles ? `已上传 ${attachments.length} 个检疫证明` : '检疫证明上传成功'))
           this.$emit('uploaded', this.resultData)
           this.visible = false
         } else {
@@ -385,7 +394,7 @@ export default {
       this.visible = false
     },
     confirmCustomsUpload () {
-      if (!this.pendingCustomsFile) {
+      if (!this.pendingCustomsFiles.length && !this.pendingCustomsFile) {
         this.$message.error('请先识别报关单文件')
         return
       }
@@ -393,9 +402,13 @@ export default {
         this.$message.error('请填写确认毛重')
         return
       }
+      const files = this.pendingCustomsFiles.length ? this.pendingCustomsFiles : [this.pendingCustomsFile]
+      const confirmedGrossWeight = Number(this.resultData.confirmedGrossWeight || 0)
+      const confirmedGrossWeights = files.map((file, index) => index === 0 ? confirmedGrossWeight : 0)
       this.uploadArchiveRequest({
-        files: [this.pendingCustomsFile],
-        confirmedGrossWeight: this.resultData.confirmedGrossWeight
+        files,
+        confirmedGrossWeight,
+        confirmedGrossWeights
       })
     },
     confirmQuarantineUpload () {
