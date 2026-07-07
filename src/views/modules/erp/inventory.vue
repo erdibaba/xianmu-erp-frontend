@@ -128,6 +128,18 @@
             <el-input v-model="spotContainerProductQuery.factoryNo" placeholder="厂号" clearable @keyup.enter.native="getSpotContainerProductList()"></el-input>
           </el-form-item>
           <el-form-item>
+            <el-date-picker
+              v-model="spotContainerProductInboundDateRange"
+              type="daterange"
+              value-format="yyyy-MM-dd"
+              range-separator="至"
+              start-placeholder="入库开始"
+              end-placeholder="入库结束"
+              style="width: 260px;"
+              @change="getSpotContainerProductList()">
+            </el-date-picker>
+          </el-form-item>
+          <el-form-item>
             <el-checkbox v-model="spotContainerProductQuery.onlyAvailable" true-label="1" false-label="0">只看可售库存</el-checkbox>
           </el-form-item>
           <el-form-item>
@@ -149,11 +161,8 @@
           <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
           <el-table-column prop="ownershipName" label="货权" min-width="170" show-overflow-tooltip></el-table-column>
           <el-table-column prop="temperatureZone" label="温区" width="90" align="center" header-align="center"></el-table-column>
-          <el-table-column prop="earliestInboundDate" label="最早入库" width="115" align="center" header-align="center">
-            <template slot-scope="scope">{{ formatDate(scope.row.earliestInboundDate || scope.row.inboundDate) }}</template>
-          </el-table-column>
-          <el-table-column prop="latestInboundDate" label="最近入库" width="115" align="center" header-align="center">
-            <template slot-scope="scope">{{ formatDate(scope.row.latestInboundDate || scope.row.inboundDate) }}</template>
+          <el-table-column prop="inboundDate" label="入库时间" width="115" align="center" header-align="center">
+            <template slot-scope="scope">{{ formatDate(scope.row.inboundDate) }}</template>
           </el-table-column>
           <el-table-column prop="factoryNos" label="厂号汇总" min-width="120" show-overflow-tooltip></el-table-column>
           <el-table-column label="鲜转冻标识" width="150" align="center" header-align="center">
@@ -408,6 +417,7 @@
         warehouseList: [],
         spotContainerOptions: [],
         spotContainerProductContainerOptions: [],
+        spotContainerProductInboundDateRange: [],
         futuresContainerOptions: [],
         spotQuery: {
           keyword: '',
@@ -502,8 +512,11 @@
       },
       getSpotContainerProductList () {
         this.spotContainerProductLoading = true
+        const inboundRange = this.spotContainerProductInboundDateRange || []
         const params = Object.assign({}, this.spotContainerProductQuery, {
-          containerNos: this.spotContainerProductQuery.containerNos.join(',')
+          containerNos: this.spotContainerProductQuery.containerNos.join(','),
+          inboundDateStart: inboundRange[0] || '',
+          inboundDateEnd: inboundRange[1] || ''
         })
         this.$http({
           url: this.$http.adornUrl('/erp/inventory/spot/by-container-product'),
@@ -587,6 +600,8 @@
             containerNos: row.containerNo || '',
             ownershipName: row.ownershipName || '',
             factoryNo: this.spotContainerProductQuery.factoryNo,
+            inboundDateStart: this.formatDate(row.inboundDate),
+            inboundDateEnd: this.formatDate(row.inboundDate),
             onlyAvailable: this.spotContainerProductQuery.onlyAvailable
           }
           : {
@@ -636,6 +651,7 @@
           factoryNo: '',
           onlyAvailable: '1'
         }
+        this.spotContainerProductInboundDateRange = []
         this.spotContainerProductContainerOptions = []
         this.spotContainerProductList = []
         this.getSpotContainerProductList()
