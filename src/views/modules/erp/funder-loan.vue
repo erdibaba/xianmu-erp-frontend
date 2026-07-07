@@ -35,6 +35,7 @@
       <el-table-column prop="funderName" label="资方" min-width="190" show-overflow-tooltip></el-table-column>
       <el-table-column prop="sellerContractNo" label="预售合同号" min-width="160"></el-table-column>
       <el-table-column prop="confirmContractNo" label="确认函合同号" min-width="160"></el-table-column>
+      <el-table-column prop="currentOwnershipName" label="当前货权" min-width="160" show-overflow-tooltip></el-table-column>
       <el-table-column prop="loanDate" label="首次打款日期" width="120" align="center"></el-table-column>
       <el-table-column prop="currentDueDate" label="当前到期日" width="120" align="center"></el-table-column>
       <el-table-column label="剩余天数" width="100" align="right">
@@ -59,11 +60,12 @@
         </template>
       </el-table-column>
       <el-table-column label="累计利息" width="140" align="right"><template slot-scope="scope">{{ money(scope.row.totalInterestAmount) }}</template></el-table-column>
-      <el-table-column fixed="right" label="操作" width="210" align="center">
+      <el-table-column fixed="right" label="操作" width="260" align="center">
         <template slot-scope="scope">
           <el-button type="text" size="small" @click="openDetail(scope.row.id)">还款明细</el-button>
           <el-button v-if="scope.row.status !== 1 && isAuth('erp:funderloan:update')" type="text" size="small" @click="openExtendDueDate(scope.row)">延期</el-button>
           <el-button v-if="scope.row.status !== 1 && isAuth('erp:funderloan:update')" type="text" size="small" @click="openRepayment(scope.row)">新增还款</el-button>
+          <el-button v-if="scope.row.ownershipChangeAllowed === 1 && isAuth('erp:funderloan:update')" type="text" size="small" @click="openOwnershipChange(scope.row)">货权归属变更</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -140,6 +142,56 @@
       <span slot="footer">
         <el-button @click="dueExtendVisible = false">取消</el-button>
         <el-button type="primary" :loading="dueExtendLoading" @click="submitExtendDueDate">保存</el-button>
+      </span>
+    </el-dialog>
+
+    <el-dialog title="货权归属变更" :visible.sync="ownershipVisible" width="560px" :close-on-click-modal="false">
+      <el-alert
+        title="仅当同一确认函合同下的贷款全部结清后，才允许人工调整货权归属。该操作只改变库存货权展示和后续选货归属，不改历史贷款流水。"
+        type="warning"
+        :closable="false"
+        show-icon
+        style="margin-bottom:14px">
+      </el-alert>
+      <el-form ref="ownershipForm" :model="ownershipForm" :rules="ownershipRules" label-width="120px">
+        <el-form-item label="确认函合同号">
+          <el-input v-model="ownershipForm.confirmContractNo" disabled></el-input>
+        </el-form-item>
+        <el-form-item label="当前货权">
+          <el-input v-model="ownershipForm.currentOwnershipName" disabled></el-input>
+        </el-form-item>
+        <el-form-item label="目标货权" prop="targetOwnershipType">
+          <el-radio-group v-model="ownershipForm.targetOwnershipType" @change="handleOwnershipTypeChange">
+            <el-radio label="XIANMU">鲜牧</el-radio>
+            <el-radio label="FUNDER">资方</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item v-if="ownershipForm.targetOwnershipType === 'FUNDER'" label="目标资方" prop="targetFunderId">
+          <el-select
+            v-model="ownershipForm.targetFunderId"
+            filterable
+            remote
+            clearable
+            reserve-keyword
+            :remote-method="remoteSearchOwnershipFunders"
+            :loading="ownershipFunderLoading"
+            placeholder="请输入资方名称搜索"
+            style="width:100%">
+            <el-option
+              v-for="item in ownershipFunderOptions"
+              :key="item.id"
+              :label="item.partnerName"
+              :value="item.id">
+            </el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="变更原因">
+          <el-input v-model="ownershipForm.remark" type="textarea" maxlength="500" :rows="3" show-word-limit></el-input>
+        </el-form-item>
+      </el-form>
+      <span slot="footer">
+        <el-button @click="ownershipVisible = false">取消</el-button>
+        <el-button type="primary" :loading="ownershipLoading" @click="submitOwnershipChange">确认变更</el-button>
       </span>
     </el-dialog>
 
@@ -505,9 +557,34 @@ export default {
         currentDueDate: '',
         dueExtendReason: ''
       },
+      ownershipVisible: false,
+      ownershipLoading: false,
+      ownershipFunderLoading: false,
+      ownershipFunderOptions: [],
+      ownershipForm: {
+        confirmId: null,
+        confirmContractNo: '',
+        currentOwnershipName: '',
+        targetOwnershipType: 'XIANMU',
+        targetFunderId: '',
+        remark: ''
+      },
       dueExtendRules: {
         currentDueDate: [{ required: true, message: '请选择新的到期日', trigger: 'change' }],
         dueExtendReason: [{ required: true, message: '请输入延期原因', trigger: 'blur' }]
+      },
+      ownershipRules: {
+        targetOwnershipType: [{ required: true, message: '请选择目标货权', trigger: 'change' }],
+        targetFunderId: [{
+          validator: (rule, value, callback) => {
+            if (this.ownershipForm.targetOwnershipType === 'FUNDER' && !value) {
+              callback(new Error('请选择目标资方'))
+              return
+            }
+            callback()
+          },
+          trigger: 'change'
+        }]
       },
       repaymentRules: {
         repaymentPrincipal: [{ required: true, message: '请输入本次归还本金', trigger: 'blur' }],
@@ -772,6 +849,68 @@ export default {
           }
         }).catch(() => this.$message.error('保存资方账期延期请求失败')).finally(() => {
           this.dueExtendLoading = false
+          loading.close()
+        })
+      })
+    },
+    openOwnershipChange (loan) {
+      if (loan.ownershipChangeAllowed !== 1) {
+        this.$message.warning('该确认函合同还有未结清贷款，暂不能变更货权归属')
+        return
+      }
+      this.ownershipForm = {
+        confirmId: loan.confirmId || null,
+        confirmContractNo: loan.confirmContractNo || '',
+        currentOwnershipName: loan.currentOwnershipName || '',
+        targetOwnershipType: 'XIANMU',
+        targetFunderId: '',
+        remark: ''
+      }
+      this.ownershipFunderOptions = []
+      this.ownershipVisible = true
+      this.$nextTick(() => this.$refs.ownershipForm && this.$refs.ownershipForm.clearValidate())
+    },
+    handleOwnershipTypeChange () {
+      if (this.ownershipForm.targetOwnershipType !== 'FUNDER') {
+        this.ownershipForm.targetFunderId = ''
+      } else if (!this.ownershipFunderOptions.length) {
+        this.remoteSearchOwnershipFunders('')
+      }
+      this.$nextTick(() => this.$refs.ownershipForm && this.$refs.ownershipForm.clearValidate('targetFunderId'))
+    },
+    remoteSearchOwnershipFunders (keyword) {
+      this.ownershipFunderLoading = true
+      this.$http({
+        url: this.$http.adornUrl('/erp/funder-finance/funder-options'),
+        method: 'get',
+        params: this.$http.adornParams({ keyword: keyword || '' })
+      }).then(({ data }) => {
+        if (data && data.code === 0) {
+          this.ownershipFunderOptions = data.list || []
+        }
+      }).finally(() => {
+        this.ownershipFunderLoading = false
+      })
+    },
+    submitOwnershipChange () {
+      this.$refs.ownershipForm.validate(valid => {
+        if (!valid) return
+        this.ownershipLoading = true
+        const loading = this.$loading({ lock: true, text: '正在保存货权归属变更...' })
+        this.$http({
+          url: this.$http.adornUrl('/erp/funder-finance/loan/ownership-change'),
+          method: 'post',
+          data: this.$http.adornData(this.ownershipForm)
+        }).then(({ data }) => {
+          if (data && data.code === 0) {
+            this.$message.success('货权归属已变更')
+            this.ownershipVisible = false
+            this.getDataList()
+          } else {
+            this.$message.error((data && data.msg) || '保存货权归属变更失败')
+          }
+        }).catch(() => this.$message.error('保存货权归属变更请求失败')).finally(() => {
+          this.ownershipLoading = false
           loading.close()
         })
       })
