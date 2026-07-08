@@ -33,13 +33,14 @@
 
         <el-row :gutter="20">
           <el-col :span="8">
-            <el-form-item label="下单日期">
+            <el-form-item label="入库日期" prop="actualInboundDate">
               <el-date-picker
-                v-model="dataForm.orderDate"
+                v-model="dataForm.actualInboundDate"
                 type="date"
-                value-format="yyyy-MM-dd HH:mm:ss"
+                value-format="yyyy-MM-dd"
+                format="yyyy-MM-dd"
                 style="width:100%;"
-                disabled>
+                :disabled="readonly">
               </el-date-picker>
             </el-form-item>
           </el-col>
@@ -452,6 +453,7 @@ export default {
       dataForm: this.defaultForm(),
       dataRule: {
         contractNo: [{ required: true, message: '合同号不能为空', trigger: 'blur' }],
+        actualInboundDate: [{ required: true, message: '请选择入库日期', trigger: 'change' }],
         warehouseId: [{ required: true, message: '请选择仓库', trigger: 'change' }]
       },
       damageRule: {
@@ -480,6 +482,7 @@ export default {
         warehouseId: '',
         warehouseName: '',
         orderDate: '',
+        actualInboundDate: '',
         expectedArrivalDate: '',
         containerNo: '',
         driverId: '',

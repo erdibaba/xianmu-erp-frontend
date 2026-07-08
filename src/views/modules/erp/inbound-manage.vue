@@ -25,8 +25,8 @@
       <el-table-column prop="contractNo" label="合同号" min-width="170"></el-table-column>
       <el-table-column prop="customerName" label="客户" min-width="180"></el-table-column>
       <el-table-column prop="brandName" label="品牌方" min-width="180"></el-table-column>
-      <el-table-column label="下单日期" width="120" align="center">
-        <template slot-scope="scope">{{ formatDateOnly(scope.row.orderDate) }}</template>
+      <el-table-column label="入库日期" width="120" align="center">
+        <template slot-scope="scope">{{ formatDateOnly(scope.row.actualInboundDate || scope.row.orderDate) }}</template>
       </el-table-column>
       <el-table-column label="预计到港" width="120" align="center">
         <template slot-scope="scope">{{ formatDateOnly(scope.row.expectedArrivalDate) }}</template>
