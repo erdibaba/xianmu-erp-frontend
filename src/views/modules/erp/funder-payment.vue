@@ -311,7 +311,7 @@
               </el-date-picker>
             </template>
           </el-table-column>
-          <el-table-column v-if="!isFunderPayment" label="尾款凭证" width="180">
+          <el-table-column v-if="!isFunderPayment" label="尾款/全款凭证" width="180">
             <template slot-scope="scope">
               <el-upload
                 action="#"
@@ -323,14 +323,14 @@
                   plain
                   size="mini"
                   :loading="xianmuInstallmentLoadingKey === installmentLoadingKey(scope.$index, 'balance')">
-                  上传尾款
+                  上传尾款/全款
                 </el-button>
               </el-upload>
               <div class="row-file-name">{{ scope.row.xianmuBalanceFileName || '未上传' }}</div>
               <div class="row-support-tip">支持浦发/建行/工行/兴业/农发行样本</div>
             </template>
           </el-table-column>
-          <el-table-column v-if="!isFunderPayment" label="尾款金额" width="150">
+          <el-table-column v-if="!isFunderPayment" label="尾款/全款金额" width="150">
             <template slot-scope="scope">
               <el-input-number
                 v-model="scope.row.xianmuBalanceModifiedAmount"
@@ -341,7 +341,7 @@
               </el-input-number>
             </template>
           </el-table-column>
-          <el-table-column v-if="!isFunderPayment" label="尾款日期" width="145">
+          <el-table-column v-if="!isFunderPayment" label="尾款/全款日期" width="145">
             <template slot-scope="scope">
               <el-date-picker
                 v-model="scope.row.xianmuBalanceDate"
@@ -402,18 +402,18 @@
               </el-col>
               <el-col :span="12">
                 <el-card shadow="never">
-                  <div slot="header"><strong>尾款凭证</strong></div>
-                  <el-form-item label="尾款凭证">
+                  <div slot="header"><strong>尾款/全款凭证</strong></div>
+                  <el-form-item label="尾款/全款凭证">
                     <el-upload action="#" :show-file-list="false" :http-request="request => recognizeXianmuInstallment(request, 0, 'balance')" accept=".jpg,.jpeg,.png,.jfif,.bmp,.pdf">
-                      <el-button type="warning" plain :loading="xianmuInstallmentLoadingKey === installmentLoadingKey(0, 'balance')">上传并识别尾款</el-button>
+                      <el-button type="warning" plain :loading="xianmuInstallmentLoadingKey === installmentLoadingKey(0, 'balance')">上传并识别尾款/全款</el-button>
                     </el-upload>
                     <span class="file-name">{{ xianmuAllocation.xianmuBalanceFileName || '未上传' }}</span>
                     <div class="bank-voucher-tip">{{ bankVoucherSupportTip }}</div>
                   </el-form-item>
-                  <el-form-item label="尾款金额">
+                  <el-form-item label="尾款/全款金额">
                     <el-input-number v-model="xianmuAllocation.xianmuBalanceModifiedAmount" :min="0" :precision="2" :controls="false" style="width: 100%"></el-input-number>
                   </el-form-item>
-                  <el-form-item label="尾款日期">
+                  <el-form-item label="尾款/全款日期">
                     <el-date-picker v-model="xianmuAllocation.xianmuBalanceDate" type="date" value-format="yyyy-MM-dd" placeholder="选择日期" style="width: 100%"></el-date-picker>
                   </el-form-item>
                 </el-card>
@@ -984,33 +984,45 @@ export default {
         const depositAmount = Number(row.xianmuDepositModifiedAmount || 0)
         const balanceAmount = Number(row.xianmuBalanceModifiedAmount || 0)
         const expectedBalanceAmount = this.xianmuExpectedBalanceAmount(row)
-        if (!row.xianmuDepositFilePath || !row.xianmuDepositDate || depositAmount <= 0) {
-          this.$message.error(`第${index + 1}行必须先上传定金凭证，并填写定金日期和金额`)
+        const hasDeposit = !!row.xianmuDepositFilePath || !!row.xianmuDepositDate || depositAmount > 0
+        const hasBalance = !!row.xianmuBalanceFilePath || !!row.xianmuBalanceDate || balanceAmount > 0
+        if (!hasDeposit && !hasBalance) {
+          this.$message.error(`第${index + 1}行必须上传定金凭证或全款/尾款凭证`)
           return false
         }
-        if (this.roundMoney(depositAmount) > this.roundMoney(allocationAmount)) {
+        if (hasDeposit && (!row.xianmuDepositFilePath || !row.xianmuDepositDate || depositAmount <= 0)) {
+          this.$message.error(`第${index + 1}行已填写定金时，定金凭证、日期和金额都必须完整`)
+          return false
+        }
+        if (hasDeposit && this.roundMoney(depositAmount) > this.roundMoney(allocationAmount)) {
           this.$message.error(`第${index + 1}行定金金额不能大于客户订单确认函总金额`)
           return false
         }
-        const hasBalance = !!row.xianmuBalanceFilePath || !!row.xianmuBalanceDate || balanceAmount > 0
-        if (hasBalance && expectedBalanceAmount <= 0) {
+        if (hasDeposit && hasBalance && expectedBalanceAmount <= 0) {
           this.$message.error(`第${index + 1}行定金已覆盖客户订单确认函总金额，无需再上传尾款`)
           return false
         }
         if (hasBalance && (!row.xianmuBalanceFilePath || !row.xianmuBalanceDate || balanceAmount <= 0)) {
-          this.$message.error(`第${index + 1}行已填写尾款时，尾款凭证、日期和金额都必须完整`)
+          this.$message.error(`第${index + 1}行已填写尾款/全款时，凭证、日期和金额都必须完整`)
           return false
         }
         if (hasBalance && this.roundMoney(balanceAmount) !== this.roundMoney(expectedBalanceAmount)) {
-          this.$message.error(`第${index + 1}行尾款金额必须等于客户订单确认函总金额减定金金额`)
+          this.$message.error(hasDeposit
+            ? `第${index + 1}行尾款金额必须等于客户订单确认函总金额减定金金额`
+            : `第${index + 1}行全款金额必须等于客户订单确认函总金额`)
           return false
         }
         recognizedTotal += Number(row.xianmuDepositRecognizedAmount || 0) + Number(row.xianmuBalanceRecognizedAmount || 0)
         if (!latestDate || (row.xianmuDepositDate && row.xianmuDepositDate > latestDate)) latestDate = row.xianmuDepositDate
         if (hasBalance && row.xianmuBalanceDate && row.xianmuBalanceDate > latestDate) latestDate = row.xianmuBalanceDate
         if (!firstFilePath) {
-          firstFilePath = row.xianmuDepositFilePath
-          firstFileName = row.xianmuDepositFileName
+          if (row.xianmuDepositFilePath) {
+            firstFilePath = row.xianmuDepositFilePath
+            firstFileName = row.xianmuDepositFileName
+          } else {
+            firstFilePath = row.xianmuBalanceFilePath
+            firstFileName = row.xianmuBalanceFileName
+          }
         }
       }
       this.paymentForm.recognizedAmount = this.roundMoney(recognizedTotal)
