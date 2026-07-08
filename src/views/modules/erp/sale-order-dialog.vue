@@ -852,17 +852,19 @@
                 </div>
                 <div class="secondary-fee-card total">
                   <span>费用合计</span>
-                  <strong>¥{{ formatNumber(currentOutboundBatch.secondaryFeeAmount, 2) }}</strong>
+                  <strong>
+                    ¥{{ formatNumber(currentOutboundBatch.secondaryFeeAmount, 2) }}
+                    <el-popover
+                      v-if="currentOutboundBatch.secondaryFeeRemark"
+                      placement="top"
+                      trigger="hover"
+                      width="460">
+                      <div class="secondary-fee-popover">{{ currentOutboundBatch.secondaryFeeRemark }}</div>
+                      <i slot="reference" class="el-icon-question secondary-fee-help"></i>
+                    </el-popover>
+                  </strong>
                 </div>
               </div>
-              <el-input
-                v-if="currentOutboundBatch.secondaryFeeRemark"
-                :value="currentOutboundBatch.secondaryFeeRemark"
-                type="textarea"
-                :rows="2"
-                disabled
-                class="secondary-fee-remark">
-              </el-input>
             </div>
             <div v-if="currentOutboundBatch && currentOutboundBatch.expenseList && currentOutboundBatch.expenseList.length" class="outbound-section-title">
               <strong>本批次支出费用</strong>
@@ -1039,17 +1041,29 @@
               <el-table-column label="出库冷库费" width="120" align="right">
                 <template slot-scope="scope">¥{{ formatBatchExpenseAmount(scope.row) }}</template>
               </el-table-column>
-              <el-table-column label="二批费用" width="130" align="right">
+              <el-table-column label="二批费用" width="145" align="right">
                 <template slot="header" slot-scope="scope">
                   <span>二批费用</span>
                   <el-tooltip
                     effect="dark"
                     placement="top"
-                    content="二批费用=二批利息+二批库费；按检疫日期、出库日期、二批减免天数、阶梯年化和仓库二批库费计算，不是水单金额。">
+                    content="二批费用=二批利息+二批库费；每行问号可查看公式和本批次代入数据，不是水单金额。">
                     <i class="el-icon-question secondary-fee-help"></i>
                   </el-tooltip>
                 </template>
-                <template slot-scope="scope">¥{{ formatNumber(scope.row.secondaryFeeAmount, 2) }}</template>
+                <template slot-scope="scope">
+                  <span class="secondary-fee-cell">
+                    <span>¥{{ formatNumber(scope.row.secondaryFeeAmount, 2) }}</span>
+                    <el-popover
+                      v-if="scope.row.secondaryFeeRemark"
+                      placement="top"
+                      trigger="hover"
+                      width="460">
+                      <div class="secondary-fee-popover">{{ scope.row.secondaryFeeRemark }}</div>
+                      <i slot="reference" class="el-icon-question secondary-fee-help"></i>
+                    </el-popover>
+                  </span>
+                </template>
               </el-table-column>
               <el-table-column label="归档原件" min-width="180">
                 <template slot-scope="scope">
@@ -3670,14 +3684,24 @@ export default {
   background: #f0fbf9;
 }
 
-.secondary-fee-remark {
-  margin-top: 8px;
-}
-
 .secondary-fee-help {
   margin-left: 4px;
-  color: #909399;
+  color: #409eff;
   cursor: help;
+}
+
+.secondary-fee-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.secondary-fee-popover {
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.6;
+  color: #303133;
+  font-size: 13px;
 }
 
 .bank-slip-detail-header {
