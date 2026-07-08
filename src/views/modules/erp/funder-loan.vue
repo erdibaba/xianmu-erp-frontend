@@ -336,6 +336,11 @@
               <el-input :value="money(batchSettlementForm.grossWeightFeeAmount)" disabled></el-input>
             </el-form-item>
           </el-col>
+          <el-col v-if="batchSettlementForm.ruleType === 'WANXIANG'" :span="8">
+            <el-form-item label="额外仓储天数">
+              <el-input-number v-model="batchSettlementForm.extraStorageDays" :min="0" :precision="0" :controls="false" style="width:100%" @change="calculateBatchSettlement"></el-input-number>
+            </el-form-item>
+          </el-col>
           <el-col :span="8">
             <el-form-item :label="settlementMode === 'SALE_ORDER' ? '手续费' : '其他费用'">
               <el-input-number v-model="batchSettlementForm.otherFeeAmount" :min="0" :precision="2" :controls="false" style="width:100%" @change="calculateBatchSettlement"></el-input-number>
@@ -360,7 +365,7 @@
                   <strong>¥{{ money(batchSettlementForm.interestAmount) }}</strong>
                 </div>
                 <div class="fee-summary-item">
-                  <span>仓储费用</span>
+                  <span>{{ storageFeeName }}</span>
                   <strong>¥{{ money(batchSettlementForm.storageFeeAmount) }}</strong>
                 </div>
                 <div class="fee-summary-item">
@@ -500,6 +505,7 @@ const emptyBatchSettlement = () => ({
   confirmedPrincipalAmount: 0,
   interestAmount: 0,
   storageFeeAmount: 0,
+  extraStorageDays: 0,
   handlingFeeAmount: 0,
   codeScanFeeAmount: 0,
   stampTaxAmount: 0,
@@ -631,11 +637,14 @@ export default {
       const f = this.batchSettlementForm
       return Number(f.interestAmount || 0) + Number(f.storageFeeAmount || 0) + Number(this.otherBatchFees || 0)
     },
+    storageFeeName () {
+      return this.batchSettlementForm.ruleType === 'WANXIANG' ? '额外仓储费' : '仓储费用'
+    },
     batchFeeSummaryRows () {
       const f = this.batchSettlementForm
       return [
         { name: '利息/资金成本', amount: f.interestAmount, formula: this.sumFormula('各明细行利息/资金成本', f.interestAmount) },
-        { name: '仓储费用', amount: f.storageFeeAmount, formula: this.sumFormula('各明细行仓储费用', f.storageFeeAmount) },
+        { name: this.storageFeeName, amount: f.storageFeeAmount, formula: this.sumFormula(`各明细行${this.storageFeeName}`, f.storageFeeAmount) },
         { name: '其他资方费用', amount: this.otherBatchFees, formula: `手续费${this.money(f.handlingFeeAmount)} + 扫码费${this.money(this.effectiveCodeScanFee)} + 印花税${this.money(f.stampTaxAmount)} - 保证金/押金${this.money(f.depositAmount)} + 补税点费用${this.money(f.taxAdjustAmount)} + 毛重费用${this.money(f.grossWeightFeeAmount)} + 其他费用${this.money(f.otherFeeAmount)} = ${this.money(this.otherBatchFees)}` }
       ]
     },
@@ -643,7 +652,7 @@ export default {
       const f = this.batchSettlementForm
       return [
         { name: '利息/资金成本', amount: f.interestAmount, formula: this.interestRuleFormula() },
-        { name: '仓储费用', amount: f.storageFeeAmount, formula: '各明细行按：出库重量KG ÷ 1000 × 仓储费单价（按仓库费用历史和业务日期取价）计算后汇总。' },
+        { name: this.storageFeeName, amount: f.storageFeeAmount, formula: this.batchSettlementForm.ruleType === 'WANXIANG' ? '万翔结算销售单价已包含基础仓储费，这里只计算额外仓储费：各明细行按 计费重量KG ÷ 1000 × 仓储费单价 × 手工录入额外仓储天数 计算后汇总。' : '各明细行按：出库重量KG ÷ 1000 × 仓储费单价（按仓库费用历史和业务日期取价）计算后汇总。' },
         { name: '手续费/装卸费', amount: f.handlingFeeAmount, formula: '各明细行按：出库重量KG ÷ 1000 × 装卸费单价（按仓库费用历史和业务日期取价）计算后汇总。' },
         { name: '扫码费', amount: this.effectiveCodeScanFee, formula: '开关打开时，各明细行按对应仓库费用历史维护的扫码费方式和单价计算；开关关闭时为0。' },
         { name: '印花税', amount: f.stampTaxAmount, formula: '各明细行按：出库重量KG × 确认函含税单价 × 0.0006 计算后汇总。' },
@@ -663,7 +672,7 @@ export default {
           containerNo: item.containerNo
         }
         rows.push(Object.assign({}, base, { feeName: '利息/资金成本', amount: item.interestAmount, formula: this.itemInterestFormula(item) }))
-        rows.push(Object.assign({}, base, { feeName: '仓储费用', amount: item.storageFeeAmount, formula: this.itemStorageFormula(item) }))
+        rows.push(Object.assign({}, base, { feeName: this.storageFeeName, amount: item.storageFeeAmount, formula: this.itemStorageFormula(item) }))
         rows.push(Object.assign({}, base, { feeName: '手续费/装卸费', amount: item.handlingFeeAmount, formula: this.itemHandlingFormula(item) }))
         rows.push(Object.assign({}, base, { feeName: '扫码费', amount: this.isIncludeCodeScanFee ? item.codeScanFeeAmount : 0, formula: this.itemCodeScanFormula(item) }))
         rows.push(Object.assign({}, base, { feeName: '印花税', amount: item.stampTaxAmount, formula: this.itemStampTaxFormula(item) }))
@@ -674,7 +683,7 @@ export default {
     },
     batchFeeRuleText () {
       const rule = this.ruleName(this.batchSettlementForm.ruleType)
-      return `当前资方规则：${rule}。本说明展示利息/资金成本、仓储费用、其他资方费用的计算来源；人工录入项会标记为人工录入。`
+      return `当前资方规则：${rule}。本说明展示利息/资金成本、${this.storageFeeName}、其他资方费用的计算来源；人工录入项会标记为人工录入。`
     },
     isIncludeCodeScanFee () {
       return Number(this.batchSettlementForm.includeCodeScanFee || 0) === 1
@@ -722,6 +731,11 @@ export default {
     },
     itemStorageFormula (item) {
       const weight = this.feeWeight(item)
+      const days = Number(item.extraStorageDays || this.batchSettlementForm.extraStorageDays || 0)
+      if (this.batchSettlementForm.ruleType === 'WANXIANG') {
+        const rate = days > 0 ? this.inferTonRate(item.storageFeeAmount, weight) / days : 0
+        return `万翔结算销售单价已含基础仓储费，仅补额外天数：计费重量${this.number3(weight)}KG ÷ 1000 × 仓储费单价${this.money(rate)}元/吨/天 × ${days}天 = ${this.money(item.storageFeeAmount)}`
+      }
       const rate = this.inferTonRate(item.storageFeeAmount, weight)
       return `计费重量${this.number3(weight)}KG ÷ 1000 × 仓储费单价${this.money(rate)}元/吨 = ${this.money(item.storageFeeAmount)}`
     },
