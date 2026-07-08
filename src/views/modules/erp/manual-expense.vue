@@ -17,6 +17,14 @@
         </el-input>
       </el-form-item>
       <el-form-item>
+        <el-input
+          v-model.trim="queryForm.contractNo"
+          placeholder="确认函合同号"
+          clearable
+          @keyup.enter.native="searchHandle">
+        </el-input>
+      </el-form-item>
+      <el-form-item>
         <el-select v-model="queryForm.expenseType" clearable filterable allow-create default-first-option placeholder="费用类型" style="width: 170px;">
           <el-option
             v-for="item in expenseTypeOptions"
@@ -60,6 +68,7 @@
       <el-table-column type="selection" width="50" align="center" header-align="center"></el-table-column>
       <el-table-column type="index" label="序号" width="70" align="center" header-align="center"></el-table-column>
       <el-table-column prop="expenseNo" label="费用编号" min-width="170" show-overflow-tooltip></el-table-column>
+      <el-table-column prop="contractNo" label="确认函合同号" min-width="160" show-overflow-tooltip></el-table-column>
       <el-table-column prop="expenseDate" label="费用日期" width="120" align="center" header-align="center">
         <template slot-scope="scope">{{ dateText(scope.row.expenseDate) }}</template>
       </el-table-column>
@@ -108,6 +117,28 @@
                 :disabled="!!dataForm.id"
                 style="width: 100%;">
               </el-date-picker>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="确认函合同号" prop="contractNo">
+              <el-select
+                v-model="dataForm.contractNo"
+                filterable
+                remote
+                clearable
+                reserve-keyword
+                :remote-method="remoteSearchConfirms"
+                :loading="confirmLoading"
+                placeholder="搜索确认函合同号"
+                :disabled="!!dataForm.id"
+                style="width: 100%;">
+                <el-option
+                  v-for="item in confirmOptions"
+                  :key="item.contractNo"
+                  :label="confirmOptionLabel(item)"
+                  :value="item.contractNo">
+                </el-option>
+              </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -181,6 +212,7 @@
     id: 0,
     expenseNo: '',
     expenseDate: '',
+    contractNo: '',
     expenseType: '',
     expenseName: '',
     amount: 0,
@@ -193,6 +225,7 @@
       return {
         queryForm: {
           keyword: '',
+          contractNo: '',
           expenseType: ''
         },
         queryDateRange: [],
@@ -204,6 +237,8 @@
         dataListSelections: [],
         deleteLoading: false,
         expenseTypeOptions: [],
+        confirmOptions: [],
+        confirmLoading: false,
         dialogVisible: false,
         submitLoading: false,
         dataForm: defaultForm(),
@@ -211,6 +246,9 @@
         dataRule: {
           expenseDate: [
             { required: true, message: '费用日期不能为空', trigger: 'change' }
+          ],
+          contractNo: [
+            { required: true, message: '确认函合同号不能为空', trigger: 'change' }
           ],
           expenseName: [
             { required: true, message: '费用名称不能为空', trigger: 'blur' }
@@ -251,6 +289,7 @@
             page: this.pageIndex,
             limit: this.pageSize,
             keyword: this.queryForm.keyword,
+            contractNo: this.queryForm.contractNo,
             expenseType: this.queryForm.expenseType,
             dateStart: range[0] || '',
             dateEnd: range[1] || ''
@@ -270,6 +309,7 @@
       },
       resetQuery () {
         this.queryForm.keyword = ''
+        this.queryForm.contractNo = ''
         this.queryForm.expenseType = ''
         this.queryDateRange = []
         this.searchHandle()
@@ -292,6 +332,7 @@
         this.uploadFileList = []
         this.dataForm = defaultForm()
         this.dataForm.id = id || 0
+        this.remoteSearchConfirms('')
         this.$nextTick(() => {
           this.$refs.dataForm && this.$refs.dataForm.resetFields()
           if (this.dataForm.id) {
@@ -308,6 +349,7 @@
         }).then(({data}) => {
           if (data && data.code === 0) {
             this.dataForm = Object.assign(defaultForm(), data.expense || {})
+            this.ensureCurrentConfirmOption(this.dataForm.contractNo)
           } else {
             this.$message.error((data && data.msg) || '获取费用支出失败')
           }
@@ -320,6 +362,36 @@
       },
       uploadRemove (file, fileList) {
         this.uploadFileList = fileList
+      },
+      remoteSearchConfirms (query) {
+        this.confirmLoading = true
+        this.$http({
+          url: this.$http.adornUrl('/erp/manual-expense/confirm-options'),
+          method: 'get',
+          params: this.$http.adornParams({ keyword: query || '' })
+        }).then(({data}) => {
+          if (data && data.code === 0) {
+            this.confirmOptions = data.list || []
+          } else {
+            this.confirmOptions = []
+          }
+        }).finally(() => {
+          this.confirmLoading = false
+        })
+      },
+      confirmOptionLabel (item) {
+        if (!item) return ''
+        const parts = [item.contractNo]
+        if (item.containerNo) parts.push(item.containerNo)
+        if (item.buyerPartnerName) parts.push(item.buyerPartnerName)
+        return parts.join(' / ')
+      },
+      ensureCurrentConfirmOption (contractNo) {
+        if (!contractNo) return
+        const exists = (this.confirmOptions || []).some(item => item.contractNo === contractNo)
+        if (!exists) {
+          this.confirmOptions.unshift({ contractNo })
+        }
       },
       submitHandle () {
         if (this.dataForm.id) {
