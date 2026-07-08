@@ -159,6 +159,12 @@
 
 <script>
 export default {
+  props: {
+    embedded: {
+      type: Boolean,
+      default: false
+    }
+  },
   data () {
     return {
       queryForm: {
@@ -180,8 +186,15 @@ export default {
       detailList: []
     }
   },
+  mounted () {
+    if (this.embedded) {
+      this.getDataList()
+    }
+  },
   activated () {
-    this.getDataList()
+    if (!this.embedded) {
+      this.getDataList()
+    }
   },
   methods: {
     getDataList () {

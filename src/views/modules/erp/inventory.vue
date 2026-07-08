@@ -276,6 +276,10 @@
         </el-table>
       </el-tab-pane>
 
+      <el-tab-pane label="预售单库存" name="presale">
+        <presale-inventory embedded></presale-inventory>
+      </el-tab-pane>
+
       <el-tab-pane label="出入库记录" name="records">
         <el-form :inline="true" :model="recordQuery" size="small">
           <el-form-item>
@@ -410,7 +414,12 @@
 </template>
 
 <script>
+  import PresaleInventory from './presale-inventory'
+
   export default {
+    components: {
+      PresaleInventory
+    },
     data () {
       return {
         activeTab: 'spot',
