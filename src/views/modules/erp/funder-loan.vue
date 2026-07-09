@@ -1021,9 +1021,7 @@ export default {
         if (data && data.code === 0) {
           this.batchSettlementForm = Object.assign(emptyBatchSettlement(), data.settlement || {}, keepFile)
           this.batchSettlementForm.includeCodeScanFee = requestIncludeCodeScanFee
-          if (!Number(this.batchSettlementForm.confirmedPaymentAmount || 0)) {
-            this.batchSettlementForm.confirmedPaymentAmount = this.batchSettlementForm.expectedPaymentAmount || 0
-          }
+          this.batchSettlementForm.confirmedPaymentAmount = this.batchSettlementForm.expectedPaymentAmount || 0
         } else {
           this.$message.error((data && data.msg) || '计算批次结算失败')
         }
