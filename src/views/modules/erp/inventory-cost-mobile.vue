@@ -5,7 +5,7 @@
         <div>
           <div class="eyebrow">鲜牧ERP</div>
           <h2>库存成本价</h2>
-          <p>按当前剩余库存重量动态计算含税采购价、资金成本和仓储费。</p>
+          <p>销售端仅展示建议销售价、保质期和当前可售库存。</p>
         </div>
       </div>
 
@@ -40,7 +40,7 @@
 
       <div v-loading="dataListLoading" class="card-list">
         <el-empty v-if="!dataList.length && !dataListLoading" description="暂无库存成本数据"></el-empty>
-        <div v-for="item in dataList" :key="cardKey(item)" class="cost-card" @click="openDetailDialog(item)">
+        <div v-for="item in dataList" :key="cardKey(item)" class="cost-card">
           <div class="card-top">
             <div>
               <div class="product-code">{{ item.productCode || '-' }}</div>
@@ -48,8 +48,8 @@
               <div class="product-name">{{ item.productName || item.productNameEn || '-' }}</div>
             </div>
             <div class="cost-badge">
-              <span>{{ numberText(item.costPriceKg, 4) }}</span>
-              <em>元/KG</em>
+              <span>{{ suggestedPriceText(item) }}</span>
+              <em>建议销售价</em>
             </div>
           </div>
           <div class="en-name">{{ item.productNameEn || '-' }}</div>
@@ -59,6 +59,14 @@
               <span>{{ item.ownershipName || '-' }}</span>
             </div>
             <div>
+              <label>厂号</label>
+              <span>{{ item.factoryNos || '-' }}</span>
+            </div>
+            <div>
+              <label>保质期</label>
+              <span>{{ dateText(item.expiryDate) }}</span>
+            </div>
+            <div>
               <label>可售箱数</label>
               <span>{{ numberText(item.availableBoxes, 0) }}</span>
             </div>
@@ -66,22 +74,6 @@
               <label>可售重量</label>
               <span>{{ numberText(item.availableWeightKg, 2) }} KG</span>
             </div>
-            <div>
-              <label>含税采购单价</label>
-              <span>{{ numberText(item.purchasePriceKg, 4) }}</span>
-            </div>
-            <div>
-              <label>采购成本</label>
-              <span>{{ moneyText(item.purchaseAmount) }}</span>
-            </div>
-            <div>
-              <label>分摊费用</label>
-              <span>{{ moneyText(item.allocatedFeeAmount) }}</span>
-            </div>
-          </div>
-          <div class="card-footer">
-            <span>成本总额 {{ moneyText(item.totalCostAmount) }}</span>
-            <el-button type="text" size="mini">费用明细</el-button>
           </div>
         </div>
       </div>
@@ -269,6 +261,13 @@
       },
       moneyText (value) {
         return this.numberText(value, 2)
+      },
+      suggestedPriceText (item) {
+        const value = item && item.suggestedSalePriceKg
+        if (value === null || value === undefined || value === '') {
+          return '-'
+        }
+        return `${this.numberText(value, 4)} 元/KG`
       },
       numberText (value, digits) {
         const num = Number(value || 0)
