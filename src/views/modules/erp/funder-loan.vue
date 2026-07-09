@@ -631,7 +631,7 @@ export default {
     },
     otherBatchFees () {
       const f = this.batchSettlementForm
-      return Number(f.handlingFeeAmount || 0) + Number(this.effectiveCodeScanFee || 0) + Number(f.stampTaxAmount || 0) - Number(f.depositAmount || 0) + Number(f.taxAdjustAmount || 0) + Number(f.grossWeightFeeAmount || 0) + Number(f.otherFeeAmount || 0)
+      return Number(this.effectiveCodeScanFee || 0) + Number(f.stampTaxAmount || 0) - Number(f.depositAmount || 0) + Number(f.taxAdjustAmount || 0) + Number(f.grossWeightFeeAmount || 0) + Number(f.otherFeeAmount || 0)
     },
     batchFeeTotal () {
       const f = this.batchSettlementForm
@@ -645,7 +645,7 @@ export default {
       return [
         { name: '利息/资金成本', amount: f.interestAmount, formula: this.sumFormula('各明细行利息/资金成本', f.interestAmount) },
         { name: this.storageFeeName, amount: f.storageFeeAmount, formula: this.sumFormula(`各明细行${this.storageFeeName}`, f.storageFeeAmount) },
-        { name: '其他资方费用', amount: this.otherBatchFees, formula: `手续费${this.money(f.handlingFeeAmount)} + 扫码费${this.money(this.effectiveCodeScanFee)} + 印花税${this.money(f.stampTaxAmount)} - 保证金/押金${this.money(f.depositAmount)} + 补税点费用${this.money(f.taxAdjustAmount)} + 毛重费用${this.money(f.grossWeightFeeAmount)} + 其他费用${this.money(f.otherFeeAmount)} = ${this.money(this.otherBatchFees)}` }
+        { name: '其他资方费用', amount: this.otherBatchFees, formula: `扫码费${this.money(this.effectiveCodeScanFee)} + 印花税${this.money(f.stampTaxAmount)} - 保证金/押金${this.money(f.depositAmount)} + 补税点费用${this.money(f.taxAdjustAmount)} + 毛重费用${this.money(f.grossWeightFeeAmount)} + 其他费用${this.money(f.otherFeeAmount)} = ${this.money(this.otherBatchFees)}` }
       ]
     },
     batchFeeFormulaRows () {
@@ -653,7 +653,7 @@ export default {
       return [
         { name: '利息/资金成本', amount: f.interestAmount, formula: this.interestRuleFormula() },
         { name: this.storageFeeName, amount: f.storageFeeAmount, formula: this.batchSettlementForm.ruleType === 'WANXIANG' ? '万翔结算销售单价已包含基础仓储费，这里只计算额外仓储费：各明细行按 计费重量KG ÷ 1000 × 仓储费单价 × 手工录入额外仓储天数 计算后汇总。' : '各明细行按：出库重量KG ÷ 1000 × 仓储费单价（按仓库费用历史和业务日期取价）计算后汇总。' },
-        { name: '手续费/装卸费', amount: f.handlingFeeAmount, formula: '各明细行按：出库重量KG ÷ 1000 × 装卸费单价（按仓库费用历史和业务日期取价）计算后汇总。' },
+        { name: '装卸费（已含结算销售单价）', amount: f.handlingFeeAmount, formula: '各明细行按：出库重量KG ÷ 1000 × 装卸费单价（按仓库费用历史和业务日期取价）计算后汇总。该金额仅用于费用拆解展示，万翔结算销售单价已包含装卸费，不计入系统预计应付。' },
         { name: '扫码费', amount: this.effectiveCodeScanFee, formula: '开关打开时，各明细行按对应仓库费用历史维护的扫码费方式和单价计算；开关关闭时为0。' },
         { name: '印花税', amount: f.stampTaxAmount, formula: '各明细行按：出库重量KG × 确认函含税单价 × 0.0006 计算后汇总。' },
         { name: '保证金/押金', amount: f.depositAmount, formula: '各明细行按：保证金基数 × 25%；保证金基数 = 计费重量KG × 基础销售单价，不包含延期/超期提货费加价。保证金/押金在应付金额里按减项处理。' },
@@ -673,7 +673,7 @@ export default {
         }
         rows.push(Object.assign({}, base, { feeName: '利息/资金成本', amount: item.interestAmount, formula: this.itemInterestFormula(item) }))
         rows.push(Object.assign({}, base, { feeName: this.storageFeeName, amount: item.storageFeeAmount, formula: this.itemStorageFormula(item) }))
-        rows.push(Object.assign({}, base, { feeName: '手续费/装卸费', amount: item.handlingFeeAmount, formula: this.itemHandlingFormula(item) }))
+        rows.push(Object.assign({}, base, { feeName: '装卸费（已含结算销售单价）', amount: item.handlingFeeAmount, formula: this.itemHandlingFormula(item) }))
         rows.push(Object.assign({}, base, { feeName: '扫码费', amount: this.isIncludeCodeScanFee ? item.codeScanFeeAmount : 0, formula: this.itemCodeScanFormula(item) }))
         rows.push(Object.assign({}, base, { feeName: '印花税', amount: item.stampTaxAmount, formula: this.itemStampTaxFormula(item) }))
         rows.push(Object.assign({}, base, { feeName: '保证金/押金', amount: item.depositAmount, formula: this.itemDepositFormula(item) }))
