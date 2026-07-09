@@ -41,6 +41,15 @@
       <el-form-item>
         <el-button type="primary" @click="getDataList">查询</el-button>
         <el-button @click="resetQuery">重置</el-button>
+        <el-button type="success" :loading="exportLoading" @click="exportSuggestionTemplate">导出建议销售价模板</el-button>
+        <el-upload
+          class="suggestion-upload"
+          action="#"
+          :show-file-list="false"
+          :http-request="importSuggestionFile"
+          accept=".xlsx,.xls">
+          <el-button type="warning" :loading="importLoading">导入建议销售价</el-button>
+        </el-upload>
       </el-form-item>
     </el-form>
 
@@ -62,6 +71,12 @@
         <template slot-scope="scope">
           <span class="cost-price">{{ numberText(scope.row.costPriceKg, 6) }}</span>
         </template>
+      </el-table-column>
+      <el-table-column label="建议销售价(元/KG)" width="155" align="right" header-align="center">
+        <template slot-scope="scope">{{ scope.row.suggestedSalePriceKg ? numberText(scope.row.suggestedSalePriceKg, 6) : '-' }}</template>
+      </el-table-column>
+      <el-table-column label="增长百分比" width="115" align="right" header-align="center">
+        <template slot-scope="scope">{{ percentText(scope.row.suggestedMarkupPercent) }}</template>
       </el-table-column>
       <el-table-column label="采购成本" width="125" align="right" header-align="center">
         <template slot-scope="scope">{{ moneyText(scope.row.purchaseAmount) }}</template>
@@ -161,6 +176,8 @@
         },
         dataList: [],
         dataListLoading: false,
+        exportLoading: false,
+        importLoading: false,
         detailDialogVisible: false,
         detailLoading: false,
         detailList: [],
@@ -250,6 +267,61 @@
         this.containerOptions = []
         this.getDataList()
       },
+      exportSuggestionTemplate () {
+        this.exportLoading = true
+        const params = Object.assign({}, this.queryForm, {
+          containerNos: (this.queryForm.containerNos || []).join(',')
+        })
+        this.$http({
+          url: this.$http.adornUrl('/erp/inventory-cost/spot/export-suggestion-template'),
+          method: 'get',
+          params: this.$http.adornParams(params),
+          responseType: 'blob'
+        }).then(({data}) => {
+          this.downloadBlob(data, '库存建议销售价导入模板.xlsx')
+        }).catch(() => {
+          this.$message.error('导出建议销售价模板失败')
+        }).finally(() => {
+          this.exportLoading = false
+        })
+      },
+      importSuggestionFile (request) {
+        this.importLoading = true
+        const formData = new FormData()
+        formData.append('file', request.file)
+        this.$http({
+          url: this.$http.adornUrl('/erp/inventory-cost/spot/import-suggestion'),
+          method: 'post',
+          data: formData
+        }).then(({data}) => {
+          if (data && data.code === 0) {
+            const result = data.result || {}
+            if (result.success) {
+              this.$message.success(`导入成功：${result.successRows || 0} 行`)
+              this.getDataList()
+            } else {
+              const errors = (result.errors || []).slice(0, 20).join('\n')
+              this.$alert(errors || '导入校验未通过', '导入失败', { type: 'error' })
+            }
+          } else {
+            this.$message.error((data && data.msg) || '导入建议销售价失败')
+          }
+        }).catch(() => {
+          this.$message.error('导入建议销售价失败')
+        }).finally(() => {
+          this.importLoading = false
+        })
+      },
+      downloadBlob (data, fileName) {
+        const blob = data instanceof Blob ? data : new Blob([data])
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = fileName
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(link.href)
+      },
       loadWarehouses () {
         this.$http({
           url: this.$http.adornUrl('/erp/warehouse/select'),
@@ -293,6 +365,10 @@
         const num = Number(value || 0)
         return num.toLocaleString('zh-CN', { minimumFractionDigits: digits, maximumFractionDigits: digits })
       },
+      percentText (value) {
+        if (value === undefined || value === null || value === '') return '-'
+        return `${this.numberText(value, 2)}%`
+      },
       dateText (value) {
         if (!value) return '-'
         return String(value).slice(0, 10)
@@ -315,6 +391,12 @@
 <style scoped>
   .mod-erp-inventory-cost .query-form {
     margin: 15px 0 12px;
+  }
+
+  .suggestion-upload {
+    display: inline-block;
+    margin-left: 10px;
+    vertical-align: middle;
   }
 
   .cost-price {
