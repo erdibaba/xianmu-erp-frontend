@@ -369,7 +369,7 @@
                   <strong>¥{{ money(batchSettlementForm.storageFeeAmount) }}</strong>
                 </div>
                 <div class="fee-summary-item">
-                  <span>其他资方费用</span>
+                  <span>其他应付/扣减费用</span>
                   <strong>¥{{ money(otherBatchFees) }}</strong>
                 </div>
               </div>
@@ -645,7 +645,7 @@ export default {
       return [
         { name: '利息/资金成本', amount: f.interestAmount, formula: this.sumFormula('各明细行利息/资金成本', f.interestAmount) },
         { name: this.storageFeeName, amount: f.storageFeeAmount, formula: this.sumFormula(`各明细行${this.storageFeeName}`, f.storageFeeAmount) },
-        { name: '其他资方费用', amount: this.otherBatchFees, formula: `扫码费${this.money(this.effectiveCodeScanFee)} + 印花税${this.money(f.stampTaxAmount)} - 保证金/押金${this.money(f.depositAmount)} + 补税点费用${this.money(f.taxAdjustAmount)} + 毛重费用${this.money(f.grossWeightFeeAmount)} + 其他费用${this.money(f.otherFeeAmount)} = ${this.money(this.otherBatchFees)}` }
+        { name: '其他应付/扣减费用', amount: this.otherBatchFees, formula: `扫码费${this.money(this.effectiveCodeScanFee)} + 印花税${this.money(f.stampTaxAmount)} - 保证金/押金${this.money(f.depositAmount)} + 补税点费用${this.money(f.taxAdjustAmount)} + 毛重费用${this.money(f.grossWeightFeeAmount)} + 其他费用${this.money(f.otherFeeAmount)} = ${this.money(this.otherBatchFees)}` }
       ]
     },
     batchFeeFormulaRows () {
@@ -659,7 +659,7 @@ export default {
         { name: '保证金/押金', amount: f.depositAmount, formula: '各明细行按：保证金基数 × 25%；保证金基数 = 计费重量KG × 基础销售单价，不包含延期/超期提货费加价。保证金/押金在应付金额里按减项处理。' },
         { name: '补税点费用', amount: f.taxAdjustAmount, formula: '万翔规则自动计算：先计算 出库金额 + 应补仓储费 + 抄码费 + 印花税，与 采购单价 + 银蕨资金成本 对应金额的差额，再按 1.082152 / 1.048552 补税点系数折算差额。' },
         { name: '毛重费用', amount: f.grossWeightFeeAmount, formula: '各明细行按：先用 产品总净重 ÷ 确认单整单净重 × 报关单确认毛重 得到产品总毛重，再按 产品总毛重 ÷ 产品总箱数 × 本次出库箱数 得到本次计费毛重，最后按 本次计费毛重KG ÷ 1000 × 毛重费率 × 计费天数 计算后汇总。' },
-        { name: '其他费用', amount: f.otherFeeAmount, formula: '人工补充费用，计入其他资方费用。' }
+        { name: '其他费用', amount: f.otherFeeAmount, formula: '人工补充费用，计入其他应付/扣减费用。' }
       ]
     },
     batchFeeDetailRows () {
@@ -683,7 +683,7 @@ export default {
     },
     batchFeeRuleText () {
       const rule = this.ruleName(this.batchSettlementForm.ruleType)
-      return `当前资方规则：${rule}。本说明展示利息/资金成本、${this.storageFeeName}、其他资方费用的计算来源；人工录入项会标记为人工录入。`
+      return `当前资方规则：${rule}。本说明按应付费用构成展示：利息/资金成本、${this.storageFeeName}、其他应付/扣减费用分别独立计算；人工录入项会标记为人工录入。`
     },
     isIncludeCodeScanFee () {
       return Number(this.batchSettlementForm.includeCodeScanFee || 0) === 1
