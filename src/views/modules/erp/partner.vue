@@ -16,6 +16,7 @@
       </el-form-item>
       <el-form-item>
         <el-button type="primary" @click="getDataList()">查询</el-button>
+        <el-button v-if="isAuth('erp:partner:list')" type="info" :loading="exportLoading" @click="exportHandle()">导出Excel</el-button>
         <el-button v-if="isAuth('erp:partner:update')" type="warning" :loading="syncWecomLoading" @click="syncWecomGroups()">同步企微客户群</el-button>
         <el-button v-if="isAuth('erp:partner:save')" type="success" @click="addOrUpdateHandle()">新增</el-button>
         <el-button v-if="isAuth('erp:partner:delete')" type="danger" :disabled="dataListSelections.length <= 0" @click="deleteHandle()">批量删除</el-button>
@@ -100,6 +101,7 @@ export default {
       dataListSelections: [],
       addOrUpdateVisible: false,
       syncWecomLoading: false,
+      exportLoading: false,
       bizRoleOptions: PARTNER_BIZ_ROLE_OPTIONS
     }
   },
@@ -157,6 +159,36 @@ export default {
     },
     selectionChangeHandle (val) {
       this.dataListSelections = val
+    },
+    exportHandle () {
+      this.exportLoading = true
+      this.$http({
+        url: this.$http.adornUrl('/erp/partner/export'),
+        method: 'get',
+        params: this.$http.adornParams({
+          keyword: this.queryForm.keyword,
+          businessRole: this.queryForm.businessRole
+        }),
+        responseType: 'blob'
+      }).then(({ data }) => {
+        this.downloadBlob(data, '往来单位.xlsx')
+      }).catch(() => {
+        this.$message.error('导出失败')
+      }).finally(() => {
+        this.exportLoading = false
+      })
+    },
+    downloadBlob (blob, fileName) {
+      const url = window.URL.createObjectURL(new Blob([blob], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      }))
+      const link = document.createElement('a')
+      link.href = url
+      link.download = fileName
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
     },
     addOrUpdateHandle (id) {
       this.addOrUpdateVisible = true

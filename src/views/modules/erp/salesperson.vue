@@ -11,6 +11,7 @@
       </el-form-item>
       <el-form-item>
         <el-button type="primary" @click="searchHandle()">查询</el-button>
+        <el-button v-if="isAuth('erp:salesperson:list')" type="info" :loading="exportLoading" @click="exportHandle()">导出Excel</el-button>
         <el-button v-if="isAuth('erp:salesperson:save')" type="success" @click="addOrUpdateHandle()">新增</el-button>
         <el-button
           v-if="isAuth('erp:salesperson:delete')"
@@ -87,7 +88,8 @@
         dataListLoading: false,
         dataListSelections: [],
         addOrUpdateVisible: false,
-        deleteLoading: false
+        deleteLoading: false,
+        exportLoading: false
       }
     },
     activated () {
@@ -132,6 +134,35 @@
       },
       selectionChangeHandle (val) {
         this.dataListSelections = val
+      },
+      exportHandle () {
+        this.exportLoading = true
+        this.$http({
+          url: this.$http.adornUrl('/erp/salesperson/export'),
+          method: 'get',
+          params: this.$http.adornParams({
+            keyword: this.queryForm.keyword
+          }),
+          responseType: 'blob'
+        }).then(({ data }) => {
+          this.downloadBlob(data, '销售信息.xlsx')
+        }).catch(() => {
+          this.$message.error('导出失败')
+        }).finally(() => {
+          this.exportLoading = false
+        })
+      },
+      downloadBlob (blob, fileName) {
+        const url = window.URL.createObjectURL(new Blob([blob], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        }))
+        const link = document.createElement('a')
+        link.href = url
+        link.download = fileName
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        window.URL.revokeObjectURL(url)
       },
       addOrUpdateHandle (id) {
         this.addOrUpdateVisible = true
