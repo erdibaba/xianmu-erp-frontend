@@ -380,7 +380,8 @@
         }
         const totalBasis = Number(row.totalBasisWeightKg || 0)
         if (totalBasis > 0) {
-          return `分摊金额 = 来源金额${this.moneyText(row.sourceAmount)} × 本行剩余重量${this.numberText(row.basisWeightKg, 2)}KG ÷ 合同剩余重量${this.numberText(row.totalBasisWeightKg, 2)}KG = ${this.moneyText(row.allocatedAmount)}`
+          const ratio = Number(row.basisWeightKg || 0) / totalBasis * 100
+          return `分摊比例 = 本行剩余重量${this.numberText(row.basisWeightKg, 2)}KG ÷ 合同剩余重量${this.numberText(row.totalBasisWeightKg, 2)}KG = ${this.percentText(ratio)}；分摊金额 = 来源金额${this.moneyText(row.sourceAmount)} × 分摊比例 = ${this.moneyText(row.allocatedAmount)}`
         }
         return `分摊金额 = ${this.moneyText(row.allocatedAmount)}`
       }

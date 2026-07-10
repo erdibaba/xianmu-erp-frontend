@@ -283,7 +283,8 @@
         }
         const totalBasis = Number(item.totalBasisWeightKg || 0)
         if (totalBasis > 0) {
-          return `分摊 = ${this.moneyText(item.sourceAmount)} × ${this.numberText(item.basisWeightKg, 2)} ÷ ${this.numberText(item.totalBasisWeightKg, 2)} = ${this.moneyText(item.allocatedAmount)}`
+          const ratio = Number(item.basisWeightKg || 0) / totalBasis * 100
+          return `分摊比例 = ${this.numberText(item.basisWeightKg, 2)} ÷ ${this.numberText(item.totalBasisWeightKg, 2)} = ${this.percentText(ratio)}；分摊金额 = ${this.moneyText(item.sourceAmount)} × 分摊比例 = ${this.moneyText(item.allocatedAmount)}`
         }
         return `分摊 = ${this.moneyText(item.allocatedAmount)}`
       }
