@@ -328,12 +328,12 @@
           </el-col>
           <el-col v-if="batchSettlementForm.ruleType === 'WANXIANG'" :span="8">
             <el-form-item label="补税点费用">
-              <el-input :value="money(batchSettlementForm.taxAdjustAmount)" disabled></el-input>
+              <el-input :value="calcAmount(batchSettlementForm.taxAdjustAmount)" disabled></el-input>
             </el-form-item>
           </el-col>
           <el-col v-if="batchSettlementForm.ruleType === 'WANXIANG'" :span="8">
             <el-form-item label="毛重费用">
-              <el-input :value="money(batchSettlementForm.grossWeightFeeAmount)" disabled></el-input>
+              <el-input :value="calcAmount(batchSettlementForm.grossWeightFeeAmount)" disabled></el-input>
             </el-form-item>
           </el-col>
           <el-col v-if="batchSettlementForm.ruleType === 'WANXIANG'" :span="8">
@@ -351,8 +351,8 @@
               <el-input v-model="batchSettlementForm.handlingFeeReason" maxlength="200" placeholder="录入手续费时必填" @blur="calculateBatchSettlement"></el-input>
             </el-form-item>
           </el-col>
-          <el-col :span="8"><el-form-item label="系统还本"><el-input :value="money(batchSettlementForm.systemPrincipalAmount)" disabled></el-input></el-form-item></el-col>
-          <el-col :span="8"><el-form-item label="确认还本"><el-input :value="money(batchSettlementForm.confirmedPrincipalAmount)" disabled></el-input></el-form-item></el-col>
+          <el-col :span="8"><el-form-item label="系统还本"><el-input :value="calcAmount(batchSettlementForm.systemPrincipalAmount)" disabled></el-input></el-form-item></el-col>
+          <el-col :span="8"><el-form-item label="确认还本"><el-input :value="calcAmount(batchSettlementForm.confirmedPrincipalAmount)" disabled></el-input></el-form-item></el-col>
           <el-col :span="24">
             <div class="fee-summary-card">
               <div class="fee-summary-head">
@@ -362,15 +362,15 @@
               <div class="fee-summary-grid">
                 <div class="fee-summary-item">
                   <span>利息/资金成本</span>
-                  <strong>¥{{ money(batchSettlementForm.interestAmount) }}</strong>
+                  <strong>¥{{ calcAmount(batchSettlementForm.interestAmount) }}</strong>
                 </div>
                 <div class="fee-summary-item">
                   <span>{{ storageFeeName }}</span>
-                  <strong>¥{{ money(batchSettlementForm.storageFeeAmount) }}</strong>
+                  <strong>¥{{ calcAmount(batchSettlementForm.storageFeeAmount) }}</strong>
                 </div>
                 <div class="fee-summary-item">
                   <span>其他应付/扣减费用</span>
-                  <strong>¥{{ money(otherBatchFees) }}</strong>
+                  <strong>¥{{ calcAmount(otherBatchFees) }}</strong>
                 </div>
               </div>
             </div>
@@ -416,11 +416,11 @@
               </el-popover>
             </template>
           </el-table-column>
-          <el-table-column label="货值金额" width="120" align="right"><template slot-scope="scope">{{ money(scope.row.costAmount) }}</template></el-table-column>
-          <el-table-column label="系统还本" width="120" align="right"><template slot-scope="scope">{{ money(scope.row.systemPrincipalAmount) }}</template></el-table-column>
-          <el-table-column label="确认还本" width="120" align="right"><template slot-scope="scope">{{ money(scope.row.confirmedPrincipalAmount) }}</template></el-table-column>
+          <el-table-column label="货值金额" width="120" align="right"><template slot-scope="scope">{{ calcAmount(scope.row.costAmount) }}</template></el-table-column>
+          <el-table-column label="系统还本" width="120" align="right"><template slot-scope="scope">{{ calcAmount(scope.row.systemPrincipalAmount) }}</template></el-table-column>
+          <el-table-column label="确认还本" width="120" align="right"><template slot-scope="scope">{{ calcAmount(scope.row.confirmedPrincipalAmount) }}</template></el-table-column>
           <el-table-column prop="loanDays" label="计息天数" width="90" align="right"></el-table-column>
-          <el-table-column label="利息/资金成本" width="130" align="right"><template slot-scope="scope">{{ money(scope.row.interestAmount) }}</template></el-table-column>
+          <el-table-column label="利息/资金成本" width="130" align="right"><template slot-scope="scope">{{ calcAmount(scope.row.interestAmount) }}</template></el-table-column>
           <el-table-column label="预计应付" width="120" align="right"><template slot-scope="scope">{{ money(scope.row.expectedPaymentAmount) }}</template></el-table-column>
         </el-table>
       </div>
@@ -442,7 +442,7 @@
           <el-table :data="batchFeeSummaryRows" border stripe size="mini">
             <el-table-column prop="name" label="费用大类" width="150"></el-table-column>
             <el-table-column label="金额" width="130" align="right">
-              <template slot-scope="scope">{{ money(scope.row.amount) }}</template>
+              <template slot-scope="scope">{{ calcAmount(scope.row.amount) }}</template>
             </el-table-column>
             <el-table-column prop="formula" label="汇总公式" min-width="520" show-overflow-tooltip></el-table-column>
           </el-table>
@@ -451,7 +451,7 @@
           <el-table :data="batchFeeFormulaRows" border stripe size="mini">
             <el-table-column prop="name" label="费用项" width="130"></el-table-column>
             <el-table-column label="金额" width="120" align="right">
-              <template slot-scope="scope">{{ money(scope.row.amount) }}</template>
+              <template slot-scope="scope">{{ calcAmount(scope.row.amount) }}</template>
             </el-table-column>
             <el-table-column prop="formula" label="计算公式/来源" min-width="620" show-overflow-tooltip></el-table-column>
           </el-table>
@@ -464,13 +464,13 @@
             <el-table-column prop="containerNo" label="柜号" width="120" show-overflow-tooltip></el-table-column>
             <el-table-column prop="feeName" label="费用项" width="120"></el-table-column>
             <el-table-column label="金额" width="110" align="right">
-              <template slot-scope="scope">{{ money(scope.row.amount) }}</template>
+              <template slot-scope="scope">{{ calcAmount(scope.row.amount) }}</template>
             </el-table-column>
             <el-table-column prop="formula" label="明细公式" min-width="520" show-overflow-tooltip></el-table-column>
           </el-table>
         </el-collapse-item>
       </el-collapse>
-      <div class="other-fee-total">费用合计：¥{{ money(batchFeeTotal) }}</div>
+      <div class="other-fee-total">费用合计：¥{{ calcAmount(batchFeeTotal) }}</div>
       <span slot="footer">
         <el-button @click="otherFeeDetailVisible = false">关闭</el-button>
       </span>
@@ -645,7 +645,7 @@ export default {
       return [
         { name: '利息/资金成本', amount: f.interestAmount, formula: this.sumFormula('各明细行利息/资金成本', f.interestAmount) },
         { name: this.storageFeeName, amount: f.storageFeeAmount, formula: this.sumFormula(`各明细行${this.storageFeeName}`, f.storageFeeAmount) },
-        { name: '其他应付/扣减费用', amount: this.otherBatchFees, formula: `扫码费${this.money(this.effectiveCodeScanFee)} + 印花税${this.money(f.stampTaxAmount)} - 保证金/押金${this.money(f.depositAmount)} + 补税点费用${this.money(f.taxAdjustAmount)} + 毛重费用${this.money(f.grossWeightFeeAmount)} + 其他费用${this.money(f.otherFeeAmount)} = ${this.money(this.otherBatchFees)}` }
+        { name: '其他应付/扣减费用', amount: this.otherBatchFees, formula: `扫码费${this.calcAmount(this.effectiveCodeScanFee)} + 印花税${this.calcAmount(f.stampTaxAmount)} - 保证金/押金${this.calcAmount(f.depositAmount)} + 补税点费用${this.calcAmount(f.taxAdjustAmount)} + 毛重费用${this.calcAmount(f.grossWeightFeeAmount)} + 其他费用${this.money(f.otherFeeAmount)} = ${this.calcAmount(this.otherBatchFees)}` }
       ]
     },
     batchFeeFormulaRows () {
@@ -698,11 +698,12 @@ export default {
   methods: {
     money (value) { return Number(value || 0).toFixed(2) },
     rate (value) { return Number(value || 0).toFixed(10) },
-    decimal10 (value) { return Number(value || 0).toFixed(10) },
-    number3 (value) { return Number(value || 0).toFixed(3) },
-    number6 (value) { return Number(value || 0).toFixed(6) },
+    decimal10 (value) { return Number(value || 0).toFixed(11) },
+    calcAmount (value) { return Number(value || 0).toFixed(11) },
+    number3 (value) { return Number(value || 0).toFixed(11) },
+    number6 (value) { return Number(value || 0).toFixed(11) },
     sumFormula (name, amount) {
-      return `${name}汇总 = ${this.money(amount)}`
+      return `${name}汇总 = ${this.calcAmount(amount)}`
     },
     ton (kg) {
       return Number(kg || 0) / 1000
@@ -727,22 +728,22 @@ export default {
       const rule = this.batchSettlementForm.ruleType
       const rate = rule === 'RUIHEXIANG' ? '6%' : rule === 'CHAOYUE' ? '6.984%' : rule === 'WANXIANG' ? '5.5%' : '资方维护年利率'
       const daysBase = rule === 'CHAOYUE' || rule === 'WANXIANG' ? 360 : 365
-      return `确认还本${this.money(item.confirmedPrincipalAmount)} × ${rate} ÷ ${daysBase} × ${item.loanDays || 0}天 = ${this.money(item.interestAmount)}`
+      return `确认还本${this.calcAmount(item.confirmedPrincipalAmount)} × ${rate} ÷ ${daysBase} × ${item.loanDays || 0}天 = ${this.calcAmount(item.interestAmount)}`
     },
     itemStorageFormula (item) {
       const weight = this.feeWeight(item)
       const days = Number(item.extraStorageDays || this.batchSettlementForm.extraStorageDays || 0)
       if (this.batchSettlementForm.ruleType === 'WANXIANG') {
         const rate = days > 0 ? this.inferTonRate(item.storageFeeAmount, weight) / days : 0
-        return `万翔结算销售单价已含基础仓储费，仅补额外天数：计费重量${this.number3(weight)}KG ÷ 1000 × 仓储费单价${this.money(rate)}元/吨/天 × ${days}天 = ${this.money(item.storageFeeAmount)}`
+        return `万翔结算销售单价已含基础仓储费，仅补额外天数：计费重量${this.number3(weight)}KG ÷ 1000 × 仓储费单价${this.calcAmount(rate)}元/吨/天 × ${days}天 = ${this.calcAmount(item.storageFeeAmount)}`
       }
       const rate = this.inferTonRate(item.storageFeeAmount, weight)
-      return `计费重量${this.number3(weight)}KG ÷ 1000 × 仓储费单价${this.money(rate)}元/吨 = ${this.money(item.storageFeeAmount)}`
+      return `计费重量${this.number3(weight)}KG ÷ 1000 × 仓储费单价${this.calcAmount(rate)}元/吨 = ${this.calcAmount(item.storageFeeAmount)}`
     },
     itemHandlingFormula (item) {
       const weight = this.feeWeight(item)
       const rate = this.inferTonRate(item.handlingFeeAmount, weight)
-      return `计费重量${this.number3(weight)}KG ÷ 1000 × 装卸费单价${this.money(rate)}元/吨 = ${this.money(item.handlingFeeAmount)}`
+      return `计费重量${this.number3(weight)}KG ÷ 1000 × 装卸费单价${this.calcAmount(rate)}元/吨 = ${this.calcAmount(item.handlingFeeAmount)}`
     },
     itemCodeScanFormula (item) {
       if (!this.isIncludeCodeScanFee) {
@@ -751,20 +752,20 @@ export default {
       const boxes = Number(item.shippedBoxes || 0)
       const amount = Number(item.codeScanFeeAmount || 0)
       if (boxes > 0 && Math.abs(amount / boxes - 0.35) < 0.01) {
-        return `出库箱数${boxes} × 0.35 = ${this.money(item.codeScanFeeAmount)}`
+        return `出库箱数${boxes} × 0.35 = ${this.calcAmount(item.codeScanFeeAmount)}`
       }
       const weight = this.feeWeight(item)
       const rate = this.inferTonRate(item.codeScanFeeAmount, weight)
-      return `计费重量${this.number3(weight)}KG ÷ 1000 × ${this.money(rate)}元/吨 = ${this.money(item.codeScanFeeAmount)}`
+      return `计费重量${this.number3(weight)}KG ÷ 1000 × ${this.calcAmount(rate)}元/吨 = ${this.calcAmount(item.codeScanFeeAmount)}`
     },
     itemStampTaxFormula (item) {
       const weight = this.feeWeight(item)
-      return `计费重量${this.number3(weight)}KG × 确认函含税单价${this.number6(item.unitPriceInclTax)} × 0.0006 = ${this.money(item.stampTaxAmount)}`
+      return `计费重量${this.number3(weight)}KG × 确认函含税单价${this.number6(item.unitPriceInclTax)} × 0.0006 = ${this.calcAmount(item.stampTaxAmount)}`
     },
     itemDepositFormula (item) {
       const basePrice = Number(item.baseSettlementUnitPrice || item.unitPriceInclTax || 0)
       const baseAmount = this.feeWeight(item) * basePrice
-      return `保证金基数${this.money(baseAmount)}（计费重量${this.number3(this.feeWeight(item))}KG × 基础销售单价${this.number6(basePrice)}） × 25% = ${this.money(item.depositAmount)}，在应付金额中作为减项。`
+      return `保证金基数${this.calcAmount(baseAmount)}（计费重量${this.number3(this.feeWeight(item))}KG × 基础销售单价${this.number6(basePrice)}） × 25% = ${this.calcAmount(item.depositAmount)}，在应付金额中作为减项。`
     },
     itemSettlementPriceFormula (item) {
       const purchase = this.number6(item.unitPriceInclTax)
@@ -788,7 +789,7 @@ export default {
       const grossWeight = Number(item.grossDiffWeight || 0)
       const rate = Number(item.grossFeeRate || 0)
       const days = Number(item.grossFeeDays || 0)
-      return `本次计费毛重${this.number3(grossWeight)}KG ÷ 1000 × 毛重费率${this.money(rate)}元/吨/天 × ${days}天 = ${this.money(item.grossWeightFeeAmount)}。本次计费毛重由：产品总净重 ÷ 确认单整单净重 × 报关单确认毛重，再按本次出库箱数折算。`
+      return `本次计费毛重${this.number3(grossWeight)}KG ÷ 1000 × 毛重费率${this.calcAmount(rate)}元/吨/天 × ${days}天 = ${this.calcAmount(item.grossWeightFeeAmount)}。本次计费毛重由：产品总净重 ÷ 确认单整单净重 × 报关单确认毛重，再按本次出库箱数折算。`
     },
     ruleName (value) {
       const map = { RUIHEXIANG: '瑞和祥', CHAOYUE: '超跃', WANXIANG: '万翔', DEFAULT: '默认' }
