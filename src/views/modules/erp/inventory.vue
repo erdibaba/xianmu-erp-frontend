@@ -202,6 +202,84 @@
         </el-table>
       </el-tab-pane>
 
+      <el-tab-pane label="加权单价报告" name="weightedCost">
+        <el-form :inline="true" :model="weightedCostQuery" size="small">
+          <el-form-item>
+            <el-input v-model="weightedCostQuery.keyword" placeholder="产品编码/中文名/英文名" clearable @keyup.enter.native="getWeightedCostList()"></el-input>
+          </el-form-item>
+          <el-form-item>
+            <el-input v-model="weightedCostQuery.contractNo" placeholder="合同号" clearable @keyup.enter.native="getWeightedCostList()"></el-input>
+          </el-form-item>
+          <el-form-item>
+            <el-select v-model="weightedCostQuery.warehouseId" filterable clearable placeholder="请选择仓库" style="width: 190px;" @change="weightedCostWarehouseChange">
+              <el-option v-for="item in warehouseList" :key="item.id" :label="item.warehouseName" :value="item.id"></el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-select
+              v-model="weightedCostQuery.containerNos"
+              multiple
+              filterable
+              remote
+              clearable
+              reserve-keyword
+              :disabled="!weightedCostQuery.warehouseId"
+              :loading="weightedCostContainerLoading"
+              :remote-method="remoteSearchWeightedCostContainers"
+              placeholder="请选择柜号"
+              style="width: 260px;">
+              <el-option v-for="item in weightedCostContainerOptions" :key="item" :label="item" :value="item"></el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-input v-model="weightedCostQuery.factoryNo" placeholder="厂号" clearable @keyup.enter.native="getWeightedCostList()"></el-input>
+          </el-form-item>
+          <el-form-item>
+            <el-date-picker
+              class="inventory-date-range"
+              v-model="weightedCostInboundDateRange"
+              type="daterange"
+              value-format="yyyy-MM-dd"
+              range-separator="至"
+              start-placeholder="入库开始"
+              end-placeholder="入库结束"
+              @change="getWeightedCostList()">
+            </el-date-picker>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="getWeightedCostList()">查询</el-button>
+            <el-button @click="resetWeightedCostQuery()">重置</el-button>
+          </el-form-item>
+        </el-form>
+
+        <el-table :data="weightedCostList" border stripe v-loading="weightedCostLoading" height="620">
+          <el-table-column type="index" label="序号" width="60" align="center" header-align="center"></el-table-column>
+          <el-table-column prop="productCode" label="产品编码" min-width="110" align="center" header-align="center"></el-table-column>
+          <el-table-column prop="productName" label="中文名称" min-width="170" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="marketCirculationName" label="市场流通名称" min-width="180" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
+          <el-table-column label="涉及合同号" min-width="190" show-overflow-tooltip>
+            <template slot-scope="scope">{{ formatContractNos(scope.row) }}</template>
+          </el-table-column>
+          <el-table-column prop="ownershipName" label="货权" min-width="170" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="availableBoxes" label="当前剩余箱数" width="120" align="right" header-align="center"></el-table-column>
+          <el-table-column label="当前剩余重量(KG)" width="145" align="right" header-align="center">
+            <template slot-scope="scope">{{ numberText(scope.row.availableWeightKg, 3) }}</template>
+          </el-table-column>
+          <el-table-column label="加权平均单价" width="135" align="right" header-align="center">
+            <template slot-scope="scope">{{ numberText(scope.row.weightedUnitPrice, 6) }}</template>
+          </el-table-column>
+          <el-table-column label="加权采购金额" width="135" align="right" header-align="center">
+            <template slot-scope="scope">{{ numberText(scope.row.purchaseAmount, 2) }}</template>
+          </el-table-column>
+          <el-table-column label="操作" width="90" align="center" header-align="center" fixed="right">
+            <template slot-scope="scope">
+              <el-button type="text" size="small" @click="openWeightedCostDetail(scope.row)">详情</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-tab-pane>
+
       <el-tab-pane label="期货库存" name="futures">
         <el-form :inline="true" :model="futuresQuery" size="small">
           <el-form-item>
@@ -410,6 +488,41 @@
         </el-table-column>
       </el-table>
     </el-dialog>
+
+    <el-dialog
+      title="加权单价明细"
+      :visible.sync="weightedCostDetailVisible"
+      width="88vw"
+      append-to-body>
+      <div v-if="currentWeightedCostRow" class="batch-summary">
+        <span>产品编码：{{ currentWeightedCostRow.productCode || '-' }}</span>
+        <span>中文名称：{{ currentWeightedCostRow.productName || '-' }}</span>
+        <span>加权平均单价：{{ numberText(currentWeightedCostRow.weightedUnitPrice, 6) }}</span>
+      </div>
+      <el-table :data="weightedCostDetailList" border stripe v-loading="weightedCostDetailLoading" height="430">
+        <el-table-column type="index" label="序号" width="60" align="center" header-align="center"></el-table-column>
+        <el-table-column prop="contractNo" label="确认函合同号" min-width="150" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="ownershipName" label="货权" min-width="170" show-overflow-tooltip></el-table-column>
+        <el-table-column label="合同产品单价" width="130" align="right" header-align="center">
+          <template slot-scope="scope">{{ numberText(scope.row.weightedUnitPrice, 6) }}</template>
+        </el-table-column>
+        <el-table-column prop="availableBoxes" label="剩余箱数" width="100" align="right" header-align="center"></el-table-column>
+        <el-table-column label="剩余重量(KG)" width="130" align="right" header-align="center">
+          <template slot-scope="scope">{{ numberText(scope.row.availableWeightKg, 3) }}</template>
+        </el-table-column>
+        <el-table-column label="权重占比(%)" width="120" align="right" header-align="center">
+          <template slot-scope="scope">{{ numberText(scope.row.weightPercent, 4) }}</template>
+        </el-table-column>
+        <el-table-column label="加权金额" width="130" align="right" header-align="center">
+          <template slot-scope="scope">{{ numberText(scope.row.purchaseAmount, 2) }}</template>
+        </el-table-column>
+        <el-table-column label="计算说明" min-width="360" show-overflow-tooltip>
+          <template slot-scope="scope">
+            {{ numberText(scope.row.weightedUnitPrice, 6) }} × {{ numberText(scope.row.availableWeightKg, 3) }}
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
   </div>
 </template>
 
@@ -427,6 +540,8 @@
         spotContainerOptions: [],
         spotContainerProductContainerOptions: [],
         spotContainerProductInboundDateRange: [],
+        weightedCostContainerOptions: [],
+        weightedCostInboundDateRange: [],
         futuresContainerOptions: [],
         spotQuery: {
           keyword: '',
@@ -443,6 +558,13 @@
           containerNos: [],
           factoryNo: '',
           onlyAvailable: '1'
+        },
+        weightedCostQuery: {
+          keyword: '',
+          warehouseId: '',
+          contractNo: '',
+          containerNos: [],
+          factoryNo: ''
         },
         futuresQuery: {
           keyword: '',
@@ -462,21 +584,28 @@
         },
         spotList: [],
         spotContainerProductList: [],
+        weightedCostList: [],
+        weightedCostDetailList: [],
         futuresList: [],
         recordList: [],
         batchList: [],
         spotLoading: false,
         spotContainerProductLoading: false,
+        weightedCostLoading: false,
+        weightedCostDetailLoading: false,
         futuresLoading: false,
         spotContainerLoading: false,
         spotContainerProductContainerLoading: false,
+        weightedCostContainerLoading: false,
         futuresContainerLoading: false,
         recordLoading: false,
         batchLoading: false,
         batchDialogVisible: false,
+        weightedCostDetailVisible: false,
         batchDialogTitle: '库存批次详情',
         currentBatchType: 'spot',
-        currentInventoryRow: null
+        currentInventoryRow: null,
+        currentWeightedCostRow: null
       }
     },
     activated () {
@@ -492,6 +621,8 @@
           this.getFuturesList()
         } else if (this.activeTab === 'spotContainerProduct') {
           this.getSpotContainerProductList()
+        } else if (this.activeTab === 'weightedCost') {
+          this.getWeightedCostList()
         } else if (this.activeTab === 'records') {
           this.getRecordList()
         } else {
@@ -541,6 +672,30 @@
           this.spotContainerProductLoading = false
         }).catch(() => {
           this.spotContainerProductLoading = false
+        })
+      },
+      getWeightedCostList () {
+        this.weightedCostLoading = true
+        const inboundRange = this.weightedCostInboundDateRange || []
+        const params = Object.assign({}, this.weightedCostQuery, {
+          containerNos: this.weightedCostQuery.containerNos.join(','),
+          inboundDateStart: inboundRange[0] || '',
+          inboundDateEnd: inboundRange[1] || ''
+        })
+        this.$http({
+          url: this.$http.adornUrl('/erp/inventory/weighted-cost'),
+          method: 'get',
+          params: this.$http.adornParams(params)
+        }).then(({data}) => {
+          if (data && data.code === 0) {
+            this.weightedCostList = data.list || []
+          } else {
+            this.weightedCostList = []
+            this.$message.error((data && data.msg) || '获取加权单价报告失败')
+          }
+          this.weightedCostLoading = false
+        }).catch(() => {
+          this.weightedCostLoading = false
         })
       },
       getFuturesList () {
@@ -638,6 +793,34 @@
           this.batchLoading = false
         })
       },
+      openWeightedCostDetail (row) {
+        this.currentWeightedCostRow = row
+        this.weightedCostDetailList = []
+        this.weightedCostDetailVisible = true
+        this.weightedCostDetailLoading = true
+        const inboundRange = this.weightedCostInboundDateRange || []
+        const params = Object.assign({}, this.weightedCostQuery, {
+          productId: row.productId,
+          containerNos: this.weightedCostQuery.containerNos.join(','),
+          inboundDateStart: inboundRange[0] || '',
+          inboundDateEnd: inboundRange[1] || ''
+        })
+        this.$http({
+          url: this.$http.adornUrl('/erp/inventory/weighted-cost/details'),
+          method: 'get',
+          params: this.$http.adornParams(params)
+        }).then(({data}) => {
+          if (data && data.code === 0) {
+            this.weightedCostDetailList = data.list || []
+          } else {
+            this.weightedCostDetailList = []
+            this.$message.error((data && data.msg) || '获取加权单价明细失败')
+          }
+          this.weightedCostDetailLoading = false
+        }).catch(() => {
+          this.weightedCostDetailLoading = false
+        })
+      },
       resetSpotQuery () {
         this.spotQuery = {
           keyword: '',
@@ -664,6 +847,19 @@
         this.spotContainerProductContainerOptions = []
         this.spotContainerProductList = []
         this.getSpotContainerProductList()
+      },
+      resetWeightedCostQuery () {
+        this.weightedCostQuery = {
+          keyword: '',
+          warehouseId: '',
+          contractNo: '',
+          containerNos: [],
+          factoryNo: ''
+        }
+        this.weightedCostInboundDateRange = []
+        this.weightedCostContainerOptions = []
+        this.weightedCostList = []
+        this.getWeightedCostList()
       },
       resetFuturesQuery () {
         this.futuresQuery = {
@@ -699,6 +895,10 @@
         const number = Number(value)
         return isNaN(number) ? '0.00' : number.toFixed(2)
       },
+      numberText (value, scale) {
+        const number = Number(value)
+        return isNaN(number) ? Number(0).toFixed(scale || 2) : number.toFixed(scale || 2)
+      },
       isAllFreshToFrozen (row) {
         return row && (row.freshToFrozenStatus === 'ALL' || row.freshToFrozenStatus === '全部鲜转冻')
       },
@@ -726,6 +926,12 @@
         this.spotContainerProductList = []
         this.remoteSearchSpotContainerProductContainers('')
       },
+      weightedCostWarehouseChange () {
+        this.weightedCostQuery.containerNos = []
+        this.weightedCostContainerOptions = []
+        this.weightedCostList = []
+        this.remoteSearchWeightedCostContainers('')
+      },
       futuresWarehouseChange () {
         this.futuresQuery.containerNos = []
         this.futuresContainerOptions = []
@@ -738,16 +944,22 @@
       remoteSearchSpotContainerProductContainers (keyword) {
         this.remoteSearchContainers('spotContainerProduct', keyword)
       },
+      remoteSearchWeightedCostContainers (keyword) {
+        this.remoteSearchContainers('weightedCost', keyword)
+      },
       remoteSearchFuturesContainers (keyword) {
         this.remoteSearchContainers('futures', keyword)
       },
       remoteSearchContainers (inventoryType, keyword) {
         const isFutures = inventoryType === 'futures'
         const isSpotContainerProduct = inventoryType === 'spotContainerProduct'
-        const query = isFutures ? this.futuresQuery : (isSpotContainerProduct ? this.spotContainerProductQuery : this.spotQuery)
+        const isWeightedCost = inventoryType === 'weightedCost'
+        const query = isFutures ? this.futuresQuery : (isWeightedCost ? this.weightedCostQuery : (isSpotContainerProduct ? this.spotContainerProductQuery : this.spotQuery))
         if (!query.warehouseId) {
           if (isFutures) {
             this.futuresContainerOptions = []
+          } else if (isWeightedCost) {
+            this.weightedCostContainerOptions = []
           } else if (isSpotContainerProduct) {
             this.spotContainerProductContainerOptions = []
           } else {
@@ -757,6 +969,8 @@
         }
         if (isFutures) {
           this.futuresContainerLoading = true
+        } else if (isWeightedCost) {
+          this.weightedCostContainerLoading = true
         } else if (isSpotContainerProduct) {
           this.spotContainerProductContainerLoading = true
         } else {
@@ -777,6 +991,9 @@
           if (isFutures) {
             this.futuresContainerOptions = options
             this.futuresContainerLoading = false
+          } else if (isWeightedCost) {
+            this.weightedCostContainerOptions = options
+            this.weightedCostContainerLoading = false
           } else if (isSpotContainerProduct) {
             this.spotContainerProductContainerOptions = options
             this.spotContainerProductContainerLoading = false
@@ -787,6 +1004,8 @@
         }).catch(() => {
           if (isFutures) {
             this.futuresContainerLoading = false
+          } else if (isWeightedCost) {
+            this.weightedCostContainerLoading = false
           } else if (isSpotContainerProduct) {
             this.spotContainerProductContainerLoading = false
           } else {
