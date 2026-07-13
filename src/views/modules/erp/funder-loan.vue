@@ -20,7 +20,6 @@
       </el-form-item>
       <el-form-item><el-button type="primary" @click="getDataList()">查询</el-button></el-form-item>
       <el-form-item>
-        <el-button v-if="isAuth('erp:funderloan:update')" type="success" @click="openBatchSettlement">按出库批次还款</el-button>
       </el-form-item>
       <el-form-item>
         <el-button v-if="isAuth('erp:funderloan:update')" type="warning" @click="openSaleOrderSettlement">按销售合同还款</el-button>
