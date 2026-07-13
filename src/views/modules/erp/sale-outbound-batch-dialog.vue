@@ -74,9 +74,15 @@
         </el-table-column>
         <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
         <el-table-column prop="productCode" label="产品编码" width="105"></el-table-column>
-        <el-table-column prop="productName" label="中文名称" min-width="150" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="marketCirculationName" label="市场流通名称" min-width="155" show-overflow-tooltip>
+          <template slot-scope="scope">{{ scope.row.marketCirculationName || scope.row.productName || '-' }}</template>
+        </el-table-column>
+        <el-table-column prop="confirmContractNo" label="确认函合同号" width="145" show-overflow-tooltip></el-table-column>
         <el-table-column prop="sourceContainerNo" label="柜号" width="135" show-overflow-tooltip></el-table-column>
         <el-table-column prop="contractFactoryNo" label="厂号" width="90" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="warehouseName" label="仓库" width="135" show-overflow-tooltip></el-table-column>
+        <el-table-column label="生产日期" width="110"><template slot-scope="scope">{{ dateOnly(scope.row.productionDate) }}</template></el-table-column>
+        <el-table-column label="过期日期" width="110"><template slot-scope="scope">{{ dateOnly(scope.row.expiryDate) }}</template></el-table-column>
         <el-table-column prop="ownershipName" label="货权" width="145" show-overflow-tooltip></el-table-column>
         <el-table-column prop="boxes" label="销售单箱数" width="100" align="right"></el-table-column>
         <el-table-column prop="remainingBoxes" label="剩余可出" width="90" align="right"></el-table-column>
@@ -238,6 +244,9 @@ export default {
           item._selected = false
         }
       })
+    },
+    dateOnly (value) {
+      return value ? String(value).substring(0, 10) : '-'
     },
     proportionalWeight (row, boxes) {
       const totalBoxes = Number(row.boxes || 0)

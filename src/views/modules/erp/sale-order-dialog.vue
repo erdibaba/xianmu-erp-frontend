@@ -59,22 +59,8 @@
             </el-form-item>
           </el-col>
           <el-col :span="6">
-            <el-form-item :prop="isSpotSale ? 'warehouseId' : ''" label="仓库">
-              <el-select
-                v-model="dataForm.warehouseId"
-                :disabled="contentReadonly || !isSpotSale"
-                filterable
-                clearable
-                style="width: 100%;"
-                placeholder="请选择仓库"
-                @change="warehouseChangeHandle">
-                <el-option
-                  v-for="item in warehouseList"
-                  :key="item.id"
-                  :label="item.warehouseName"
-                  :value="item.id">
-                </el-option>
-              </el-select>
+            <el-form-item label="涉及仓库">
+              <el-input :value="dataForm.warehouseName || (isSpotSale ? '按已选库存自动汇总' : '-')" disabled></el-input>
             </el-form-item>
           </el-col>
         </el-row>
@@ -209,18 +195,9 @@
           <el-input v-model="dataForm.remark" :disabled="contentReadonly" type="textarea"></el-input>
         </el-form-item>
 
-        <div class="sub-title">
-          <span>{{ isSpotSale ? 'By产品录单明细' : '期货产品明细' }}</span>
+        <div v-if="isFuturesSale" class="sub-title">
+          <span>期货产品明细</span>
           <div class="sub-title-actions">
-            <el-button
-              v-if="showSpotPreviewButton"
-              size="mini"
-              type="primary"
-              plain
-              :loading="previewLoading"
-              @click="previewSpotAllocation">
-              生成现货分配明细
-            </el-button>
             <el-button
               v-if="!contentReadonly"
               size="mini"
@@ -232,7 +209,7 @@
           </div>
         </div>
 
-        <el-table :data="dataForm.itemList" border size="mini" class="item-table">
+        <el-table v-if="isFuturesSale" :data="dataForm.itemList" border size="mini" class="item-table">
           <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
 
           <el-table-column label="产品编码" min-width="220">
@@ -339,12 +316,91 @@
           </el-table-column>
         </el-table>
 
-        <div v-if="showSpotAllocation" class="sub-title">
-          <span>系统自动分配结果</span>
-          <span class="sub-title-tip">现货单需在每个柜号行录入数量/千克，厂号、港口/冷库会自动带出，可核对修改</span>
-        </div>
+        <template v-if="isSpotSale">
+          <div class="sub-title spot-search-title">
+            <span>查询可售库存</span>
+            <span class="sub-title-tip">按确认函预计到港时间从早到晚展示；过期库存仍可选择，但会红色标记</span>
+          </div>
+          <div class="spot-search-bar">
+            <el-select
+              v-model="spotProductId"
+              filterable
+              remote
+              clearable
+              reserve-keyword
+              :disabled="contentReadonly"
+              :loading="spotProductLoading"
+              :remote-method="remoteSearchSpotProducts"
+              @visible-change="spotProductVisibleChange"
+              placeholder="输入产品编码或市场流通名称搜索，最多15条"
+              style="width: 520px;">
+              <el-option
+                v-for="item in spotProductOptions"
+                :key="item.id"
+                :label="`${item.productCode} / ${item.marketCirculationName || item.productName || '-'}`"
+                :value="item.id">
+                <div class="product-option-code">{{ item.productCode }}</div>
+                <div class="product-option-name">{{ item.marketCirculationName || item.productName || '-' }} / {{ item.productNameEn || '-' }}</div>
+              </el-option>
+            </el-select>
+            <el-button type="primary" :disabled="!spotProductId || contentReadonly" :loading="spotContractLoading" @click="searchSpotContracts">查询库存</el-button>
+            <el-button type="success" plain :disabled="!spotPendingLotCount || contentReadonly" @click="addCheckedSpotLots">
+              加入销售明细（{{ spotPendingLotCount }}）
+            </el-button>
+          </div>
+
+          <el-table
+            v-loading="spotContractLoading"
+            :data="spotContractList"
+            border
+            size="mini"
+            row-key="_rowKey"
+            class="spot-contract-table">
+            <el-table-column type="expand" width="48">
+              <template slot-scope="scope">
+                <el-table
+                  :ref="`spotLots_${scope.row._rowKey}`"
+                  :data="scope.row.lotList || []"
+                  border
+                  size="mini"
+                  row-key="_sourceKey"
+                  @selection-change="selection => spotLotSelectionChange(scope.row, selection)">
+                  <el-table-column v-if="!contentReadonly" type="selection" width="48" :selectable="spotLotSelectable"></el-table-column>
+                  <el-table-column prop="warehouseName" label="仓库" min-width="140"></el-table-column>
+                  <el-table-column prop="ownershipName" label="货权" min-width="130"></el-table-column>
+                  <el-table-column prop="factoryNo" label="厂号" width="100"></el-table-column>
+                  <el-table-column label="生产日期" width="115"><template slot-scope="lotScope">{{ formatDateOnly(lotScope.row.productionDate) }}</template></el-table-column>
+                  <el-table-column label="过期日期" width="115">
+                    <template slot-scope="lotScope">
+                      <span :class="{ 'expired-stock-text': Number(lotScope.row.expired || 0) === 1 }">{{ formatDateOnly(lotScope.row.expiryDate) }}</span>
+                      <el-tag v-if="Number(lotScope.row.expired || 0) === 1" size="mini" type="danger">已过期</el-tag>
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="availableBoxes" label="可售箱数" width="90" align="right"></el-table-column>
+                  <el-table-column prop="availableWeightKg" label="可售重量KG" width="120" align="right"></el-table-column>
+                  <el-table-column prop="inboundDate" label="入库时间" width="115"><template slot-scope="lotScope">{{ formatDateOnly(lotScope.row.inboundDate) }}</template></el-table-column>
+                </el-table>
+              </template>
+            </el-table-column>
+            <el-table-column prop="confirmContractNo" label="确认函合同号" min-width="145"></el-table-column>
+            <el-table-column label="预计到港" width="115"><template slot-scope="scope">{{ formatDateOnly(scope.row.expectedArrivalDate) }}</template></el-table-column>
+            <el-table-column prop="productCode" label="产品编码" width="105"></el-table-column>
+            <el-table-column prop="marketCirculationName" label="市场流通名称" min-width="160"></el-table-column>
+            <el-table-column prop="containerNo" label="柜号" min-width="125"></el-table-column>
+            <el-table-column prop="factoryNos" label="厂号" min-width="110" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="warehouseNames" label="仓库" min-width="140" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="ownershipNames" label="货权" min-width="130" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="availableBoxes" label="可售箱数" width="90" align="right"></el-table-column>
+            <el-table-column prop="availableWeightKg" label="可售重量KG" width="120" align="right"></el-table-column>
+          </el-table>
+
+          <div class="sub-title">
+            <span>已选库存明细</span>
+            <span class="sub-title-tip">销售箱数必填，预计重量按当前批次可售重量/可售箱数自动计算</span>
+          </div>
+        </template>
         <el-table
-          v-if="showSpotAllocation"
+          v-if="isSpotSale"
           :data="dataForm.allocationItemList"
           border
           size="mini"
@@ -355,7 +411,9 @@
             <template slot-scope="scope">{{ saleProductDisplayName(scope.row) }}</template>
           </el-table-column>
           <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
-          <el-table-column prop="boxes" label="分配箱数" width="90" align="center"></el-table-column>
+          <el-table-column label="销售箱数" width="105">
+            <template slot-scope="scope"><el-input-number v-model="scope.row.boxes" :disabled="contentReadonly" :controls="false" :min="1" :max="scope.row.availableBoxes || 999999" :precision="0" size="mini" style="width:100%;" @change="spotAllocationBoxesChange(scope.row)"></el-input-number></template>
+          </el-table-column>
           <el-table-column prop="ownershipName" label="货权" min-width="120" show-overflow-tooltip>
             <template slot-scope="scope">{{ scope.row.ownershipName || '-' }}</template>
           </el-table-column>
@@ -375,29 +433,9 @@
               </el-input-number>
             </template>
           </el-table-column>
-          <el-table-column label="数量/千克" width="130">
-            <template slot-scope="scope">
-              <el-input-number
-                v-model="scope.row.contractQuantityKg"
-                :disabled="contentReadonly"
-                :controls="false"
-                :min="0"
-                :precision="2"
-                size="mini"
-                style="width: 100%;">
-              </el-input-number>
-            </template>
-          </el-table-column>
-          <el-table-column label="厂号" width="120">
-            <template slot-scope="scope">
-              <el-input v-model="scope.row.contractFactoryNo" :disabled="contentReadonly" size="mini"></el-input>
-            </template>
-          </el-table-column>
-          <el-table-column label="港口/冷库" min-width="140">
-            <template slot-scope="scope">
-              <el-input v-model="scope.row.contractPortCold" :disabled="contentReadonly" size="mini"></el-input>
-            </template>
-          </el-table-column>
+          <el-table-column prop="contractQuantityKg" label="预计重量KG" width="115" align="right"></el-table-column>
+          <el-table-column prop="contractFactoryNo" label="厂号" width="100"></el-table-column>
+          <el-table-column prop="warehouseName" label="仓库" min-width="140"></el-table-column>
           <el-table-column label="入库日期" width="120" align="center">
             <template slot-scope="scope">{{ formatDateOnly(scope.row.inboundDate) }}</template>
           </el-table-column>
@@ -405,9 +443,48 @@
             <template slot-scope="scope">{{ formatDateOnly(scope.row.productionDate) }}</template>
           </el-table-column>
           <el-table-column label="过期日期" width="120" align="center">
-            <template slot-scope="scope">{{ formatDateOnly(scope.row.expiryDate) }}</template>
+            <template slot-scope="scope"><span :class="{ 'expired-stock-text': isExpiredDate(scope.row.expiryDate) }">{{ formatDateOnly(scope.row.expiryDate) }}</span></template>
           </el-table-column>
+          <el-table-column v-if="!contentReadonly" label="操作" width="70" fixed="right"><template slot-scope="scope"><el-button type="text" size="small" @click="removeSpotAllocation(scope.$index)">移除</el-button></template></el-table-column>
         </el-table>
+
+        <template v-if="isSpotSale">
+          <div class="sub-title"><span>By产品销售汇总</span><span class="sub-title-tip">总重量可人工调整，系统会按箱数比例分摊到已选库存明细</span></div>
+          <el-table :data="dataForm.itemList" border size="mini" class="item-table">
+            <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
+            <el-table-column prop="productCode" label="产品编码" width="120"></el-table-column>
+            <el-table-column prop="marketCirculationName" label="市场流通名称" min-width="170"></el-table-column>
+            <el-table-column prop="boxes" label="总箱数" width="90" align="right"></el-table-column>
+            <el-table-column label="总重量KG" width="140"><template slot-scope="scope"><el-input-number v-model="scope.row.contractQuantityKg" :disabled="contentReadonly" :controls="false" :min="0.01" :precision="2" size="mini" style="width:100%;" @change="redistributeSpotProductWeight(scope.row.productId)"></el-input-number></template></el-table-column>
+            <el-table-column label="销售价（元/千克）" width="155"><template slot-scope="scope"><el-input-number v-model="scope.row.salePriceKg" :disabled="contentReadonly" :controls="false" :min="0.01" :precision="2" size="mini" style="width:100%;" @change="spotSalePriceChange(scope.row)"></el-input-number></template></el-table-column>
+            <el-table-column prop="remark" label="备注" min-width="150"><template slot-scope="scope"><el-input v-model="scope.row.remark" :disabled="contentReadonly" size="mini"></el-input></template></el-table-column>
+          </el-table>
+        </template>
+
+        <template v-if="dataForm.id && (dataForm.riskAuditList || []).length">
+          <div class="sub-title"><span>货物风控记录</span><span class="sub-title-tip">记录非先进先出判断、审核意见及被跳过的更早确认函库存</span></div>
+          <el-table :data="dataForm.riskAuditList" border size="mini" row-key="id" class="risk-audit-table">
+            <el-table-column type="expand" width="48">
+              <template slot-scope="scope">
+                <el-table v-if="(scope.row.detailList || []).length" :data="scope.row.detailList" border size="mini">
+                  <el-table-column prop="productCode" label="产品编码" width="110"></el-table-column>
+                  <el-table-column prop="productName" label="产品名称" min-width="160"></el-table-column>
+                  <el-table-column prop="selectedContractNo" label="已选确认函" min-width="145"></el-table-column>
+                  <el-table-column label="已选预计到港" width="120"><template slot-scope="detailScope">{{ formatDateOnly(detailScope.row.selectedExpectedArrivalDate) }}</template></el-table-column>
+                  <el-table-column prop="skippedContractNo" label="被跳过更早确认函" min-width="160"></el-table-column>
+                  <el-table-column label="更早预计到港" width="120"><template slot-scope="detailScope">{{ formatDateOnly(detailScope.row.skippedExpectedArrivalDate) }}</template></el-table-column>
+                  <el-table-column prop="skippedAvailableBoxes" label="剩余可售箱数" width="110" align="right"></el-table-column>
+                </el-table>
+                <div v-else class="empty-risk-detail">本次操作没有跳过库存明细</div>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="130"><template slot-scope="scope">{{ riskActionLabel(scope.row.actionType) }}</template></el-table-column>
+            <el-table-column prop="operatorName" label="操作人" width="120"></el-table-column>
+            <el-table-column label="操作时间" width="170"><template slot-scope="scope">{{ formatDateTime(scope.row.createTime) }}</template></el-table-column>
+            <el-table-column prop="opinion" label="审核意见" min-width="180"><template slot-scope="scope">{{ scope.row.opinion || '-' }}</template></el-table-column>
+            <el-table-column prop="riskReason" label="非先进先出说明" min-width="260" show-overflow-tooltip></el-table-column>
+          </el-table>
+        </template>
 
         <div v-if="dataForm.id" class="sub-title">合同与付款附件</div>
         <div v-if="dataForm.id" class="full-payment-summary">
@@ -1511,6 +1588,11 @@ export default {
       secondaryPartnerList: [],
       warehouseList: [],
       productList: [],
+      spotProductId: '',
+      spotProductLoading: false,
+      spotProductOptions: [],
+      spotContractLoading: false,
+      spotContractList: [],
       presaleOrderOptions: [],
       presaleOrderKeyword: '',
       presaleOrderLoading: false,
@@ -1521,7 +1603,6 @@ export default {
         saleType: [{ required: true, message: '请选择销售类型', trigger: 'change' }],
         secondaryPartnerId: [{ required: true, message: '请选择二批商', trigger: 'change' }],
         salespersonId: [{ required: true, message: '请选择销售', trigger: 'change' }],
-        warehouseId: [{ required: true, message: '请选择仓库', trigger: 'change' }],
         contractSignDate: [{ required: true, message: '请选择签订日期', trigger: 'change' }]
       }
     }
@@ -1549,7 +1630,10 @@ export default {
       return map[this.dataForm.status] || '待处理'
     },
     contentReadonly () {
-      return this.readonly || !!this.dataForm.id
+      return this.readonly || (!!this.dataForm.id && this.dataForm.riskStatus !== 'REJECTED')
+    },
+    spotPendingLotCount () {
+      return (this.spotContractList || []).reduce((total, contract) => total + ((contract._selectedLots || []).length), 0)
     },
     attachmentEditable () {
       return !this.readonly && !!this.dataForm.id
@@ -1806,6 +1890,12 @@ export default {
         fullPaymentUploaded: 0,
         outboundBatchCount: 0,
         outboundReceiptConfirmed: 0,
+        allocationStatus: '',
+        inventoryLocked: 0,
+        riskRequired: 0,
+        riskStatus: '',
+        riskReason: '',
+        riskAuditList: [],
         remark: '',
         itemList: [],
         allocationItemList: [],
@@ -1861,6 +1951,7 @@ export default {
         sourceInboundItemId: '',
         sourcePackingItemId: '',
         sourcePackingBatchId: '',
+        sourceAdjustmentItemId: '',
         sourceContainerNo: '',
         confirmContractNo: '',
         warehouseId: '',
@@ -1868,10 +1959,16 @@ export default {
         brandId: '',
         brandName: '',
         ownershipName: '',
+        confirmExpectedArrivalDate: '',
         inboundDate: '',
         productionDate: '',
         expiryDate: '',
         specWeight: null,
+        availableBoxes: 0,
+        availableWeightKg: 0,
+        estimatedUnitWeightKg: 0,
+        expired: 0,
+        _sourceKey: '',
         salePriceKg: null,
         contractQuantityKg: null,
         contractFactoryNo: '',
@@ -1924,6 +2021,9 @@ export default {
       this.currentUploadType = ''
       this.currentConfirmType = ''
       this.activeOutboundBatchId = ''
+      this.spotProductId = ''
+      this.spotProductOptions = []
+      this.spotContractList = []
       this.dataForm = this.defaultForm()
       this.detailLoading = true
       Promise.all([this.loadBaseOptions(), this.fetchDetail(id)]).finally(() => {
@@ -2162,7 +2262,14 @@ export default {
         }] : []
         return row
       })
-      result.allocationItemList = (source.allocationItemList || []).map(item => Object.assign(this.defaultAllocationRow(), item))
+      result.allocationItemList = (source.allocationItemList || []).map(item => {
+        const row = Object.assign(this.defaultAllocationRow(), item)
+        row._sourceKey = this.saleStockSourceKey(row)
+        row.availableBoxes = Number(row.availableBoxes || row.boxes || 0)
+        row.availableWeightKg = Number(row.availableWeightKg || row.contractQuantityKg || 0)
+        row.estimatedUnitWeightKg = Number(row.estimatedUnitWeightKg || (row.boxes > 0 ? Number(row.contractQuantityKg || 0) / Number(row.boxes) : 0))
+        return row
+      })
       result.secondaryPartnerColdStorageFreeDays = this.findSecondaryPartnerColdStorageFreeDays(result.secondaryPartnerId)
       if (result.saleType === 'FUTURES' && result.itemList.length) {
         const firstItem = result.itemList[0] || {}
@@ -2170,7 +2277,7 @@ export default {
         result.sourcePresaleOrderNo = result.sourcePresaleOrderNo || firstItem.sourcePresaleOrderNo || ''
         this.ensureCurrentPresaleOrderOption(result)
       }
-      if (!result.itemList.length) {
+      if (!result.itemList.length && result.saleType !== 'SPOT') {
         result.itemList = [this.defaultItemRow()]
       }
       return result
@@ -2374,12 +2481,14 @@ export default {
         this.dataForm.warehouseId = ''
         this.dataForm.warehouseName = ''
         this.dataForm.allocationItemList = []
+        this.spotContractList = []
+        this.spotProductId = ''
       }
       if (value !== 'FUTURES') {
         this.dataForm.sourcePresaleOrderId = ''
         this.dataForm.sourcePresaleOrderNo = ''
       }
-      this.dataForm.itemList = [this.defaultItemRow()]
+      this.dataForm.itemList = value === 'SPOT' ? [] : [this.defaultItemRow()]
     },
     secondaryPartnerChangeHandle (value) {
       const partner = this.secondaryPartnerList.find(item => String(item.id) === String(value))
@@ -2637,6 +2746,171 @@ export default {
         this.presaleOrderLoading = false
       })
     },
+    spotProductVisibleChange (visible) {
+      if (visible && !this.spotProductOptions.length) {
+        this.remoteSearchSpotProducts('')
+      }
+    },
+    remoteSearchSpotProducts (keyword) {
+      this.spotProductLoading = true
+      this.$http({
+        url: this.$http.adornUrl('/erp/saleorder/spot-stock/products'),
+        method: 'get',
+        params: this.$http.adornParams({ keyword: keyword || '' })
+      }).then(({ data }) => {
+        this.spotProductOptions = data && data.code === 0 ? (data.list || []).slice(0, 15) : []
+        this.spotProductLoading = false
+      }).catch(() => {
+        this.spotProductOptions = []
+        this.spotProductLoading = false
+      })
+    },
+    saleStockSourceKey (item) {
+      const value = field => item[field] === null || item[field] === undefined || item[field] === '' ? 0 : item[field]
+      return `${value('productId')}:${value('sourceInboundItemId')}:${value('sourcePackingBatchId')}:${value('sourceAdjustmentItemId')}`
+    },
+    searchSpotContracts () {
+      if (!this.spotProductId) return
+      this.spotContractLoading = true
+      this.$http({
+        url: this.$http.adornUrl('/erp/saleorder/spot-stock/contracts'),
+        method: 'get',
+        params: this.$http.adornParams({
+          productId: this.spotProductId,
+          excludeOrderId: this.dataForm.id || undefined
+        })
+      }).then(({ data }) => {
+        const list = data && data.code === 0 ? (data.list || []) : []
+        this.spotContractList = list.map((contract, contractIndex) => {
+          const row = Object.assign({}, contract)
+          row._rowKey = `${contract.confirmId || contract.confirmContractNo || contractIndex}:${contract.productId}`
+          row._selectedLots = []
+          row.lotList = (contract.lotList || []).map(lot => {
+            const detail = Object.assign({}, lot)
+            detail._sourceKey = this.saleStockSourceKey(detail)
+            return detail
+          })
+          return row
+        })
+        if (!this.spotContractList.length) {
+          this.$message.warning('当前产品没有可售库存')
+        }
+        this.spotContractLoading = false
+      }).catch(() => {
+        this.spotContractList = []
+        this.spotContractLoading = false
+      })
+    },
+    spotLotSelectionChange (contract, selection) {
+      this.$set(contract, '_selectedLots', selection || [])
+    },
+    spotLotSelectable (lot) {
+      const key = lot._sourceKey || this.saleStockSourceKey(lot)
+      return !(this.dataForm.allocationItemList || []).some(item => (item._sourceKey || this.saleStockSourceKey(item)) === key)
+    },
+    addCheckedSpotLots () {
+      const selected = []
+      ;(this.spotContractList || []).forEach(contract => {
+        ;(contract._selectedLots || []).forEach(lot => selected.push({ contract, lot }))
+      })
+      if (!selected.length) {
+        this.$message.warning('请先勾选需要销售的库存批次')
+        return
+      }
+      selected.forEach(({ contract, lot }) => {
+        const key = lot._sourceKey || this.saleStockSourceKey(lot)
+        if ((this.dataForm.allocationItemList || []).some(item => (item._sourceKey || this.saleStockSourceKey(item)) === key)) return
+        const availableBoxes = Number(lot.availableBoxes || 0)
+        const unitWeight = Number(lot.estimatedUnitWeightKg || (availableBoxes > 0 ? Number(lot.availableWeightKg || 0) / availableBoxes : 0))
+        const row = Object.assign(this.defaultAllocationRow(), lot, {
+          boxes: availableBoxes > 0 ? 1 : 0,
+          availableBoxes,
+          availableWeightKg: Number(lot.availableWeightKg || 0),
+          estimatedUnitWeightKg: unitWeight,
+          contractQuantityKg: Number(unitWeight.toFixed(2)),
+          contractFactoryNo: lot.factoryNo || '',
+          sourceContainerNo: lot.sourceContainerNo || contract.containerNo || '',
+          confirmContractNo: lot.confirmContractNo || contract.confirmContractNo || '',
+          confirmExpectedArrivalDate: lot.confirmExpectedArrivalDate || contract.expectedArrivalDate || '',
+          _sourceKey: key
+        })
+        this.dataForm.allocationItemList.push(row)
+      })
+      this.rebuildSpotProductSummary()
+      ;(this.spotContractList || []).forEach(contract => {
+        contract._selectedLots = []
+        const table = this.$refs[`spotLots_${contract._rowKey}`]
+        const tableRef = Array.isArray(table) ? table[0] : table
+        if (tableRef) tableRef.clearSelection()
+      })
+    },
+    removeSpotAllocation (index) {
+      this.dataForm.allocationItemList.splice(index, 1)
+      this.rebuildSpotProductSummary()
+    },
+    spotAllocationBoxesChange (row) {
+      const boxes = Math.max(0, Number(row.boxes || 0))
+      row.contractQuantityKg = Number((Number(row.estimatedUnitWeightKg || 0) * boxes).toFixed(2))
+      this.rebuildSpotProductSummary()
+    },
+    rebuildSpotProductSummary () {
+      const previous = {}
+      ;(this.dataForm.itemList || []).forEach(item => { previous[String(item.productId)] = item })
+      const grouped = {}
+      ;(this.dataForm.allocationItemList || []).forEach(allocation => {
+        const key = String(allocation.productId)
+        if (!grouped[key]) grouped[key] = []
+        grouped[key].push(allocation)
+      })
+      this.dataForm.itemList = Object.keys(grouped).map(key => {
+        const allocations = grouped[key]
+        const first = allocations[0]
+        const old = previous[key] || {}
+        const boxes = allocations.reduce((sum, item) => sum + Number(item.boxes || 0), 0)
+        const estimatedWeight = allocations.reduce((sum, item) => sum + Number(item.contractQuantityKg || 0), 0)
+        const row = Object.assign(this.defaultItemRow(), {
+          productId: first.productId,
+          productCode: first.productCode,
+          productName: first.productName,
+          productNameEn: first.productNameEn,
+          marketCirculationName: first.marketCirculationName,
+          productSpec: first.productSpec,
+          unit: first.unit,
+          boxes,
+          salePriceKg: old.salePriceKg === null || old.salePriceKg === undefined ? first.salePriceKg : old.salePriceKg,
+          contractQuantityKg: Number(estimatedWeight.toFixed(2)),
+          remark: old.remark || ''
+        })
+        allocations.forEach(item => { item.salePriceKg = row.salePriceKg })
+        return row
+      })
+    },
+    redistributeSpotProductWeight (productId) {
+      const summary = (this.dataForm.itemList || []).find(item => String(item.productId) === String(productId))
+      const allocations = (this.dataForm.allocationItemList || []).filter(item => String(item.productId) === String(productId))
+      if (!summary || !allocations.length) return
+      const totalBoxes = allocations.reduce((sum, item) => sum + Number(item.boxes || 0), 0)
+      const totalWeight = Number(summary.contractQuantityKg || 0)
+      let assigned = 0
+      allocations.forEach((item, index) => {
+        const weight = index === allocations.length - 1
+          ? Number((totalWeight - assigned).toFixed(2))
+          : Number((totalBoxes > 0 ? totalWeight * Number(item.boxes || 0) / totalBoxes : 0).toFixed(2))
+        item.contractQuantityKg = Math.max(0, weight)
+        assigned += weight
+      })
+    },
+    isExpiredDate (value) {
+      if (!value) return false
+      const date = new Date(this.normalizeDateValue(value) + 'T00:00:00')
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      return !Number.isNaN(date.getTime()) && date.getTime() < today.getTime()
+    },
+    riskActionLabel (value) {
+      const map = { SUBMIT: '提交库存分配', APPROVE: '风控通过', REJECT: '风控驳回', FUTURES_ALLOCATE: '期货入库分配' }
+      return map[value] || value || '-'
+    },
     presaleOrderChangeHandle (value) {
       const item = this.presaleOrderOptions.find(option => String(option.presaleOrderId) === String(value))
       if (!item) {
@@ -2778,14 +3052,19 @@ export default {
       }
       if (this.isSpotSale) {
         const allocationList = this.dataForm.allocationItemList || []
-        if (!allocationList.length) return '请先生成现货分配明细'
+        if (!allocationList.length) return '请先查询库存并勾选需要销售的库存明细'
         for (let index = 0; index < allocationList.length; index++) {
           const item = allocationList[index]
-          if (item.contractQuantityKg === null || item.contractQuantityKg === '' || Number(item.contractQuantityKg) <= 0) {
-            return `第${index + 1}条分配明细数量/千克必须大于0`
+          if (!item.productId || !item.sourceInboundItemId) {
+            return `第${index + 1}条库存明细来源不完整，请移除后重新选择`
           }
-          if (!item.contractFactoryNo) return `第${index + 1}条分配明细厂号不能为空`
-          if (!item.contractPortCold) return `第${index + 1}条分配明细港口/冷库不能为空`
+          if (!item.boxes || Number(item.boxes) <= 0) return `第${index + 1}条库存明细销售箱数必须大于0`
+          if (Number(item.availableBoxes || 0) > 0 && Number(item.boxes) > Number(item.availableBoxes)) {
+            return `第${index + 1}条库存明细销售箱数不能超过可售箱数${item.availableBoxes}`
+          }
+          if (item.contractQuantityKg === null || item.contractQuantityKg === '' || Number(item.contractQuantityKg) <= 0) {
+            return `第${index + 1}条库存明细预计重量必须大于0`
+          }
         }
       }
       return ''
@@ -2835,12 +3114,15 @@ export default {
           sourceInboundItemId: item.sourceInboundItemId,
           sourcePackingItemId: item.sourcePackingItemId,
           sourcePackingBatchId: item.sourcePackingBatchId,
+          sourceAdjustmentItemId: item.sourceAdjustmentItemId,
           sourceContainerNo: item.sourceContainerNo,
           confirmContractNo: item.confirmContractNo,
+          confirmExpectedArrivalDate: item.confirmExpectedArrivalDate,
           warehouseId: item.warehouseId,
           warehouseName: item.warehouseName,
           brandId: item.brandId,
           brandName: item.brandName,
+          ownershipName: item.ownershipName,
           inboundDate: item.inboundDate,
           productionDate: item.productionDate,
           expiryDate: item.expiryDate,
@@ -2861,7 +3143,7 @@ export default {
         const isCreate = !this.dataForm.id
         this.saveLoading = true
         this.withGlobalLoading(this.$http({
-          url: this.$http.adornUrl('/erp/saleorder/save'),
+          url: this.$http.adornUrl(this.dataForm.id ? '/erp/saleorder/update' : '/erp/saleorder/save'),
           method: 'post',
           data: this.$http.adornData(this.buildSubmitData())
         })).then(({ data }) => {
@@ -3467,6 +3749,47 @@ export default {
 
 .attachment-toolbar {
   margin-bottom: 8px;
+}
+
+.spot-search-title {
+  justify-content: flex-start;
+}
+
+.spot-search-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid #dbe7f3;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #f7fbff 0%, #f2faf8 100%);
+}
+
+.spot-contract-table {
+  margin-top: 10px;
+}
+
+.spot-contract-table /deep/ .el-table__expanded-cell {
+  padding: 12px 16px;
+  background: #f8fafc;
+}
+
+.expired-stock-text {
+  margin-right: 6px;
+  color: #e23b3b;
+  font-weight: 600;
+}
+
+.risk-audit-table /deep/ .el-table__expanded-cell {
+  padding: 12px 16px;
+  background: #f8fafc;
+}
+
+.empty-risk-detail {
+  padding: 18px;
+  text-align: center;
+  color: #909399;
 }
 
 .outbound-receipt-pane {

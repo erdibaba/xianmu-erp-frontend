@@ -68,6 +68,14 @@
           <el-tag size="small" :type="getStatusType(scope.row.status)">{{ getStatusLabel(scope.row.status) }}</el-tag>
         </template>
       </el-table-column>
+      <el-table-column label="库存分配/风控" min-width="160" align="center">
+        <template slot-scope="scope">
+          <el-tooltip v-if="scope.row.riskReason" :content="scope.row.riskReason" placement="top">
+            <el-tag size="small" :type="allocationStatusType(scope.row)">{{ allocationStatusLabel(scope.row) }}</el-tag>
+          </el-tooltip>
+          <el-tag v-else size="small" :type="allocationStatusType(scope.row)">{{ allocationStatusLabel(scope.row) }}</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="收款方式" width="120" align="center">
         <template slot-scope="scope">
           <el-tag size="small" :type="Number(scope.row.paymentMode || 1) === 2 ? 'success' : 'info'">
@@ -130,7 +138,24 @@
               type="text"
               size="small"
               @click="editHandle(scope.row.id)">
-              编辑
+              {{ scope.row.riskStatus === 'REJECTED' ? '修改选货' : '编辑' }}
+            </el-button>
+            <el-button
+              v-if="isAuth('erp:tradeorder:risk:review') && scope.row.riskStatus === 'PENDING'"
+              type="text"
+              size="small"
+              :loading="reviewLoadingId === scope.row.id"
+              @click="reviewRiskHandle(scope.row, true)">
+              风控通过
+            </el-button>
+            <el-button
+              v-if="isAuth('erp:tradeorder:risk:review') && scope.row.riskStatus === 'PENDING'"
+              type="text"
+              size="small"
+              class="danger-action"
+              :loading="reviewLoadingId === scope.row.id"
+              @click="reviewRiskHandle(scope.row, false)">
+              风控驳回
             </el-button>
             <el-button
               v-if="isAuth('erp:tradeorder:update') && scope.row.saleType === 'FUTURES'"
@@ -138,6 +163,13 @@
               size="small"
               @click="openPresaleLinkDialog(scope.row)">
               预售关联
+            </el-button>
+            <el-button
+              v-if="isAuth('erp:tradeorder:update') && scope.row.saleType === 'FUTURES' && scope.row.allocationStatus === 'FUTURES_PENDING'"
+              type="text"
+              size="small"
+              @click="futuresAllocationHandle(scope.row.id)">
+              入库后分配
             </el-button>
             <el-button
               v-if="isAuth('erp:tradeorder:update')"
@@ -174,6 +206,7 @@
       ref="dialog"
       @refreshDataList="handleDialogRefresh">
     </sale-order-dialog>
+    <sale-futures-allocation-dialog ref="futuresAllocationDialog" @refreshDataList="getDataList"></sale-futures-allocation-dialog>
 
     <el-dialog
       title="期货单关联预销售单"
@@ -236,10 +269,12 @@
 
 <script>
 import SaleOrderDialog from './sale-order-dialog'
+import SaleFuturesAllocationDialog from './sale-futures-allocation-dialog'
 
 export default {
   components: {
-    SaleOrderDialog
+    SaleOrderDialog,
+    SaleFuturesAllocationDialog
   },
   data () {
     return {
@@ -264,6 +299,7 @@ export default {
       dataListLoading: false,
       dialogVisible: false,
       noticeSendingId: 0,
+      reviewLoadingId: 0,
       presaleLinkVisible: false,
       presaleLinkSaving: false,
       presaleLinkConfirming: false,
@@ -339,6 +375,53 @@ export default {
       if (status === 9) return 'danger'
       if (status === 1 || status === 2) return 'success'
       return 'info'
+    },
+    allocationStatusLabel (row) {
+      if (row.riskStatus === 'PENDING') return '待货物风控审核'
+      if (row.riskStatus === 'REJECTED') return '风控已驳回'
+      if (row.riskStatus === 'APPROVED') return '风控已通过'
+      const map = {
+        FUTURES_PENDING: '期货待入库分配',
+        PENDING_RISK: '待货物风控审核',
+        CONFIRMED: '库存已确认'
+      }
+      return map[row.allocationStatus] || '-'
+    },
+    allocationStatusType (row) {
+      if (row.riskStatus === 'PENDING') return 'warning'
+      if (row.riskStatus === 'REJECTED') return 'danger'
+      if (row.riskStatus === 'APPROVED') return 'success'
+      return row.allocationStatus === 'CONFIRMED' ? 'success' : 'info'
+    },
+    reviewRiskHandle (row, approved) {
+      const submit = opinion => {
+        this.reviewLoadingId = row.id
+        this.$http({
+          url: this.$http.adornUrl('/erp/saleorder/risk/review'),
+          method: 'post',
+          data: this.$http.adornData({ saleOrderId: row.id, approved, opinion: opinion || '' })
+        }).then(({ data }) => {
+          if (data && data.code === 0) {
+            this.$message.success(approved ? '风控审核已通过' : '已驳回，库存锁定已释放')
+            this.getDataList()
+          } else {
+            this.$message.error((data && data.msg) || '风控审核失败')
+          }
+          this.reviewLoadingId = 0
+        }).catch(() => {
+          this.reviewLoadingId = 0
+        })
+      }
+      if (approved) {
+        this.$confirm('确认该销售单选货无误并通过货物风控审核吗？', '风控审核', { type: 'warning' })
+          .then(() => submit('审核通过'))
+          .catch(() => {})
+        return
+      }
+      this.$prompt('请填写驳回原因，业务员修改选货后可重新提交。', '风控驳回', {
+        inputType: 'textarea',
+        inputValidator: value => !!String(value || '').trim() || '驳回原因不能为空'
+      }).then(({ value }) => submit(value)).catch(() => {})
     },
     openContract (url) {
       if (!url) {
@@ -583,6 +666,11 @@ export default {
         this.$refs.dialog.init(id, false)
       })
     },
+    futuresAllocationHandle (id) {
+      this.$nextTick(() => {
+        this.$refs.futuresAllocationDialog.init(id)
+      })
+    },
     deleteHandle (id) {
       this.$confirm('确定删除这条销售单记录吗？', '提示', {
         confirmButtonText: '确定',
@@ -619,6 +707,10 @@ export default {
 .action-wrap .el-button {
   margin-left: 0;
   margin-right: 10px;
+}
+
+.action-wrap .danger-action {
+  color: #e23b3b;
 }
 
 .product-option-code {
