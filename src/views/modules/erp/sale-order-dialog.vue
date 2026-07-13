@@ -317,6 +317,13 @@
         </el-table>
 
         <template v-if="isSpotSale">
+          <el-alert
+            title="现货录单顺序：1. 查询产品  2. 选择单个库存批次或整份合同  3. 在By产品销售汇总填写销售价并确认重量  4. 保存销售单"
+            type="info"
+            :closable="false"
+            show-icon
+            class="spot-workflow-alert">
+          </el-alert>
           <div class="sub-title spot-search-title">
             <span>查询可售库存</span>
             <span class="sub-title-tip">按确认函预计到港时间从早到晚展示；过期库存仍可选择，但会红色标记</span>
@@ -392,6 +399,16 @@
             <el-table-column prop="ownershipNames" label="货权" min-width="130" show-overflow-tooltip></el-table-column>
             <el-table-column prop="availableBoxes" label="可售箱数" width="90" align="right"></el-table-column>
             <el-table-column prop="availableWeightKg" label="可售重量KG" width="120" align="right"></el-table-column>
+            <el-table-column v-if="!contentReadonly" label="整份合同" width="125" fixed="right" align="center">
+              <template slot-scope="scope">
+                <el-button
+                  type="primary"
+                  plain
+                  size="mini"
+                  :loading="Boolean(scope.row._wholeContractLoading)"
+                  @click="addWholeContractStock(scope.row)">全部带入</el-button>
+              </template>
+            </el-table-column>
           </el-table>
 
           <div class="sub-title">
@@ -411,6 +428,7 @@
             <template slot-scope="scope">{{ saleProductDisplayName(scope.row) }}</template>
           </el-table-column>
           <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="availableBoxes" label="可售箱数" width="95" align="right"></el-table-column>
           <el-table-column label="销售箱数" width="105">
             <template slot-scope="scope"><el-input-number v-model="scope.row.boxes" :disabled="contentReadonly" :controls="false" :min="1" :max="scope.row.availableBoxes || 999999" :precision="0" size="mini" style="width:100%;" @change="spotAllocationBoxesChange(scope.row)"></el-input-number></template>
           </el-table-column>
@@ -449,14 +467,25 @@
         </el-table>
 
         <template v-if="isSpotSale">
-          <div class="sub-title"><span>By产品销售汇总</span><span class="sub-title-tip">总重量可人工调整，系统会按箱数比例分摊到已选库存明细</span></div>
-          <el-table :data="dataForm.itemList" border size="mini" class="item-table">
+          <el-alert
+            v-if="(dataForm.allocationItemList || []).length && !contentReadonly"
+            title="下一步：请在下方By产品销售汇总中，为每个产品填写大于0的销售价，并确认总重量后再保存。"
+            type="warning"
+            :closable="false"
+            show-icon
+            class="spot-pricing-alert">
+          </el-alert>
+          <div class="sub-title"><span>By产品销售汇总</span><span class="sub-title-tip">销售价必填；总重量可人工调整，系统会按箱数比例分摊到已选库存明细</span></div>
+          <el-table ref="spotProductSummaryTable" :data="dataForm.itemList" border size="mini" class="item-table">
             <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
             <el-table-column prop="productCode" label="产品编码" width="120"></el-table-column>
             <el-table-column prop="marketCirculationName" label="市场流通名称" min-width="170"></el-table-column>
             <el-table-column prop="boxes" label="总箱数" width="90" align="right"></el-table-column>
             <el-table-column label="总重量KG" width="140"><template slot-scope="scope"><el-input-number v-model="scope.row.contractQuantityKg" :disabled="contentReadonly" :controls="false" :min="0.01" :precision="2" size="mini" style="width:100%;" @change="redistributeSpotProductWeight(scope.row.productId)"></el-input-number></template></el-table-column>
-            <el-table-column label="销售价（元/千克）" width="155"><template slot-scope="scope"><el-input-number v-model="scope.row.salePriceKg" :disabled="contentReadonly" :controls="false" :min="0.01" :precision="2" size="mini" style="width:100%;" @change="spotSalePriceChange(scope.row)"></el-input-number></template></el-table-column>
+            <el-table-column width="175">
+              <template slot="header"><span>销售价（元/千克）</span><span class="required-mark">*</span></template>
+              <template slot-scope="scope"><el-input-number v-model="scope.row.salePriceKg" :disabled="contentReadonly" :controls="false" :min="0.01" :precision="2" size="mini" placeholder="必填，大于0" style="width:100%;" @change="spotSalePriceChange(scope.row)"></el-input-number></template>
+            </el-table-column>
             <el-table-column prop="remark" label="备注" min-width="150"><template slot-scope="scope"><el-input v-model="scope.row.remark" :disabled="contentReadonly" size="mini"></el-input></template></el-table-column>
           </el-table>
         </template>
@@ -2769,6 +2798,18 @@ export default {
       const value = field => item[field] === null || item[field] === undefined || item[field] === '' ? 0 : item[field]
       return `${value('productId')}:${value('sourceInboundItemId')}:${value('sourcePackingBatchId')}:${value('sourceAdjustmentItemId')}`
     },
+    normalizeSpotContractRow (contract, contractIndex) {
+      const row = Object.assign({}, contract)
+      row._rowKey = `${contract.confirmId || contract.confirmContractNo || contractIndex}:${contract.productId}`
+      row._selectedLots = []
+      row._wholeContractLoading = false
+      row.lotList = (contract.lotList || []).map(lot => {
+        const detail = Object.assign({}, lot)
+        detail._sourceKey = this.saleStockSourceKey(detail)
+        return detail
+      })
+      return row
+    },
     searchSpotContracts () {
       if (!this.spotProductId) return
       this.spotContractLoading = true
@@ -2781,17 +2822,7 @@ export default {
         })
       }).then(({ data }) => {
         const list = data && data.code === 0 ? (data.list || []) : []
-        this.spotContractList = list.map((contract, contractIndex) => {
-          const row = Object.assign({}, contract)
-          row._rowKey = `${contract.confirmId || contract.confirmContractNo || contractIndex}:${contract.productId}`
-          row._selectedLots = []
-          row.lotList = (contract.lotList || []).map(lot => {
-            const detail = Object.assign({}, lot)
-            detail._sourceKey = this.saleStockSourceKey(detail)
-            return detail
-          })
-          return row
-        })
+        this.spotContractList = list.map((contract, contractIndex) => this.normalizeSpotContractRow(contract, contractIndex))
         if (!this.spotContractList.length) {
           this.$message.warning('当前产品没有可售库存')
         }
@@ -2808,6 +2839,39 @@ export default {
       const key = lot._sourceKey || this.saleStockSourceKey(lot)
       return !(this.dataForm.allocationItemList || []).some(item => (item._sourceKey || this.saleStockSourceKey(item)) === key)
     },
+    appendSpotLot (contract, lot, useAllAvailableBoxes) {
+      const key = lot._sourceKey || this.saleStockSourceKey(lot)
+      const availableBoxes = Number(lot.availableBoxes || 0)
+      if (availableBoxes <= 0) return false
+      const existing = (this.dataForm.allocationItemList || []).find(item => (item._sourceKey || this.saleStockSourceKey(item)) === key)
+      if (existing) {
+        if (useAllAvailableBoxes) {
+          const unitWeight = Number(lot.estimatedUnitWeightKg || (availableBoxes > 0 ? Number(lot.availableWeightKg || 0) / availableBoxes : 0))
+          existing.availableBoxes = availableBoxes
+          existing.availableWeightKg = Number(lot.availableWeightKg || 0)
+          existing.estimatedUnitWeightKg = unitWeight
+          existing.boxes = availableBoxes
+          existing.contractQuantityKg = Number((unitWeight * availableBoxes).toFixed(2))
+        }
+        return false
+      }
+      const unitWeight = Number(lot.estimatedUnitWeightKg || (availableBoxes > 0 ? Number(lot.availableWeightKg || 0) / availableBoxes : 0))
+      const boxes = useAllAvailableBoxes ? availableBoxes : 1
+      const row = Object.assign(this.defaultAllocationRow(), lot, {
+        boxes,
+        availableBoxes,
+        availableWeightKg: Number(lot.availableWeightKg || 0),
+        estimatedUnitWeightKg: unitWeight,
+        contractQuantityKg: Number((unitWeight * boxes).toFixed(2)),
+        contractFactoryNo: lot.factoryNo || '',
+        sourceContainerNo: lot.sourceContainerNo || contract.containerNo || '',
+        confirmContractNo: lot.confirmContractNo || contract.confirmContractNo || '',
+        confirmExpectedArrivalDate: lot.confirmExpectedArrivalDate || contract.expectedArrivalDate || '',
+        _sourceKey: key
+      })
+      this.dataForm.allocationItemList.push(row)
+      return true
+    },
     addCheckedSpotLots () {
       const selected = []
       ;(this.spotContractList || []).forEach(contract => {
@@ -2818,25 +2882,46 @@ export default {
         return
       }
       selected.forEach(({ contract, lot }) => {
-        const key = lot._sourceKey || this.saleStockSourceKey(lot)
-        if ((this.dataForm.allocationItemList || []).some(item => (item._sourceKey || this.saleStockSourceKey(item)) === key)) return
-        const availableBoxes = Number(lot.availableBoxes || 0)
-        const unitWeight = Number(lot.estimatedUnitWeightKg || (availableBoxes > 0 ? Number(lot.availableWeightKg || 0) / availableBoxes : 0))
-        const row = Object.assign(this.defaultAllocationRow(), lot, {
-          boxes: availableBoxes > 0 ? 1 : 0,
-          availableBoxes,
-          availableWeightKg: Number(lot.availableWeightKg || 0),
-          estimatedUnitWeightKg: unitWeight,
-          contractQuantityKg: Number(unitWeight.toFixed(2)),
-          contractFactoryNo: lot.factoryNo || '',
-          sourceContainerNo: lot.sourceContainerNo || contract.containerNo || '',
-          confirmContractNo: lot.confirmContractNo || contract.confirmContractNo || '',
-          confirmExpectedArrivalDate: lot.confirmExpectedArrivalDate || contract.expectedArrivalDate || '',
-          _sourceKey: key
-        })
-        this.dataForm.allocationItemList.push(row)
+        this.appendSpotLot(contract, lot, false)
       })
       this.rebuildSpotProductSummary()
+      this.clearSpotContractSelections()
+    },
+    addWholeContractStock (contract) {
+      if (!contract || (!contract.confirmId && !contract.confirmContractNo)) {
+        this.$message.warning('当前库存没有关联确认函合同，无法整份带入')
+        return
+      }
+      this.$set(contract, '_wholeContractLoading', true)
+      this.$http({
+        url: this.$http.adornUrl('/erp/saleorder/spot-stock/contract-products'),
+        method: 'get',
+        params: this.$http.adornParams({
+          confirmId: contract.confirmId || undefined,
+          confirmContractNo: contract.confirmContractNo || undefined,
+          excludeOrderId: this.dataForm.id || undefined
+        })
+      }).then(({ data }) => {
+        const list = data && data.code === 0 ? (data.list || []) : []
+        list.forEach((item, index) => {
+          const contractRow = this.normalizeSpotContractRow(item, index)
+          ;(contractRow.lotList || []).forEach(lot => {
+            this.appendSpotLot(contractRow, lot, true)
+          })
+        })
+        this.rebuildSpotProductSummary()
+        this.clearSpotContractSelections()
+        if (!list.length) {
+          this.$message.warning('该确认函合同当前没有可售库存')
+        } else {
+          this.$message.success(`已带入合同 ${contract.confirmContractNo || ''} 的全部可售产品，请继续填写By产品销售价`)
+        }
+        this.$set(contract, '_wholeContractLoading', false)
+      }).catch(() => {
+        this.$set(contract, '_wholeContractLoading', false)
+      })
+    },
+    clearSpotContractSelections () {
       ;(this.spotContractList || []).forEach(contract => {
         contract._selectedLots = []
         const table = this.$refs[`spotLots_${contract._rowKey}`]
@@ -3037,7 +3122,7 @@ export default {
         if (!item.productId) return `第${index + 1}行产品未选择`
         if (!item.boxes || Number(item.boxes) <= 0) return `第${index + 1}行箱数必须大于0`
         if (item.salePriceKg === null || item.salePriceKg === '' || Number(item.salePriceKg) <= 0) {
-          return `第${index + 1}行销售价（元/千克）必须大于0`
+          return `产品${item.productCode || index + 1}的销售价（元/千克）必须大于0，请在By产品销售汇总中填写`
         }
         if (this.isSpotSale) {
           if (productIds[item.productId]) return '现货单不支持重复录入同一产品，请合并箱数'
@@ -3753,6 +3838,19 @@ export default {
 
 .spot-search-title {
   justify-content: flex-start;
+}
+
+.spot-workflow-alert {
+  margin: 8px 0 12px;
+}
+
+.spot-pricing-alert {
+  margin-top: 12px;
+}
+
+.required-mark {
+  margin-left: 3px;
+  color: #f56c6c;
 }
 
 .spot-search-bar {
