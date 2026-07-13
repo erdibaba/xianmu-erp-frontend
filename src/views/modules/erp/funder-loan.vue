@@ -702,7 +702,7 @@ export default {
     calcAmount (value) { return Number(value || 0).toFixed(2) },
     preciseAmount (value) { return Number(value || 0).toFixed(11) },
     number3 (value) { return Number(value || 0).toFixed(11) },
-    number6 (value) { return Number(value || 0).toFixed(2) },
+    number6 (value) { return Number(value || 0).toFixed(6) },
     feeAmountText (row) {
       const name = row && row.feeName ? row.feeName : ''
       return name.indexOf('保证金') !== -1 || name.indexOf('押金') !== -1
