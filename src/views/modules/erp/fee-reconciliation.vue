@@ -49,8 +49,9 @@
 
     <el-dialog title="按出库批次费用对账" :visible.sync="dialogVisible" width="1280px" top="4vh" custom-class="batch-settlement-dialog" :close-on-click-modal="false">
       <div v-loading="dialogLoading" class="reconciliation-dialog-body">
-        <el-alert :title="workflowNotice" type="info" :closable="false" style="margin-bottom:16px"></el-alert>
-        <el-form :model="form" label-width="150px">
+        <div class="reconciliation-scroll-area">
+          <el-alert :title="workflowNotice" type="info" :closable="false" style="margin-bottom:16px"></el-alert>
+          <el-form :model="form" label-width="150px">
           <el-row :gutter="18">
             <el-col :span="12"><el-form-item label="出库批次"><el-input :value="batchDisplayName" disabled></el-input></el-form-item></el-col>
             <el-col :span="6"><el-form-item label="结算日期" required><el-date-picker v-model="form.settlementDate" type="date" value-format="yyyy-MM-dd" style="width:100%" :disabled="!reconciliationEditable" @change="recalculate"></el-date-picker></el-form-item></el-col>
@@ -76,9 +77,9 @@
             <el-col :span="8"><el-form-item label="系统预计应付"><el-input :value="amount(form.expectedPaymentAmount)" disabled></el-input></el-form-item></el-col>
             <el-col :span="24"><el-form-item label="备注"><el-input v-model="form.remark" maxlength="500" :disabled="!reconciliationEditable"></el-input></el-form-item></el-col>
           </el-row>
-        </el-form>
+          </el-form>
 
-        <el-table class="batch-settlement-item-table" :data="form.itemList || []" border stripe height="420">
+          <el-table class="batch-settlement-item-table" :data="form.itemList || []" border stripe height="420">
           <el-table-column prop="lineNo" label="序号" width="60" align="center"></el-table-column>
           <el-table-column prop="confirmContractNo" label="确认函合同号" width="145" show-overflow-tooltip></el-table-column>
           <el-table-column prop="productCode" label="产品编码" width="100"></el-table-column>
@@ -95,27 +96,37 @@
           <el-table-column prop="loanDays" label="计息天数" width="90" align="right"></el-table-column>
           <el-table-column label="利息/资金成本" width="130" align="right"><template slot-scope="scope">{{ amount(scope.row.interestAmount) }}</template></el-table-column>
           <el-table-column label="预计应付" width="110" align="right"><template slot-scope="scope">{{ amount(scope.row.expectedPaymentAmount) }}</template></el-table-column>
-        </el-table>
+          </el-table>
+        </div>
 
-        <div class="section-title">资方计算单核对</div>
-        <el-form :inline="true" label-width="120px">
-          <el-form-item label="资方计算单" required>
-            <el-upload v-if="reconciliationEditable" action="" :show-file-list="false" :http-request="uploadStatement">
-              <el-button size="small" type="primary" :loading="statementUploading">上传资方计算单</el-button>
-            </el-upload>
-            <el-button v-if="form.statementFileName" type="text" @click="downloadStatement">{{ form.statementFileName }}</el-button>
-          </el-form-item>
-          <el-form-item label="资方核算金额" required>
-            <el-input-number v-model="form.statementAmount" :min="0" :precision="2" :controls="false" :disabled="!reconciliationEditable"></el-input-number>
-          </el-form-item>
-          <el-form-item label="对账差异">
-            <span :class="{ 'amount-difference': hasStatementDifference }">{{ amount(statementDifference) }}</span>
-          </el-form-item>
-        </el-form>
-        <div v-if="hasStatementDifference" class="difference-tip">资方核算金额与系统预计应付金额存在差异，请核对。</div>
+        <div class="reconciliation-dock">
+          <template v-if="Number(form.workflowStatus) <= 1">
+            <div class="section-title">资方计算单核对</div>
+            <el-form :inline="true" label-width="120px">
+              <el-form-item label="资方计算单" required>
+                <el-upload v-if="reconciliationEditable" action="" :show-file-list="false" :http-request="uploadStatement">
+                  <el-button size="small" type="primary" :loading="statementUploading">上传资方计算单</el-button>
+                </el-upload>
+                <el-button v-if="form.statementFileName" type="text" @click="downloadStatement">{{ form.statementFileName }}</el-button>
+              </el-form-item>
+              <el-form-item label="资方核算金额" required>
+                <el-input-number v-model="form.statementAmount" :min="0" :precision="2" :controls="false" :disabled="!reconciliationEditable"></el-input-number>
+              </el-form-item>
+              <el-form-item label="对账差异">
+                <span :class="{ 'amount-difference': hasStatementDifference }">{{ amount(statementDifference) }}</span>
+              </el-form-item>
+            </el-form>
+            <div v-if="hasStatementDifference" class="difference-tip">资方核算金额与系统预计应付金额存在差异，请核对。</div>
+          </template>
 
-        <template v-if="Number(form.workflowStatus) >= 2">
-          <div class="section-title">财务打款</div>
+          <template v-else>
+            <div class="confirmed-statement-bar">
+              <strong>已确认资方计算单</strong>
+              <el-button v-if="form.statementFileName" type="text" @click="downloadStatement">{{ form.statementFileName }}</el-button>
+              <span>资方核算金额：¥{{ amount(form.statementAmount) }}</span>
+              <span :class="{ 'amount-difference': hasStatementDifference }">对账差异：¥{{ amount(statementDifference) }}</span>
+            </div>
+            <div class="section-title">财务打款</div>
           <el-form :inline="true" label-width="120px">
             <el-form-item label="财务打款凭证" required>
               <el-upload v-if="Number(form.workflowStatus) === 2" action="" :show-file-list="false" :http-request="recognizePaymentVoucher">
@@ -134,7 +145,8 @@
             </el-form-item>
           </el-form>
           <div v-if="hasPaymentDifference" class="difference-tip">确认打款金额与已确认的资方核算金额存在差异，请核对。</div>
-        </template>
+          </template>
+        </div>
       </div>
 
       <span slot="footer" class="dialog-footer">
@@ -604,9 +616,16 @@ export default {
 .settlement-price-icon { margin-left: 5px; color: #168b80; cursor: pointer; }
 .amount-difference, .difference-tip { color: #f04444; font-weight: 600; }
 .difference-tip { margin: -5px 0 8px 120px; font-size: 12px; }
-.reconciliation-dialog-body { min-height: 480px; max-height: 76vh; overflow-y: auto; padding-right: 4px; }
+.reconciliation-dialog-body { display: flex; flex-direction: column; height: 72vh; min-height: 520px; overflow: hidden; }
+.reconciliation-scroll-area { flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px; }
+.reconciliation-dock { flex: 0 0 auto; padding: 0 12px 2px; border-top: 1px solid #dfe6e4; background: #fff; box-shadow: 0 -5px 12px rgba(24, 65, 58, 0.08); }
+.reconciliation-dock .section-title { margin-top: 10px; }
+.reconciliation-dock .el-form-item { margin-bottom: 8px; }
+.confirmed-statement-bar { display: flex; align-items: center; gap: 18px; min-height: 38px; padding-top: 5px; color: #606266; }
+.confirmed-statement-bar strong { color: #303133; }
 @media (max-width: 900px) {
   .fee-summary-grid { grid-template-columns: 1fr; }
   .fee-summary-card { margin-left: 0; }
+  .confirmed-statement-bar { align-items: flex-start; flex-direction: column; gap: 2px; }
 }
 </style>
