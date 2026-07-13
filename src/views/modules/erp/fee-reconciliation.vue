@@ -86,6 +86,35 @@
           <div class="summary-item important"><span>系统预计应付</span><strong>{{ amount(form.expectedPaymentAmount) }}</strong></div>
         </div>
 
+        <div class="section-title">费用计算说明</div>
+        <el-alert :title="feeRuleText" type="info" :closable="false" class="formula-alert"></el-alert>
+        <el-collapse v-model="feeExplainActiveNames" class="formula-collapse">
+          <el-collapse-item title="应付金额汇总公式" name="summary">
+            <el-table :data="feeSummaryRows" border stripe size="mini">
+              <el-table-column prop="name" label="项目" width="170"></el-table-column>
+              <el-table-column label="金额" width="140" align="right"><template slot-scope="scope">{{ feeAmount(scope.row) }}</template></el-table-column>
+              <el-table-column prop="formula" label="计算公式" min-width="680"></el-table-column>
+            </el-table>
+          </el-collapse-item>
+          <el-collapse-item title="费用项目规则" name="rules">
+            <el-table :data="feeRuleRows" border stripe size="mini">
+              <el-table-column prop="name" label="费用项目" width="170"></el-table-column>
+              <el-table-column prop="formula" label="计算规则/来源" min-width="760"></el-table-column>
+            </el-table>
+          </el-collapse-item>
+          <el-collapse-item title="By产品代入公式" name="detail">
+            <el-table :data="feeDetailRows" border stripe size="mini" max-height="420">
+              <el-table-column prop="lineNo" label="行号" width="60" align="center"></el-table-column>
+              <el-table-column prop="confirmContractNo" label="确认函合同号" width="145"></el-table-column>
+              <el-table-column prop="productCode" label="产品编码" width="100"></el-table-column>
+              <el-table-column prop="productName" label="品名" min-width="140" show-overflow-tooltip></el-table-column>
+              <el-table-column prop="feeName" label="计算项目" width="150"></el-table-column>
+              <el-table-column label="金额" width="125" align="right"><template slot-scope="scope">{{ feeAmount(scope.row) }}</template></el-table-column>
+              <el-table-column prop="formula" label="实际代入公式" min-width="700"></el-table-column>
+            </el-table>
+          </el-collapse-item>
+        </el-collapse>
+
         <div class="section-title">By产品费用明细</div>
         <el-table :data="form.itemList || []" border stripe size="mini" height="280">
           <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
@@ -193,6 +222,7 @@ export default {
       statementUploading: false,
       paymentUploading: false,
       submitLoading: false,
+      feeExplainActiveNames: ['summary'],
       form: emptyForm()
     }
   },
@@ -224,6 +254,64 @@ export default {
     },
     hasPaymentDifference () {
       return Math.abs(this.paymentDifference) >= 0.01
+    },
+    storageFeeName () {
+      return this.form.ruleType === 'WANXIANG' ? '额外仓储费' : '仓储费用'
+    },
+    goodsValueTotal () {
+      return (this.form.itemList || []).reduce((total, item) => total + Number(item.costAmount || 0), 0)
+    },
+    feeRuleText () {
+      return `当前资方规则：${this.ruleName(this.form.ruleType)}。公式中的单价、费率、天数和金额均保存为本次对账快照，历史查看不会按最新费率重新计算。`
+    },
+    feeSummaryRows () {
+      const f = this.form
+      const expectedFormula = `货值${this.amount(this.goodsValueTotal)} + ${this.storageFeeName}${this.amount(f.storageFeeAmount)} + 扫码费${this.amount(this.effectiveCodeScanFee)} + 印花税${this.amount(f.stampTaxAmount)} - 保证金/押金${this.precise(f.depositAmount)} + 补税点费用${this.amount(f.taxAdjustAmount)} + 毛重费用${this.amount(f.grossWeightFeeAmount)} + 其他费用${this.amount(f.otherFeeAmount)} = ${this.amount(f.expectedPaymentAmount)}`
+      return [
+        { name: '货值金额', amount: this.goodsValueTotal, formula: '各产品行：计费重量KG × 结算销售单价，然后汇总。' },
+        { name: '利息/资金成本（说明项）', amount: f.interestAmount, formula: '按确认还本、年利率和计息天数计算；已包含在结算销售单价规则中，不重复加入预计应付。' },
+        { name: '装卸费（说明项）', amount: f.handlingFeeAmount, formula: '按计费重量和仓库费用历史计算；已包含在结算销售单价规则中，不重复加入预计应付。' },
+        { name: this.storageFeeName, amount: f.storageFeeAmount, formula: this.form.ruleType === 'WANXIANG' ? '万翔结算销售单价已含基础仓储费，此处只加入人工录入额外仓储天数产生的费用。' : '按计费重量、仓储费率计算。' },
+        { name: '系统预计应付', amount: f.expectedPaymentAmount, formula: expectedFormula }
+      ]
+    },
+    feeRuleRows () {
+      return [
+        { name: '结算销售单价', formula: '确认函含税采购单价 + 基础加价 + 延期提货费率×延期天数 + 超期提货费率×超期天数。非万翔规则直接取确认函单价。' },
+        { name: '系统还本', formula: '还本采购货值基数 × 贷款金额占确认函总金额比例；结果不能超过该贷款剩余本金。' },
+        { name: '利息/资金成本', formula: '确认还本 × 本次年利率 ÷ 年基准天数 × 计息天数，仅作费用说明，不重复计入预计应付。' },
+        { name: this.storageFeeName, formula: this.form.ruleType === 'WANXIANG' ? '计费重量KG ÷ 1000 × 仓储费率 × 额外仓储天数。' : '计费重量KG ÷ 1000 × 仓储费率。' },
+        { name: '扫码费', formula: Number(this.form.includeCodeScanFee || 0) === 1 ? '按仓库费用历史维护的扫码计费方式和费率计算。' : '本次选择不计算扫码费。' },
+        { name: '印花税', formula: '计费重量KG × 确认函含税单价 × 0.0006。' },
+        { name: '保证金/押金', formula: '计费重量KG × 基础销售单价 × 25%，在预计应付金额中作为减项。' },
+        { name: '补税点费用', formula: '按万翔税点等价系数及本次货值、仓储、扫码、印花税等金额自动计算。' },
+        { name: '毛重费用', formula: '按报关单毛重分摊至产品和出库箱数，再结合毛重费率、计费天数计算。' },
+        { name: '其他费用', formula: '用户人工补充金额，直接计入预计应付。' }
+      ]
+    },
+    feeDetailRows () {
+      const rows = []
+      ;(this.form.itemList || []).forEach(item => {
+        const base = {
+          lineNo: item.lineNo,
+          confirmContractNo: item.confirmContractNo,
+          productCode: item.productCode,
+          productName: item.productName
+        }
+        rows.push(Object.assign({}, base, { feeName: '结算销售单价', amount: item.settlementUnitPrice, unitPrice: true, formula: this.settlementPriceFormula(item) }))
+        rows.push(Object.assign({}, base, { feeName: '货值金额', amount: item.costAmount, formula: `${this.weight(item.feeWeight)}KG × ${this.unitPrice(item.settlementUnitPrice)}元/KG = ${this.amount(item.costAmount)}` }))
+        rows.push(Object.assign({}, base, { feeName: '系统还本', amount: item.systemPrincipalAmount, formula: this.principalFormula(item) }))
+        rows.push(Object.assign({}, base, { feeName: '利息/资金成本', amount: item.interestAmount, formula: this.interestFormula(item) }))
+        rows.push(Object.assign({}, base, { feeName: this.storageFeeName, amount: item.storageFeeAmount, formula: this.storageFormula(item) }))
+        rows.push(Object.assign({}, base, { feeName: '装卸费（说明项）', amount: item.handlingFeeAmount, formula: this.handlingFormula(item) }))
+        rows.push(Object.assign({}, base, { feeName: '扫码费', amount: Number(this.form.includeCodeScanFee || 0) === 1 ? item.codeScanFeeAmount : 0, formula: this.codeScanFormula(item) }))
+        rows.push(Object.assign({}, base, { feeName: '印花税', amount: item.stampTaxAmount, formula: `${this.weight(item.feeWeight)}KG × ${this.unitPrice(item.unitPriceInclTax)} × 0.0006 = ${this.amount(item.stampTaxAmount)}` }))
+        rows.push(Object.assign({}, base, { feeName: '保证金/押金', amount: item.depositAmount, precise: true, formula: `${this.weight(item.feeWeight)}KG × 基础销售单价${this.unitPrice(item.baseSettlementUnitPrice || item.unitPriceInclTax)} × 25% = ${this.precise(item.depositAmount)}（减项）` }))
+        rows.push(Object.assign({}, base, { feeName: '补税点费用', amount: item.taxAdjustAmount, formula: `系统按万翔税点等价规则计算 = ${this.amount(item.taxAdjustAmount)}` }))
+        rows.push(Object.assign({}, base, { feeName: '毛重费用', amount: item.grossWeightFeeAmount, formula: this.grossWeightFormula(item) }))
+        rows.push(Object.assign({}, base, { feeName: '本行预计应付', amount: item.expectedPaymentAmount, formula: this.expectedFormula(item) }))
+      })
+      return rows
     }
   },
   activated () {
@@ -444,8 +532,68 @@ export default {
       if (value === null || value === undefined || value === '') return '-'
       return Number(value || 0).toFixed(2)
     },
+    precise (value) { return Number(value || 0).toFixed(11) },
     weight (value) { return Number(value || 0).toFixed(11) },
-    unitPrice (value) { return Number(value || 0).toFixed(6) }
+    unitPrice (value) { return Number(value || 0).toFixed(6) },
+    feeAmount (row) {
+      if (row && row.unitPrice) return this.unitPrice(row.amount)
+      if (row && row.precise) return this.precise(row.amount)
+      return this.amount(row && row.amount)
+    },
+    ruleName (value) {
+      return ({ RUIHEXIANG: '瑞和祥', CHAOYUE: '超跃', WANXIANG: '万翔', DEFAULT: '默认资方' })[value] || value || '-'
+    },
+    settlementPriceFormula (item) {
+      const purchase = this.unitPrice(item.unitPriceInclTax)
+      if (this.form.ruleType !== 'WANXIANG') return `非万翔规则：直接取确认函含税单价 ${purchase}`
+      const base = this.unitPrice(item.baseSettlementUnitPrice || item.unitPriceInclTax)
+      const extensionRate = this.unitPrice(item.extensionPickupFeeRate)
+      const overdueRate = this.unitPrice(item.overduePickupFeeRate)
+      const extensionDays = Number(item.extensionPickupDays || 0)
+      const overdueDays = Number(item.overduePickupDays || 0)
+      const latest = item.latestPickupDate ? `；最迟提货日${item.latestPickupDate}` : ''
+      return `基础销售单价${base} + 延期费率${extensionRate}×${extensionDays}天 + 超期费率${overdueRate}×${overdueDays}天 = ${this.unitPrice(item.settlementUnitPrice)}${latest}`
+    },
+    principalFormula (item) {
+      const basis = Number(item.principalBasisAmount || 0)
+      const ratio = Number(item.loanAllocationRatio || 0)
+      if (!basis || !ratio) return `按确认函采购货值和贷款占比计算，结果为 ${this.amount(item.systemPrincipalAmount)}`
+      return `采购货值基数${this.precise(basis)} × 贷款分摊比例${(ratio * 100).toFixed(8)}% = ${this.amount(item.systemPrincipalAmount)}`
+    },
+    interestFormula (item) {
+      const rate = Number(item.annualInterestRate || 0)
+      const daysBase = Number(item.interestDaysBase || (this.form.ruleType === 'WANXIANG' || this.form.ruleType === 'CHAOYUE' ? 360 : 365))
+      return `确认还本${this.amount(item.confirmedPrincipalAmount)} × 年利率${(rate * 100).toFixed(6)}% ÷ ${daysBase} × ${Number(item.loanDays || 0)}天 = ${this.amount(item.interestAmount)}（说明项，不重复计入应付）`
+    },
+    tonRate (amount, weight, days) {
+      const ton = Number(weight || 0) / 1000
+      const divisor = ton * Math.max(Number(days || 1), 1)
+      return divisor > 0 ? Number(amount || 0) / divisor : 0
+    },
+    storageFormula (item) {
+      const days = Number(item.extraStorageDays || this.form.extraStorageDays || 0)
+      const rate = this.tonRate(item.storageFeeAmount, item.feeWeight, this.form.ruleType === 'WANXIANG' ? days : 1)
+      if (this.form.ruleType === 'WANXIANG') return `${this.weight(item.feeWeight)}KG ÷ 1000 × ${this.amount(rate)}元/吨/天 × ${days}天 = ${this.amount(item.storageFeeAmount)}`
+      return `${this.weight(item.feeWeight)}KG ÷ 1000 × ${this.amount(rate)}元/吨 = ${this.amount(item.storageFeeAmount)}`
+    },
+    handlingFormula (item) {
+      const rate = this.tonRate(item.handlingFeeAmount, item.feeWeight, 1)
+      return `${this.weight(item.feeWeight)}KG ÷ 1000 × ${this.amount(rate)}元/吨 = ${this.amount(item.handlingFeeAmount)}（说明项，不重复计入应付）`
+    },
+    codeScanFormula (item) {
+      if (Number(this.form.includeCodeScanFee || 0) !== 1) return '本次不计算扫码费，金额为0。'
+      const boxes = Number(item.shippedBoxes || 0)
+      const amount = Number(item.codeScanFeeAmount || 0)
+      if (boxes > 0) return `${boxes}箱，按仓库扫码规则计算 = ${this.amount(amount)}`
+      return `按仓库扫码规则计算 = ${this.amount(amount)}`
+    },
+    grossWeightFormula (item) {
+      if (!Number(item.grossWeightFeeAmount || 0)) return '本行未产生毛重费用。'
+      return `计费毛重${this.weight(item.grossDiffWeight)}KG ÷ 1000 × 费率${this.precise(item.grossFeeRate)} × ${Number(item.grossFeeDays || 0)}天 = ${this.amount(item.grossWeightFeeAmount)}`
+    },
+    expectedFormula (item) {
+      return `货值${this.amount(item.costAmount)} + ${this.storageFeeName}${this.amount(item.storageFeeAmount)} + 扫码费${this.amount(Number(this.form.includeCodeScanFee || 0) === 1 ? item.codeScanFeeAmount : 0)} + 印花税${this.amount(item.stampTaxAmount)} - 保证金${this.precise(item.depositAmount)} + 补税点${this.amount(item.taxAdjustAmount)} + 毛重费${this.amount(item.grossWeightFeeAmount)} + 其他费用${this.amount(item.otherFeeAmount)} = ${this.amount(item.expectedPaymentAmount)}`
+    }
   }
 }
 </script>
@@ -462,6 +610,8 @@ export default {
 .summary-item.important { background: #eaf6f4; }
 .summary-item.important strong { color: #168b80; }
 .section-title { margin: 16px 0 10px; padding-left: 9px; border-left: 3px solid #168b80; font-weight: 700; }
+.formula-alert { margin-bottom: 10px; }
+.formula-collapse { margin-bottom: 14px; }
 .amount-difference, .difference-tip { color: #f04444; font-weight: 600; }
 .difference-tip { margin: -5px 0 8px 120px; font-size: 12px; }
 .reconciliation-dialog-body { min-height: 480px; max-height: 76vh; overflow-y: auto; padding-right: 4px; }
