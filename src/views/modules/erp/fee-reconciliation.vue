@@ -47,77 +47,39 @@
       @size-change="sizeChangeHandle" @current-change="currentChangeHandle">
     </el-pagination>
 
-    <el-dialog title="出库批次费用对账" :visible.sync="dialogVisible" width="1280px" top="4vh" :close-on-click-modal="false">
+    <el-dialog title="按出库批次费用对账" :visible.sync="dialogVisible" width="1280px" top="4vh" custom-class="batch-settlement-dialog" :close-on-click-modal="false">
       <div v-loading="dialogLoading" class="reconciliation-dialog-body">
-        <el-steps :active="stepActive" finish-status="success" align-center class="workflow-steps">
-          <el-step title="费用核对"></el-step>
-          <el-step title="确认无误"></el-step>
-          <el-step title="财务打款"></el-step>
-          <el-step title="完成"></el-step>
-        </el-steps>
-
-        <el-descriptions :column="4" border size="small" class="base-info">
-          <el-descriptions-item label="出库批次号">{{ form.batchNo || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="销售单号">{{ form.saleOrderNo || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="确认函合同号">{{ form.confirmContractNos || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="资方">{{ form.funderName || form.ownershipName || '-' }}</el-descriptions-item>
-        </el-descriptions>
-
-        <el-form :inline="true" label-width="120px" class="calculation-form">
-          <el-form-item label="核算日期" required>
-            <el-date-picker v-model="form.settlementDate" type="date" value-format="yyyy-MM-dd" :disabled="!reconciliationEditable" @change="recalculate"></el-date-picker>
-          </el-form-item>
-          <el-form-item label="计算扫码费">
-            <el-switch v-model="includeCodeScanFee" :disabled="!reconciliationEditable" active-text="计算" inactive-text="不计算" @change="recalculate"></el-switch>
-          </el-form-item>
-          <el-form-item label="额外仓储天数">
-            <el-input-number v-model="form.extraStorageDays" :min="0" :precision="0" :controls="false" :disabled="!reconciliationEditable" @change="recalculate"></el-input-number>
-          </el-form-item>
-          <el-form-item label="其他费用">
-            <el-input-number v-model="form.otherFeeAmount" :precision="2" :controls="false" :disabled="!reconciliationEditable" @change="recalculate"></el-input-number>
-          </el-form-item>
+        <el-alert :title="workflowNotice" type="info" :closable="false" style="margin-bottom:16px"></el-alert>
+        <el-form :model="form" label-width="150px">
+          <el-row :gutter="18">
+            <el-col :span="12"><el-form-item label="出库批次"><el-input :value="batchDisplayName" disabled></el-input></el-form-item></el-col>
+            <el-col :span="6"><el-form-item label="结算日期" required><el-date-picker v-model="form.settlementDate" type="date" value-format="yyyy-MM-dd" style="width:100%" :disabled="!reconciliationEditable" @change="recalculate"></el-date-picker></el-form-item></el-col>
+            <el-col :span="6"><el-form-item label="资方规则"><el-input :value="ruleName(form.ruleType)" disabled></el-input></el-form-item></el-col>
+            <el-col :span="6"><el-form-item label="计算扫码费"><el-switch v-model="includeCodeScanFee" :disabled="!reconciliationEditable" active-text="计算" inactive-text="不计算" @change="recalculate"></el-switch></el-form-item></el-col>
+            <el-col v-if="form.ruleType === 'CHAOYUE'" :span="8"><el-form-item label="资方认定回款本金"><el-input-number v-model="form.confirmedPrincipalAmount" :min="0" :precision="2" :controls="false" style="width:100%" :disabled="!reconciliationEditable" @change="recalculate"></el-input-number></el-form-item></el-col>
+            <el-col v-if="form.ruleType === 'WANXIANG'" :span="8"><el-form-item label="补税点费用"><el-input :value="amount(form.taxAdjustAmount)" disabled></el-input></el-form-item></el-col>
+            <el-col v-if="form.ruleType === 'WANXIANG'" :span="8"><el-form-item label="毛重费用"><el-input :value="amount(form.grossWeightFeeAmount)" disabled></el-input></el-form-item></el-col>
+            <el-col v-if="form.ruleType === 'WANXIANG'" :span="8"><el-form-item label="额外仓储天数"><el-input-number v-model="form.extraStorageDays" :min="0" :precision="0" :controls="false" style="width:100%" :disabled="!reconciliationEditable" @change="recalculate"></el-input-number></el-form-item></el-col>
+            <el-col :span="8"><el-form-item label="其他费用"><el-input-number v-model="form.otherFeeAmount" :min="0" :precision="2" :controls="false" style="width:100%" :disabled="!reconciliationEditable" @change="recalculate"></el-input-number></el-form-item></el-col>
+            <el-col :span="8"><el-form-item label="系统还本"><el-input :value="amount(form.systemPrincipalAmount)" disabled></el-input></el-form-item></el-col>
+            <el-col :span="8"><el-form-item label="确认还本"><el-input :value="amount(form.confirmedPrincipalAmount)" disabled></el-input></el-form-item></el-col>
+            <el-col :span="24">
+              <div class="fee-summary-card">
+                <div class="fee-summary-head"><span>费用说明</span><el-button type="text" icon="el-icon-question" @click="formulaDialogVisible = true">查看计算明细</el-button></div>
+                <div class="fee-summary-grid">
+                  <div class="fee-summary-item"><span>利息/资金成本</span><strong>¥{{ amount(form.interestAmount) }}</strong></div>
+                  <div class="fee-summary-item"><span>{{ storageFeeName }}</span><strong>¥{{ amount(form.storageFeeAmount) }}</strong></div>
+                  <div class="fee-summary-item"><span>其他应付/扣减费用</span><strong>¥{{ amount(otherFees) }}</strong></div>
+                </div>
+              </div>
+            </el-col>
+            <el-col :span="8"><el-form-item label="系统预计应付"><el-input :value="amount(form.expectedPaymentAmount)" disabled></el-input></el-form-item></el-col>
+            <el-col :span="24"><el-form-item label="备注"><el-input v-model="form.remark" maxlength="500" :disabled="!reconciliationEditable"></el-input></el-form-item></el-col>
+          </el-row>
         </el-form>
 
-        <div class="summary-grid">
-          <div class="summary-item"><span>系统还本</span><strong>{{ amount(form.systemPrincipalAmount) }}</strong></div>
-          <div class="summary-item"><span>利息/资金成本</span><strong>{{ amount(form.interestAmount) }}</strong></div>
-          <div class="summary-item"><span>仓储费用</span><strong>{{ amount(form.storageFeeAmount) }}</strong></div>
-          <div class="summary-item"><span>其他应付/扣减</span><strong>{{ amount(otherFees) }}</strong></div>
-          <div class="summary-item important"><span>系统预计应付</span><strong>{{ amount(form.expectedPaymentAmount) }}</strong></div>
-        </div>
-
-        <div class="section-title">费用计算说明</div>
-        <el-alert :title="feeRuleText" type="info" :closable="false" class="formula-alert"></el-alert>
-        <el-collapse v-model="feeExplainActiveNames" class="formula-collapse">
-          <el-collapse-item title="应付金额汇总公式" name="summary">
-            <el-table :data="feeSummaryRows" border stripe size="mini">
-              <el-table-column prop="name" label="项目" width="170"></el-table-column>
-              <el-table-column label="金额" width="140" align="right"><template slot-scope="scope">{{ feeAmount(scope.row) }}</template></el-table-column>
-              <el-table-column prop="formula" label="计算公式" min-width="680"></el-table-column>
-            </el-table>
-          </el-collapse-item>
-          <el-collapse-item title="费用项目规则" name="rules">
-            <el-table :data="feeRuleRows" border stripe size="mini">
-              <el-table-column prop="name" label="费用项目" width="170"></el-table-column>
-              <el-table-column prop="formula" label="计算规则/来源" min-width="760"></el-table-column>
-            </el-table>
-          </el-collapse-item>
-          <el-collapse-item title="By产品代入公式" name="detail">
-            <el-table :data="feeDetailRows" border stripe size="mini" max-height="420">
-              <el-table-column prop="lineNo" label="行号" width="60" align="center"></el-table-column>
-              <el-table-column prop="confirmContractNo" label="确认函合同号" width="145"></el-table-column>
-              <el-table-column prop="productCode" label="产品编码" width="100"></el-table-column>
-              <el-table-column prop="productName" label="品名" min-width="140" show-overflow-tooltip></el-table-column>
-              <el-table-column prop="feeName" label="计算项目" width="150"></el-table-column>
-              <el-table-column label="金额" width="125" align="right"><template slot-scope="scope">{{ feeAmount(scope.row) }}</template></el-table-column>
-              <el-table-column prop="formula" label="实际代入公式" min-width="700"></el-table-column>
-            </el-table>
-          </el-collapse-item>
-        </el-collapse>
-
-        <div class="section-title">By产品费用明细</div>
-        <el-table :data="form.itemList || []" border stripe size="mini" height="280">
-          <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
+        <el-table class="batch-settlement-item-table" :data="form.itemList || []" border stripe height="420">
+          <el-table-column prop="lineNo" label="序号" width="60" align="center"></el-table-column>
           <el-table-column prop="confirmContractNo" label="确认函合同号" width="145" show-overflow-tooltip></el-table-column>
           <el-table-column prop="productCode" label="产品编码" width="100"></el-table-column>
           <el-table-column prop="productName" label="品名" min-width="150" show-overflow-tooltip></el-table-column>
@@ -126,8 +88,12 @@
           <el-table-column prop="shippedBoxes" label="出库箱数" width="85" align="right"></el-table-column>
           <el-table-column label="计费重量KG" width="115" align="right"><template slot-scope="scope">{{ weight(scope.row.feeWeight) }}</template></el-table-column>
           <el-table-column label="确认函单价" width="105" align="right"><template slot-scope="scope">{{ unitPrice(scope.row.unitPriceInclTax) }}</template></el-table-column>
-          <el-table-column label="结算销售单价" width="120" align="right"><template slot-scope="scope">{{ unitPrice(scope.row.settlementUnitPrice) }}</template></el-table-column>
+          <el-table-column label="结算销售单价" width="150" align="right"><template slot-scope="scope"><span>{{ unitPrice(scope.row.settlementUnitPrice) }}</span><el-popover placement="top" width="460" trigger="click"><div>{{ settlementPriceFormula(scope.row) }}</div><i slot="reference" class="el-icon-question settlement-price-icon"></i></el-popover></template></el-table-column>
+          <el-table-column label="货值金额" width="110" align="right"><template slot-scope="scope">{{ amount(scope.row.costAmount) }}</template></el-table-column>
           <el-table-column label="系统还本" width="110" align="right"><template slot-scope="scope">{{ amount(scope.row.systemPrincipalAmount) }}</template></el-table-column>
+          <el-table-column label="确认还本" width="110" align="right"><template slot-scope="scope">{{ amount(scope.row.confirmedPrincipalAmount) }}</template></el-table-column>
+          <el-table-column prop="loanDays" label="计息天数" width="90" align="right"></el-table-column>
+          <el-table-column label="利息/资金成本" width="130" align="right"><template slot-scope="scope">{{ amount(scope.row.interestAmount) }}</template></el-table-column>
           <el-table-column label="预计应付" width="110" align="right"><template slot-scope="scope">{{ amount(scope.row.expectedPaymentAmount) }}</template></el-table-column>
         </el-table>
 
@@ -178,6 +144,22 @@
         <el-button v-if="Number(form.workflowStatus) === 2" type="success" :loading="submitLoading" @click="confirmPayment">确认财务打款</el-button>
       </span>
     </el-dialog>
+
+    <el-dialog title="费用计算说明" :visible.sync="formulaDialogVisible" width="1180px" append-to-body>
+      <el-alert :title="feeRuleText" type="info" :closable="false" class="formula-alert"></el-alert>
+      <el-collapse v-model="feeExplainActiveNames" class="formula-collapse">
+        <el-collapse-item title="应付金额汇总公式" name="summary">
+          <el-table :data="feeSummaryRows" border stripe size="mini"><el-table-column prop="name" label="项目" width="170"></el-table-column><el-table-column label="金额" width="140" align="right"><template slot-scope="scope">{{ feeAmount(scope.row) }}</template></el-table-column><el-table-column prop="formula" label="计算公式" min-width="680"></el-table-column></el-table>
+        </el-collapse-item>
+        <el-collapse-item title="费用项目规则" name="rules">
+          <el-table :data="feeRuleRows" border stripe size="mini"><el-table-column prop="name" label="费用项目" width="170"></el-table-column><el-table-column prop="formula" label="计算规则/来源" min-width="760"></el-table-column></el-table>
+        </el-collapse-item>
+        <el-collapse-item title="By产品代入公式" name="detail">
+          <el-table :data="feeDetailRows" border stripe size="mini" max-height="420"><el-table-column prop="lineNo" label="行号" width="60" align="center"></el-table-column><el-table-column prop="confirmContractNo" label="确认函合同号" width="145"></el-table-column><el-table-column prop="productCode" label="产品编码" width="100"></el-table-column><el-table-column prop="productName" label="品名" min-width="140" show-overflow-tooltip></el-table-column><el-table-column prop="feeName" label="计算项目" width="150"></el-table-column><el-table-column label="金额" width="125" align="right"><template slot-scope="scope">{{ feeAmount(scope.row) }}</template></el-table-column><el-table-column prop="formula" label="实际代入公式" min-width="700"></el-table-column></el-table>
+        </el-collapse-item>
+      </el-collapse>
+      <span slot="footer"><el-button @click="formulaDialogVisible = false">关闭</el-button></span>
+    </el-dialog>
   </div>
 </template>
 
@@ -222,6 +204,7 @@ export default {
       statementUploading: false,
       paymentUploading: false,
       submitLoading: false,
+      formulaDialogVisible: false,
       feeExplainActiveNames: ['summary'],
       form: emptyForm()
     }
@@ -234,9 +217,17 @@ export default {
       get () { return Number(this.form.includeCodeScanFee || 0) === 1 },
       set (value) { this.form.includeCodeScanFee = value ? 1 : 0 }
     },
-    stepActive () {
-      const status = Number(this.form.workflowStatus || 0)
-      return status === 0 ? 0 : status
+    workflowNotice () {
+      const messages = [
+        '请按系统计算结果核对费用，上传资方计算单后保存。',
+        '资方计算单已保存，请核对差异并确认无误。',
+        '费用已核对确认，请财务上传打款凭证并确认打款。',
+        '本批次费用对账及财务打款已完成，当前为只读查看。'
+      ]
+      return messages[Number(this.form.workflowStatus || 0)] || messages[0]
+    },
+    batchDisplayName () {
+      return `${this.form.confirmContractNos || '-'} / ${this.form.batchNo || '-'} / ${this.form.saleOrderNo || '-'} / ${this.form.ownershipName || this.form.funderName || '-'}`
     },
     otherFees () {
       const f = this.form
@@ -600,22 +591,22 @@ export default {
 
 <style scoped>
 .query-form { margin-bottom: 4px; }
-.workflow-steps { margin: 0 20px 20px; }
-.base-info { margin-bottom: 16px; }
-.calculation-form { padding: 14px 12px 0; background: #f7faf9; border: 1px solid #e3ece9; }
-.summary-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 14px 0; }
-.summary-item { padding: 12px 14px; background: #f5f7fa; border-radius: 4px; }
-.summary-item span { display: block; color: #707780; font-size: 13px; margin-bottom: 7px; }
-.summary-item strong { font-size: 18px; color: #263238; }
-.summary-item.important { background: #eaf6f4; }
-.summary-item.important strong { color: #168b80; }
 .section-title { margin: 16px 0 10px; padding-left: 9px; border-left: 3px solid #168b80; font-weight: 700; }
 .formula-alert { margin-bottom: 10px; }
 .formula-collapse { margin-bottom: 14px; }
+.fee-summary-card { margin: 0 0 18px 150px; border: 1px solid #e4e7ed; border-radius: 4px; background: #fafafa; }
+.fee-summary-head { display: flex; align-items: center; justify-content: space-between; padding: 7px 14px; border-bottom: 1px solid #e4e7ed; font-weight: 700; }
+.fee-summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); }
+.fee-summary-item { padding: 12px 16px; border-right: 1px solid #e4e7ed; }
+.fee-summary-item:last-child { border-right: 0; }
+.fee-summary-item span { display: block; margin-bottom: 6px; color: #606266; font-size: 13px; }
+.fee-summary-item strong { color: #168b80; font-size: 17px; }
+.settlement-price-icon { margin-left: 5px; color: #168b80; cursor: pointer; }
 .amount-difference, .difference-tip { color: #f04444; font-weight: 600; }
 .difference-tip { margin: -5px 0 8px 120px; font-size: 12px; }
 .reconciliation-dialog-body { min-height: 480px; max-height: 76vh; overflow-y: auto; padding-right: 4px; }
 @media (max-width: 900px) {
-  .summary-grid { grid-template-columns: repeat(2, 1fr); }
+  .fee-summary-grid { grid-template-columns: 1fr; }
+  .fee-summary-card { margin-left: 0; }
 }
 </style>
