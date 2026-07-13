@@ -2839,24 +2839,14 @@ export default {
       const key = lot._sourceKey || this.saleStockSourceKey(lot)
       return !(this.dataForm.allocationItemList || []).some(item => (item._sourceKey || this.saleStockSourceKey(item)) === key)
     },
-    appendSpotLot (contract, lot, useAllAvailableBoxes) {
+    appendSpotLot (contract, lot) {
       const key = lot._sourceKey || this.saleStockSourceKey(lot)
       const availableBoxes = Number(lot.availableBoxes || 0)
       if (availableBoxes <= 0) return false
       const existing = (this.dataForm.allocationItemList || []).find(item => (item._sourceKey || this.saleStockSourceKey(item)) === key)
-      if (existing) {
-        if (useAllAvailableBoxes) {
-          const unitWeight = Number(lot.estimatedUnitWeightKg || (availableBoxes > 0 ? Number(lot.availableWeightKg || 0) / availableBoxes : 0))
-          existing.availableBoxes = availableBoxes
-          existing.availableWeightKg = Number(lot.availableWeightKg || 0)
-          existing.estimatedUnitWeightKg = unitWeight
-          existing.boxes = availableBoxes
-          existing.contractQuantityKg = Number((unitWeight * availableBoxes).toFixed(2))
-        }
-        return false
-      }
+      if (existing) return false
       const unitWeight = Number(lot.estimatedUnitWeightKg || (availableBoxes > 0 ? Number(lot.availableWeightKg || 0) / availableBoxes : 0))
-      const boxes = useAllAvailableBoxes ? availableBoxes : 1
+      const boxes = 1
       const row = Object.assign(this.defaultAllocationRow(), lot, {
         boxes,
         availableBoxes,
@@ -2882,7 +2872,7 @@ export default {
         return
       }
       selected.forEach(({ contract, lot }) => {
-        this.appendSpotLot(contract, lot, false)
+        this.appendSpotLot(contract, lot)
       })
       this.rebuildSpotProductSummary()
       this.clearSpotContractSelections()
@@ -2906,7 +2896,7 @@ export default {
         list.forEach((item, index) => {
           const contractRow = this.normalizeSpotContractRow(item, index)
           ;(contractRow.lotList || []).forEach(lot => {
-            this.appendSpotLot(contractRow, lot, true)
+            this.appendSpotLot(contractRow, lot)
           })
         })
         this.rebuildSpotProductSummary()
