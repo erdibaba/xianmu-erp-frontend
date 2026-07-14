@@ -318,7 +318,7 @@
 
         <template v-if="isSpotSale">
           <el-alert
-            title="现货录单顺序：1. 查询产品  2. 选择该产品所在合同或具体批次  3. 在By产品销售汇总填写销售价并确认重量  4. 保存销售单"
+            title="现货录单顺序：1. 查询产品  2. 选择该产品所在合同或具体批次  3. 录入销售价和预计重量  4. 保存销售单"
             type="info"
             :closable="false"
             show-icon
@@ -419,8 +419,8 @@
           <div class="sub-title">
             <span>已选库存明细</span>
             <div class="sub-title-actions">
-              <span class="sub-title-tip">销售箱数必填，预计重量按当前批次可售重量/可售箱数自动计算</span>
-              <el-button v-if="(dataForm.allocationItemList || []).length" type="warning" plain size="mini" @click="goToSpotProductSummary">下一步：填写销售价</el-button>
+              <span class="sub-title-tip">销售箱数必填；销售价和预计重量可通过明细右侧按钮调整</span>
+              <el-button v-if="(dataForm.allocationItemList || []).length" type="warning" plain size="mini" @click="goToSpotProductSummary">查看By产品销售汇总</el-button>
             </div>
           </div>
         </template>
@@ -449,17 +449,8 @@
             <template slot-scope="scope">{{ scope.row.confirmContractNo || '-' }}</template>
           </el-table-column>
           <el-table-column prop="sourceContainerNo" label="柜号" min-width="120"></el-table-column>
-          <el-table-column label="销售价（元/千克）" width="150">
-            <template slot-scope="scope">
-              <el-input-number
-                v-model="scope.row.salePriceKg"
-                :disabled="true"
-                :controls="false"
-                :precision="2"
-                size="mini"
-                style="width: 100%;">
-              </el-input-number>
-            </template>
+          <el-table-column label="销售价（元/千克）" width="150" align="right">
+            <template slot-scope="scope">{{ formatNumber(scope.row.salePriceKg, 2) }}</template>
           </el-table-column>
           <el-table-column prop="contractQuantityKg" label="预计重量KG" width="115" align="right"></el-table-column>
           <el-table-column prop="contractFactoryNo" label="厂号" width="100"></el-table-column>
@@ -473,32 +464,13 @@
           <el-table-column label="过期日期" width="120" align="center">
             <template slot-scope="scope"><span :class="{ 'expired-stock-text': isExpiredDate(scope.row.expiryDate) }">{{ formatDateOnly(scope.row.expiryDate) }}</span></template>
           </el-table-column>
-          <el-table-column v-if="!contentReadonly" label="操作" width="70" fixed="right"><template slot-scope="scope"><el-button type="text" size="small" @click="removeSpotAllocation(scope.$index)">移除</el-button></template></el-table-column>
+          <el-table-column v-if="!contentReadonly" label="操作" width="165" fixed="right">
+            <template slot-scope="scope">
+              <el-button type="text" size="small" @click="editSpotProductPricing(scope.row)">调整价格/重量</el-button>
+              <el-button type="text" size="small" @click="removeSpotAllocation(scope.$index)">移除</el-button>
+            </template>
+          </el-table-column>
         </el-table>
-
-        <div v-if="isSpotSale" ref="spotProductSummarySection" class="spot-product-summary-section">
-          <el-alert
-            v-if="(dataForm.allocationItemList || []).length && !contentReadonly"
-            title="下一步：请在下方By产品销售汇总中，为每个产品填写大于0的销售价，并确认总重量后再保存。"
-            type="warning"
-            :closable="false"
-            show-icon
-            class="spot-pricing-alert">
-          </el-alert>
-          <div class="sub-title"><span>By产品销售汇总</span><span class="sub-title-tip">销售价必填；总重量可人工调整，系统会按箱数比例分摊到已选库存明细</span></div>
-          <el-table ref="spotProductSummaryTable" :data="dataForm.itemList" border size="mini" class="item-table">
-            <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
-            <el-table-column prop="productCode" label="产品编码" width="120"></el-table-column>
-            <el-table-column prop="marketCirculationName" label="市场流通名称" min-width="170"></el-table-column>
-            <el-table-column prop="boxes" label="总箱数" width="90" align="right"></el-table-column>
-            <el-table-column label="总重量KG" width="140"><template slot-scope="scope"><el-input-number v-model="scope.row.contractQuantityKg" :disabled="contentReadonly" :controls="false" :min="0.01" :precision="2" size="mini" style="width:100%;" @change="redistributeSpotProductWeight(scope.row.productId)"></el-input-number></template></el-table-column>
-            <el-table-column width="175">
-              <template slot="header"><span>销售价（元/千克）</span><span class="required-mark">*</span></template>
-              <template slot-scope="scope"><el-input-number v-model="scope.row.salePriceKg" :disabled="contentReadonly" :controls="false" :min="0.01" :precision="2" size="mini" placeholder="必填，大于0" style="width:100%;" @change="spotSalePriceChange(scope.row)"></el-input-number></template>
-            </el-table-column>
-            <el-table-column prop="remark" label="备注" min-width="150"><template slot-scope="scope"><el-input v-model="scope.row.remark" :disabled="contentReadonly" size="mini"></el-input></template></el-table-column>
-          </el-table>
-        </div>
 
         <template v-if="dataForm.id && (dataForm.riskAuditList || []).length">
           <div class="sub-title"><span>货物风控记录</span><span class="sub-title-tip">记录非先进先出判断、审核意见及被跳过的更早确认函库存</span></div>
@@ -1442,6 +1414,68 @@
       </el-button>
     </span>
     <el-dialog
+      :title="spotPricingMode === 'EDIT' ? '调整销售价和预计重量' : '录入销售价和预计重量'"
+      :visible.sync="spotPricingDialogVisible"
+      width="560px"
+      append-to-body
+      custom-class="spot-pricing-dialog">
+      <div class="spot-pricing-overview">
+        <div><span>产品编码</span><strong>{{ spotPricingForm.productCode || '-' }}</strong></div>
+        <div><span>市场流通名称</span><strong>{{ spotPricingForm.marketCirculationName || spotPricingForm.productName || '-' }}</strong></div>
+        <div><span>本次箱数</span><strong>{{ spotPricingForm.selectedBoxes || 0 }} 箱</strong></div>
+      </div>
+      <el-form label-width="145px" size="small">
+        <el-form-item required label="销售价（元/千克）">
+          <el-input-number
+            v-model="spotPricingForm.salePriceKg"
+            :controls="false"
+            :min="0.01"
+            :precision="2"
+            placeholder="请输入销售价"
+            style="width: 100%;">
+          </el-input-number>
+        </el-form-item>
+        <el-form-item required label="预计重量（KG）">
+          <el-input-number
+            v-model="spotPricingForm.expectedWeightKg"
+            :controls="false"
+            :min="0.01"
+            :precision="2"
+            placeholder="请输入预计重量"
+            style="width: 100%;">
+          </el-input-number>
+          <div class="spot-pricing-tip">系统已按当前库存单箱重量自动计算，可根据实际销售情况修改。</div>
+        </el-form-item>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="spotPricingDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmSpotPricing">确认</el-button>
+      </span>
+    </el-dialog>
+    <el-dialog
+      title="By产品销售汇总"
+      :visible.sync="spotSummaryDialogVisible"
+      width="880px"
+      append-to-body>
+      <el-table :data="dataForm.itemList || []" border size="mini" max-height="440">
+        <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
+        <el-table-column prop="productCode" label="产品编码" width="120"></el-table-column>
+        <el-table-column label="市场流通名称" min-width="190" show-overflow-tooltip>
+          <template slot-scope="scope">{{ scope.row.marketCirculationName || scope.row.productName || '-' }}</template>
+        </el-table-column>
+        <el-table-column prop="boxes" label="总箱数" width="100" align="right"></el-table-column>
+        <el-table-column label="总重量KG" width="130" align="right">
+          <template slot-scope="scope">{{ formatNumber(scope.row.contractQuantityKg, 2) }}</template>
+        </el-table-column>
+        <el-table-column label="销售价（元/千克）" width="155" align="right">
+          <template slot-scope="scope">{{ formatNumber(scope.row.salePriceKg, 2) }}</template>
+        </el-table-column>
+      </el-table>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="spotSummaryDialogVisible = false">关闭</el-button>
+      </span>
+    </el-dialog>
+    <el-dialog
       title="二批来款水单详情"
       :visible.sync="bankSlipDetailVisible"
       width="760px"
@@ -1635,6 +1669,20 @@ export default {
       spotContractList: [],
       spotContractRequestSeq: 0,
       spotContractTableVersion: 0,
+      spotPricingDialogVisible: false,
+      spotPricingMode: 'ADD',
+      spotPricingCandidates: [],
+      spotPricingRows: [],
+      spotPricingForm: {
+        productId: '',
+        productCode: '',
+        productName: '',
+        marketCirculationName: '',
+        salePriceKg: null,
+        expectedWeightKg: null,
+        selectedBoxes: 0
+      },
+      spotSummaryDialogVisible: false,
       presaleOrderOptions: [],
       presaleOrderKeyword: '',
       presaleOrderLoading: false,
@@ -2081,6 +2129,11 @@ export default {
       this.spotProductRequestSeq++
       this.spotContractRequestSeq++
       this.spotContractList = []
+      this.spotPricingDialogVisible = false
+      this.spotPricingMode = 'ADD'
+      this.spotPricingCandidates = []
+      this.spotPricingRows = []
+      this.spotSummaryDialogVisible = false
       this.dataForm = this.defaultForm()
       this.detailLoading = true
       Promise.all([this.loadBaseOptions(), this.fetchDetail(id)]).finally(() => {
@@ -2898,9 +2951,9 @@ export default {
     appendSpotLot (contract, lot) {
       const key = lot._sourceKey || this.saleStockSourceKey(lot)
       const availableBoxes = Number(lot.availableBoxes || 0)
-      if (availableBoxes <= 0) return false
+      if (availableBoxes <= 0) return null
       const existing = (this.dataForm.allocationItemList || []).find(item => (item._sourceKey || this.saleStockSourceKey(item)) === key)
-      if (existing) return false
+      if (existing) return null
       const unitWeight = Number(lot.estimatedUnitWeightKg || (availableBoxes > 0 ? Number(lot.availableWeightKg || 0) / availableBoxes : 0))
       const boxes = 1
       const row = Object.assign(this.defaultAllocationRow(), lot, {
@@ -2916,7 +2969,114 @@ export default {
         _sourceKey: key
       })
       this.dataForm.allocationItemList.push(row)
-      return true
+      return row
+    },
+    spotProductMatches (left, right) {
+      if (!left || !right) return false
+      if (left.productId && right.productId) return String(left.productId) === String(right.productId)
+      return String(left.productCode || '') === String(right.productCode || '')
+    },
+    spotCandidateUnitWeight (lot) {
+      const availableBoxes = Number((lot && lot.availableBoxes) || 0)
+      return Number((lot && lot.estimatedUnitWeightKg) || (availableBoxes > 0 ? Number(lot.availableWeightKg || 0) / availableBoxes : 0))
+    },
+    existingSpotSalePrice (product) {
+      const summary = (this.dataForm.itemList || []).find(item => this.spotProductMatches(item, product))
+      if (summary && Number(summary.salePriceKg || 0) > 0) return Number(summary.salePriceKg)
+      const allocation = (this.dataForm.allocationItemList || []).find(item => this.spotProductMatches(item, product))
+      return allocation && Number(allocation.salePriceKg || 0) > 0 ? Number(allocation.salePriceKg) : null
+    },
+    openSpotPricingForCandidates (candidates) {
+      const selectable = (candidates || []).filter(({ lot }) => this.spotLotSelectable(lot))
+      if (!selectable.length) {
+        this.$message.warning('所选库存明细已全部加入')
+        return
+      }
+      const first = selectable[0].lot || {}
+      const expectedWeight = selectable.reduce((sum, item) => sum + this.spotCandidateUnitWeight(item.lot), 0)
+      this.spotPricingMode = 'ADD'
+      this.spotPricingCandidates = selectable
+      this.spotPricingRows = []
+      this.spotPricingForm = {
+        productId: first.productId,
+        productCode: first.productCode,
+        productName: first.productName,
+        marketCirculationName: first.marketCirculationName,
+        salePriceKg: this.existingSpotSalePrice(first),
+        expectedWeightKg: Number(expectedWeight.toFixed(2)),
+        selectedBoxes: selectable.length
+      }
+      this.spotPricingDialogVisible = true
+    },
+    editSpotProductPricing (row) {
+      const rows = (this.dataForm.allocationItemList || []).filter(item => this.spotProductMatches(item, row))
+      if (!rows.length) return
+      this.spotPricingMode = 'EDIT'
+      this.spotPricingCandidates = []
+      this.spotPricingRows = rows
+      this.spotPricingForm = {
+        productId: row.productId,
+        productCode: row.productCode,
+        productName: row.productName,
+        marketCirculationName: row.marketCirculationName,
+        salePriceKg: Number(row.salePriceKg || 0) > 0 ? Number(row.salePriceKg) : null,
+        expectedWeightKg: Number(rows.reduce((sum, item) => sum + Number(item.contractQuantityKg || 0), 0).toFixed(2)),
+        selectedBoxes: rows.reduce((sum, item) => sum + Number(item.boxes || 0), 0)
+      }
+      this.spotPricingDialogVisible = true
+    },
+    distributeSpotWeight (rows, totalWeight) {
+      const totalCents = Math.round(Number(totalWeight || 0) * 100)
+      const totalBoxes = rows.reduce((sum, item) => sum + Number(item.boxes || 0), 0)
+      let assignedCents = 0
+      rows.forEach((item, index) => {
+        const weightCents = index === rows.length - 1
+          ? totalCents - assignedCents
+          : Math.round(totalBoxes > 0 ? totalCents * Number(item.boxes || 0) / totalBoxes : 0)
+        item.contractQuantityKg = weightCents / 100
+        assignedCents += weightCents
+      })
+    },
+    confirmSpotPricing () {
+      const salePrice = Number(this.spotPricingForm.salePriceKg || 0)
+      const expectedWeight = Number(this.spotPricingForm.expectedWeightKg || 0)
+      if (salePrice <= 0) {
+        this.$message.error('销售价必须大于0')
+        return
+      }
+      if (expectedWeight <= 0) {
+        this.$message.error('预计重量必须大于0')
+        return
+      }
+      const targetCount = this.spotPricingMode === 'ADD'
+        ? (this.spotPricingCandidates || []).filter(({ lot }) => this.spotLotSelectable(lot)).length
+        : (this.spotPricingRows || []).length
+      if (targetCount > 0 && expectedWeight < targetCount / 100) {
+        this.$message.error(`预计重量不能小于${(targetCount / 100).toFixed(2)}KG`)
+        return
+      }
+      let rows = this.spotPricingRows || []
+      if (this.spotPricingMode === 'ADD') {
+        rows = []
+        ;(this.spotPricingCandidates || []).forEach(({ contract, lot }) => {
+          const added = this.appendSpotLot(contract, lot)
+          if (added) rows.push(added)
+        })
+      }
+      if (!rows.length) {
+        this.$message.warning('没有可处理的库存明细')
+        this.spotPricingDialogVisible = false
+        return
+      }
+      const product = rows[0]
+      ;(this.dataForm.allocationItemList || []).forEach(item => {
+        if (this.spotProductMatches(item, product)) item.salePriceKg = salePrice
+      })
+      this.distributeSpotWeight(rows, expectedWeight)
+      this.rebuildSpotProductSummary()
+      this.clearSpotContractSelections()
+      this.spotPricingDialogVisible = false
+      this.$message.success(this.spotPricingMode === 'ADD' ? '销售明细已加入' : '销售价和预计重量已更新')
     },
     addCheckedSpotLots () {
       const selected = []
@@ -2927,11 +3087,7 @@ export default {
         this.$message.warning('请先勾选需要销售的库存批次')
         return
       }
-      selected.forEach(({ contract, lot }) => {
-        this.appendSpotLot(contract, lot)
-      })
-      this.rebuildSpotProductSummary()
-      this.clearSpotContractSelections()
+      this.openSpotPricingForCandidates(selected)
     },
     addSearchedProductStock (contract) {
       const lots = (contract && contract.lotList ? contract.lotList : []).filter(lot => this.spotLotSelectable(lot))
@@ -2939,26 +3095,15 @@ export default {
         this.$message.warning('该合同下当前搜索产品的库存批次已全部加入')
         return
       }
-      lots.forEach(lot => this.appendSpotLot(contract, lot))
-      this.rebuildSpotProductSummary()
-      this.clearSpotContractSelections()
-      this.$message.success(`已加入合同 ${contract.confirmContractNo || ''} 下当前搜索的产品 ${contract.productCode || ''}`)
+      this.openSpotPricingForCandidates(lots.map(lot => ({ contract, lot })))
     },
     goToSpotProductSummary () {
-      if (!(this.dataForm.itemList || []).length) {
+      if (!(this.dataForm.allocationItemList || []).length) {
         this.$message.warning('请先选择并加入库存产品')
         return
       }
-      this.$nextTick(() => {
-        const container = this.$refs.saleOrderScroll
-        const section = this.$refs.spotProductSummarySection
-        if (container && section) {
-          container.scrollTo({
-            top: Math.max(0, section.offsetTop - 12),
-            behavior: 'smooth'
-          })
-        }
-      })
+      this.rebuildSpotProductSummary()
+      this.spotSummaryDialogVisible = true
     },
     clearSpotContractSelections () {
       ;(this.spotContractList || []).forEach(contract => {
@@ -3004,7 +3149,7 @@ export default {
           productSpec: first.productSpec,
           unit: first.unit,
           boxes,
-          salePriceKg: old.salePriceKg === null || old.salePriceKg === undefined ? first.salePriceKg : old.salePriceKg,
+          salePriceKg: first.salePriceKg,
           contractQuantityKg: Number(estimatedWeight.toFixed(2)),
           remark: old.remark || ''
         })
@@ -3016,9 +3161,7 @@ export default {
       }
       this.dataForm.itemList.splice(0, this.dataForm.itemList.length, ...summaryList)
       this.$nextTick(() => {
-        const summaryTable = this.$refs.spotProductSummaryTable
         const allocationTable = this.$refs.spotAllocationTable
-        if (summaryTable && summaryTable.doLayout) summaryTable.doLayout()
         if (allocationTable && allocationTable.doLayout) allocationTable.doLayout()
       })
     },
@@ -3174,7 +3317,7 @@ export default {
         if (!item.productId) return `第${index + 1}行产品未选择`
         if (!item.boxes || Number(item.boxes) <= 0) return `第${index + 1}行箱数必须大于0`
         if (item.salePriceKg === null || item.salePriceKg === '' || Number(item.salePriceKg) <= 0) {
-          return `产品${item.productCode || index + 1}的销售价（元/千克）必须大于0，请在By产品销售汇总中填写`
+          return `产品${item.productCode || index + 1}的销售价（元/千克）必须大于0，请在已选库存明细中调整`
         }
         if (this.isSpotSale) {
           if (productIds[item.productId]) return '现货单不支持重复录入同一产品，请合并箱数'
@@ -3901,18 +4044,43 @@ export default {
   margin: 8px 0 12px;
 }
 
-.spot-pricing-alert {
-  margin-top: 12px;
+.spot-pricing-overview {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr .7fr;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 14px;
+  border: 1px solid #dbe7f3;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #f7fbff 0%, #f2faf8 100%);
 }
 
-.spot-product-summary-section {
-  scroll-margin-top: 12px;
-  padding-bottom: 8px;
+.spot-pricing-overview div {
+  min-width: 0;
 }
 
-.required-mark {
-  margin-left: 3px;
-  color: #f56c6c;
+.spot-pricing-overview span,
+.spot-pricing-overview strong {
+  display: block;
+}
+
+.spot-pricing-overview span {
+  margin-bottom: 5px;
+  color: #8492a6;
+  font-size: 12px;
+}
+
+.spot-pricing-overview strong {
+  overflow: hidden;
+  color: #26384a;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spot-pricing-tip {
+  margin-top: 6px;
+  color: #8492a6;
+  font-size: 12px;
 }
 
 .spot-search-bar {
