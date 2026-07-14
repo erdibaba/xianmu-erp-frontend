@@ -327,6 +327,7 @@
           <div class="sub-title spot-search-title">
             <span>查询可售库存</span>
             <span class="sub-title-tip">按确认函预计到港时间从早到晚展示；过期库存仍可选择，但会红色标记</span>
+            <el-tag v-if="spotContractList.length" size="mini" type="success">查询到 {{ spotContractList.length }} 条合同</el-tag>
           </div>
           <div class="spot-search-bar">
             <el-select
@@ -358,8 +359,10 @@
           </div>
 
           <el-table
+            ref="spotContractTable"
             v-loading="spotContractLoading"
             :data="spotContractList"
+            height="300"
             border
             size="mini"
             row-key="_rowKey"
@@ -2867,6 +2870,9 @@ export default {
         if (!this.spotContractList.length) {
           this.$message.warning('当前产品没有可售库存')
         }
+        this.$nextTick(() => {
+          if (this.$refs.spotContractTable) this.$refs.spotContractTable.doLayout()
+        })
       }).catch((error) => {
         if (requestSeq !== this.spotContractRequestSeq || String(productId) !== String(this.spotProductId)) return
         this.spotContractList = []
