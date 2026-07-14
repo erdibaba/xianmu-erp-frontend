@@ -338,6 +338,7 @@
               :disabled="contentReadonly"
               :loading="spotProductLoading"
               :remote-method="remoteSearchSpotProducts"
+              @change="spotProductChange"
               @visible-change="spotProductVisibleChange"
               placeholder="输入产品编码或市场流通名称搜索，最多15条"
               style="width: 520px;">
@@ -1622,8 +1623,10 @@ export default {
       spotProductId: '',
       spotProductLoading: false,
       spotProductOptions: [],
+      spotProductRequestSeq: 0,
       spotContractLoading: false,
       spotContractList: [],
+      spotContractRequestSeq: 0,
       presaleOrderOptions: [],
       presaleOrderKeyword: '',
       presaleOrderLoading: false,
@@ -2067,6 +2070,8 @@ export default {
       this.activeOutboundBatchId = ''
       this.spotProductId = ''
       this.spotProductOptions = []
+      this.spotProductRequestSeq++
+      this.spotContractRequestSeq++
       this.spotContractList = []
       this.dataForm = this.defaultForm()
       this.detailLoading = true
@@ -2796,20 +2801,34 @@ export default {
       }
     },
     remoteSearchSpotProducts (keyword) {
+      const requestSeq = ++this.spotProductRequestSeq
       this.spotProductLoading = true
       this.$http({
         url: this.$http.adornUrl('/erp/saleorder/spot-stock/products'),
         method: 'get',
-        params: this.$http.adornParams({ keyword: keyword || '' })
+        params: this.$http.adornParams({ keyword: keyword || '', limit: 15 })
       }).then(({ data }) => {
+        if (requestSeq !== this.spotProductRequestSeq) return
         this.spotProductOptions = data && data.code === 0 ? (data.list || []).slice(0, 15) : []
-        this.spotProductLoading = false
-      }).catch(() => {
+        if (!data || data.code !== 0) {
+          this.$message.error((data && data.msg) || '查询可售产品失败')
+        }
+      }).catch((error) => {
+        if (requestSeq !== this.spotProductRequestSeq) return
         this.spotProductOptions = []
+        this.$message.error((error && error.message) || '查询可售产品失败，请检查后端服务')
+      }).finally(() => {
+        if (requestSeq !== this.spotProductRequestSeq) return
         this.spotProductLoading = false
       })
     },
+    spotProductChange () {
+      this.spotContractRequestSeq++
+      this.spotContractLoading = false
+      this.spotContractList = []
+    },
     saleStockSourceKey (item) {
+      item = item || {}
       const value = field => item[field] === null || item[field] === undefined || item[field] === '' ? 0 : item[field]
       return `${value('productId')}:${value('sourceInboundItemId')}:${value('sourcePackingBatchId')}:${value('sourceAdjustmentItemId')}`
     },
@@ -2826,23 +2845,34 @@ export default {
     },
     searchSpotContracts () {
       if (!this.spotProductId) return
+      const productId = this.spotProductId
+      const requestSeq = ++this.spotContractRequestSeq
       this.spotContractLoading = true
       this.$http({
         url: this.$http.adornUrl('/erp/saleorder/spot-stock/contracts'),
         method: 'get',
         params: this.$http.adornParams({
-          productId: this.spotProductId,
+          productId,
           excludeOrderId: this.dataForm.id || undefined
         })
       }).then(({ data }) => {
+        if (requestSeq !== this.spotContractRequestSeq || String(productId) !== String(this.spotProductId)) return
+        if (!data || data.code !== 0) {
+          this.spotContractList = []
+          this.$message.error((data && data.msg) || '查询可售库存失败')
+          return
+        }
         const list = data && data.code === 0 ? (data.list || []) : []
-        this.spotContractList = list.map((contract, contractIndex) => this.normalizeSpotContractRow(contract, contractIndex))
+        this.spotContractList = list.filter(Boolean).map((contract, contractIndex) => this.normalizeSpotContractRow(contract, contractIndex))
         if (!this.spotContractList.length) {
           this.$message.warning('当前产品没有可售库存')
         }
-        this.spotContractLoading = false
-      }).catch(() => {
+      }).catch((error) => {
+        if (requestSeq !== this.spotContractRequestSeq || String(productId) !== String(this.spotProductId)) return
         this.spotContractList = []
+        this.$message.error((error && error.message) || '查询可售库存失败，请检查后端服务')
+      }).finally(() => {
+        if (requestSeq !== this.spotContractRequestSeq) return
         this.spotContractLoading = false
       })
     },
