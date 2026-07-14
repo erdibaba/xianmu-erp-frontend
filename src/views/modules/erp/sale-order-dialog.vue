@@ -369,7 +369,7 @@
             size="mini"
             row-key="_rowKey"
             class="spot-contract-table">
-            <el-table-column type="expand" width="48">
+            <el-table-column type="expand" label="明细" width="70" align="center" header-align="center">
               <template slot-scope="scope">
                 <el-table
                   :ref="`spotLots_${scope.row._rowKey}`"
@@ -490,7 +490,7 @@
                 <div v-else class="empty-risk-detail">本次操作没有跳过库存明细</div>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="130"><template slot-scope="scope">{{ riskActionLabel(scope.row.actionType) }}</template></el-table-column>
+            <el-table-column label="操作" width="130" show-overflow-tooltip><template slot-scope="scope">{{ riskActionLabel(scope.row.actionType) }}</template></el-table-column>
             <el-table-column prop="operatorName" label="操作人" width="120"></el-table-column>
             <el-table-column label="操作时间" width="170"><template slot-scope="scope">{{ formatDateTime(scope.row.createTime) }}</template></el-table-column>
             <el-table-column prop="opinion" label="审核意见" min-width="180"><template slot-scope="scope">{{ scope.row.opinion || '-' }}</template></el-table-column>
