@@ -84,10 +84,13 @@
           <el-table-column prop="confirmContractNo" label="确认函合同号" width="145" show-overflow-tooltip></el-table-column>
           <el-table-column prop="productCode" label="产品编码" width="100"></el-table-column>
           <el-table-column prop="productName" label="品名" min-width="150" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="warehouseName" label="仓库" width="180" show-overflow-tooltip></el-table-column>
           <el-table-column prop="containerNo" label="柜号" width="125" show-overflow-tooltip></el-table-column>
           <el-table-column prop="factoryNo" label="厂号" width="85"></el-table-column>
           <el-table-column prop="shippedBoxes" label="出库箱数" width="85" align="right"></el-table-column>
           <el-table-column label="计费重量KG" width="115" align="right"><template slot-scope="scope">{{ weight(scope.row.feeWeight) }}</template></el-table-column>
+          <el-table-column label="仓储费率(元/吨/天)" width="155" align="right"><template slot-scope="scope">{{ amount(scope.row.storageFeeRate) }}</template></el-table-column>
+          <el-table-column prop="warehouseRateEffectiveDate" label="费率生效日" width="110"></el-table-column>
           <el-table-column label="确认函单价" width="105" align="right"><template slot-scope="scope">{{ unitPrice(scope.row.unitPriceInclTax) }}</template></el-table-column>
           <el-table-column label="结算销售单价" width="150" align="right"><template slot-scope="scope"><span>{{ unitPrice(scope.row.settlementUnitPrice) }}</span><el-popover placement="top" width="460" trigger="click"><div>{{ settlementPriceFormula(scope.row) }}</div><i slot="reference" class="el-icon-question settlement-price-icon"></i></el-popover></template></el-table-column>
           <el-table-column label="货值金额" width="110" align="right"><template slot-scope="scope">{{ amount(scope.row.costAmount) }}</template></el-table-column>
@@ -167,7 +170,7 @@
           <el-table :data="feeRuleRows" border stripe size="mini"><el-table-column prop="name" label="费用项目" width="170"></el-table-column><el-table-column prop="formula" label="计算规则/来源" min-width="760"></el-table-column></el-table>
         </el-collapse-item>
         <el-collapse-item title="By产品代入公式" name="detail">
-          <el-table :data="feeDetailRows" border stripe size="mini" max-height="420"><el-table-column prop="lineNo" label="行号" width="60" align="center"></el-table-column><el-table-column prop="confirmContractNo" label="确认函合同号" width="145"></el-table-column><el-table-column prop="productCode" label="产品编码" width="100"></el-table-column><el-table-column prop="productName" label="品名" min-width="140" show-overflow-tooltip></el-table-column><el-table-column prop="feeName" label="计算项目" width="150"></el-table-column><el-table-column label="金额" width="125" align="right"><template slot-scope="scope">{{ feeAmount(scope.row) }}</template></el-table-column><el-table-column prop="formula" label="实际代入公式" min-width="700"></el-table-column></el-table>
+          <el-table :data="feeDetailRows" border stripe size="mini" max-height="420"><el-table-column prop="lineNo" label="行号" width="60" align="center"></el-table-column><el-table-column prop="confirmContractNo" label="确认函合同号" width="145"></el-table-column><el-table-column prop="productCode" label="产品编码" width="100"></el-table-column><el-table-column prop="productName" label="品名" min-width="140" show-overflow-tooltip></el-table-column><el-table-column prop="warehouseName" label="仓库" width="180" show-overflow-tooltip></el-table-column><el-table-column prop="feeName" label="计算项目" width="150"></el-table-column><el-table-column label="金额" width="125" align="right"><template slot-scope="scope">{{ feeAmount(scope.row) }}</template></el-table-column><el-table-column prop="formula" label="实际代入公式" min-width="700"></el-table-column></el-table>
         </el-collapse-item>
       </el-collapse>
       <span slot="footer"><el-button @click="formulaDialogVisible = false">关闭</el-button></span>
@@ -299,7 +302,8 @@ export default {
           lineNo: item.lineNo,
           confirmContractNo: item.confirmContractNo,
           productCode: item.productCode,
-          productName: item.productName
+          productName: item.productName,
+          warehouseName: item.warehouseName
         }
         rows.push(Object.assign({}, base, { feeName: '结算销售单价', amount: item.settlementUnitPrice, unitPrice: true, formula: this.settlementPriceFormula(item) }))
         rows.push(Object.assign({}, base, { feeName: '货值金额', amount: item.costAmount, formula: `${this.weight(item.feeWeight)}KG × ${this.unitPrice(item.settlementUnitPrice)}元/KG = ${this.amount(item.costAmount)}` }))
@@ -575,13 +579,15 @@ export default {
     },
     storageFormula (item) {
       const days = Number(item.extraStorageDays || this.form.extraStorageDays || 0)
-      const rate = this.tonRate(item.storageFeeAmount, item.feeWeight, this.form.ruleType === 'WANXIANG' ? days : 1)
-      if (this.form.ruleType === 'WANXIANG') return `${this.weight(item.feeWeight)}KG ÷ 1000 × ${this.amount(rate)}元/吨/天 × ${days}天 = ${this.amount(item.storageFeeAmount)}`
-      return `${this.weight(item.feeWeight)}KG ÷ 1000 × ${this.amount(rate)}元/吨 = ${this.amount(item.storageFeeAmount)}`
+      const rate = Number(item.storageFeeRate || 0) || this.tonRate(item.storageFeeAmount, item.feeWeight, this.form.ruleType === 'WANXIANG' ? days : 1)
+      const rateSource = `${item.warehouseName || '未维护仓库'}${item.warehouseRateEffectiveDate ? `（费率生效日${item.warehouseRateEffectiveDate}）` : ''}`
+      if (this.form.ruleType === 'WANXIANG') return `${rateSource}：${this.weight(item.feeWeight)}KG ÷ 1000 × ${this.amount(rate)}元/吨/天 × ${days}天 = ${this.amount(item.storageFeeAmount)}`
+      return `${rateSource}：${this.weight(item.feeWeight)}KG ÷ 1000 × ${this.amount(rate)}元/吨 = ${this.amount(item.storageFeeAmount)}`
     },
     handlingFormula (item) {
-      const rate = this.tonRate(item.handlingFeeAmount, item.feeWeight, 1)
-      return `${this.weight(item.feeWeight)}KG ÷ 1000 × ${this.amount(rate)}元/吨 = ${this.amount(item.handlingFeeAmount)}（说明项，不重复计入应付）`
+      const rate = Number(item.handlingFeeRate || 0) || this.tonRate(item.handlingFeeAmount, item.feeWeight, 1)
+      const rateSource = `${item.warehouseName || '未维护仓库'}${item.warehouseRateEffectiveDate ? `（费率生效日${item.warehouseRateEffectiveDate}）` : ''}`
+      return `${rateSource}：${this.weight(item.feeWeight)}KG ÷ 1000 × ${this.amount(rate)}元/吨 = ${this.amount(item.handlingFeeAmount)}（说明项，不重复计入应付）`
     },
     codeScanFormula (item) {
       if (Number(this.form.includeCodeScanFee || 0) !== 1) return '本次不计算扫码费，金额为0。'
