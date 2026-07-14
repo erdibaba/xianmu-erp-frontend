@@ -3030,7 +3030,7 @@ export default {
         productionDate: lot.productionDate || '',
         expiryDate: lot.expiryDate || '',
         availableBoxes: Number(lot.availableBoxes || 0),
-        boxes: 1,
+        boxes: Number(lot.availableBoxes || 0),
         estimatedUnitWeightKg: this.spotCandidateUnitWeight(lot),
         _contract: contract,
         _lot: lot,
