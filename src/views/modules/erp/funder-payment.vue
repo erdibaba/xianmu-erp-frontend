@@ -223,27 +223,41 @@
               </el-input>
             </template>
           </el-table-column>
+          <el-table-column v-if="isFunderPayment" label="鲜牧是否出资" width="135">
+            <template slot-scope="scope">
+              <el-select
+                v-model="scope.row.xianmuContributionFlag"
+                style="width: 105px"
+                @change="xianmuContributionFlagChange(scope.row)">
+                <el-option label="出资" :value="1"></el-option>
+                <el-option label="不出资" :value="0"></el-option>
+              </el-select>
+            </template>
+          </el-table-column>
           <el-table-column v-if="isFunderPayment" label="鲜牧出资款凭证" width="190">
             <template slot-scope="scope">
-              <el-upload
-                action="#"
-                :show-file-list="false"
-                :http-request="request => recognizeXianmuContribution(request, scope.$index)"
-                accept=".jpg,.jpeg,.png,.jfif,.bmp,.pdf">
-                <el-button
-                  type="primary"
-                  plain
-                  size="mini"
-                  :loading="xianmuContributionLoadingIndex === scope.$index">
-                  上传并识别
-                </el-button>
-              </el-upload>
-              <div class="row-file-name">{{ scope.row.xianmuContributionFileName || '未上传' }}</div>
-              <div class="row-support-tip">支持浦发/建行/工行/兴业/农发行样本</div>
+              <template v-if="hasXianmuContribution(scope.row)">
+                <el-upload
+                  action="#"
+                  :show-file-list="false"
+                  :http-request="request => recognizeXianmuContribution(request, scope.$index)"
+                  accept=".jpg,.jpeg,.png,.jfif,.bmp,.pdf">
+                  <el-button
+                    type="primary"
+                    plain
+                    size="mini"
+                    :loading="xianmuContributionLoadingIndex === scope.$index">
+                    上传并识别
+                  </el-button>
+                </el-upload>
+                <div class="row-file-name">{{ scope.row.xianmuContributionFileName || '未上传' }}</div>
+                <div class="row-support-tip">支持浦发/建行/工行/兴业/农发行样本</div>
+              </template>
+              <span v-else class="row-support-tip">鲜牧不出资，无需上传</span>
             </template>
           </el-table-column>
           <el-table-column v-if="isFunderPayment" label="出资识别金额" width="150" align="right">
-            <template slot-scope="scope">{{ money(scope.row.xianmuContributionRecognizedAmount) }}</template>
+            <template slot-scope="scope">{{ hasXianmuContribution(scope.row) ? money(scope.row.xianmuContributionRecognizedAmount) : '-' }}</template>
           </el-table-column>
           <el-table-column v-if="isFunderPayment" label="出资确认金额" width="160">
             <template slot-scope="scope">
@@ -252,6 +266,7 @@
                 :min="0"
                 :precision="2"
                 :controls="false"
+                :disabled="!hasXianmuContribution(scope.row)"
                 style="width: 135px">
               </el-input-number>
             </template>
@@ -263,6 +278,7 @@
                 type="date"
                 value-format="yyyy-MM-dd"
                 placeholder="选择日期"
+                :disabled="!hasXianmuContribution(scope.row)"
                 style="width: 155px">
               </el-date-picker>
             </template>
@@ -460,6 +476,9 @@
         <el-table-column label="分摊打款金额" width="180" align="right">
           <template slot-scope="scope">{{ money(scope.row.allocationAmount) }}</template>
         </el-table-column>
+        <el-table-column v-if="detailData.paymentType === 1" label="鲜牧是否出资" width="120" align="center">
+          <template slot-scope="scope">{{ hasXianmuContribution(scope.row) ? '出资' : '不出资' }}</template>
+        </el-table-column>
         <el-table-column v-if="detailData.paymentType === 1" label="出资识别金额" width="150" align="right">
           <template slot-scope="scope">{{ money(scope.row.xianmuContributionRecognizedAmount) }}</template>
         </el-table-column>
@@ -619,7 +638,20 @@ export default {
         : (row ? row.allocationAmount : 0)
     },
     loanPrincipal (row) {
-      return this.roundMoney(Number(row.allocationAmount || 0) - Number(row.xianmuContributionModifiedAmount || 0))
+      const contributionAmount = this.hasXianmuContribution(row) ? Number(row.xianmuContributionModifiedAmount || 0) : 0
+      return this.roundMoney(Number(row.allocationAmount || 0) - contributionAmount)
+    },
+    hasXianmuContribution (row) {
+      return !row || row.xianmuContributionFlag === undefined || row.xianmuContributionFlag === null || Number(row.xianmuContributionFlag) !== 0
+    },
+    xianmuContributionFlagChange (row) {
+      if (this.hasXianmuContribution(row)) return
+      this.$set(row, 'xianmuContributionRecognizedAmount', 0)
+      this.$set(row, 'xianmuContributionModifiedAmount', 0)
+      this.$set(row, 'xianmuContributionDate', '')
+      this.$set(row, 'xianmuContributionFilePath', '')
+      this.$set(row, 'xianmuContributionFileName', '')
+      this.$set(row, 'xianmuContributionRawText', '')
     },
     paymentTypeName (value) {
       return Number(value || PAYMENT_TYPE_FUNDER) === PAYMENT_TYPE_XIANMU ? '鲜牧全款' : '资方全款'
@@ -760,6 +792,7 @@ export default {
           customerReference: option.customerReference || confirm.buyerPartnerName,
           orderContractAmount: this.roundMoney(confirmAmount),
           allocationAmount: this.roundMoney(confirmAmount),
+          xianmuContributionFlag: 1,
           xianmuContributionRecognizedAmount: 0,
           xianmuContributionModifiedAmount: 0,
           xianmuContributionDate: '',
@@ -1058,6 +1091,7 @@ export default {
             return
           }
           const invalidContributionIndex = (this.paymentForm.allocationList || []).findIndex(item => {
+            if (!this.hasXianmuContribution(item)) return false
             const contributionAmount = Number(item.xianmuContributionModifiedAmount || 0)
             return !item.xianmuContributionFilePath ||
               !item.xianmuContributionDate ||
@@ -1081,6 +1115,7 @@ export default {
         }
         payload.allocationList = (this.paymentForm.allocationList || []).map(item => Object.assign({}, item, {
           allocationAmount: this.roundMoney(item.allocationAmount),
+          xianmuContributionFlag: this.hasXianmuContribution(item) ? 1 : 0,
           xianmuContributionRecognizedAmount: this.roundMoney(item.xianmuContributionRecognizedAmount),
           xianmuContributionModifiedAmount: this.roundMoney(item.xianmuContributionModifiedAmount),
           xianmuDepositRecognizedAmount: this.roundMoney(item.xianmuDepositRecognizedAmount),
