@@ -426,6 +426,7 @@
         </template>
         <el-table
           v-if="isSpotSale"
+          :key="spotAllocationTableVersion"
           ref="spotAllocationTable"
           :data="dataForm.allocationItemList"
           height="300"
@@ -1697,6 +1698,7 @@ export default {
       spotContractList: [],
       spotContractRequestSeq: 0,
       spotContractTableVersion: 0,
+      spotAllocationTableVersion: 0,
       spotPricingDialogVisible: false,
       spotPricingMode: 'ADD',
       spotPricingCandidates: [],
@@ -2158,6 +2160,7 @@ export default {
       this.spotProductRequestSeq++
       this.spotContractRequestSeq++
       this.spotContractList = []
+      this.spotAllocationTableVersion++
       this.spotPricingDialogVisible = false
       this.spotPricingMode = 'ADD'
       this.spotPricingCandidates = []
@@ -3161,6 +3164,8 @@ export default {
         if (this.spotProductMatches(item, product)) item.salePriceKg = salePrice
       })
       this.distributeSpotWeight(rows, expectedWeight)
+      this.$set(this.dataForm, 'allocationItemList', (this.dataForm.allocationItemList || []).slice())
+      this.spotAllocationTableVersion++
       this.rebuildSpotProductSummary()
       this.clearSpotContractSelections()
       this.spotPricingDialogVisible = false
@@ -3203,6 +3208,8 @@ export default {
     },
     removeSpotAllocation (index) {
       this.dataForm.allocationItemList.splice(index, 1)
+      this.$set(this.dataForm, 'allocationItemList', this.dataForm.allocationItemList.slice())
+      this.spotAllocationTableVersion++
       this.rebuildSpotProductSummary()
     },
     spotAllocationBoxesChange (row) {
