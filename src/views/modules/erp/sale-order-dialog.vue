@@ -1416,7 +1416,7 @@
     <el-dialog
       :title="spotPricingMode === 'EDIT' ? '调整销售价和预计重量' : '录入销售价和预计重量'"
       :visible.sync="spotPricingDialogVisible"
-      width="560px"
+      width="960px"
       append-to-body
       custom-class="spot-pricing-dialog">
       <div class="spot-pricing-overview">
@@ -1424,6 +1424,34 @@
         <div><span>市场流通名称</span><strong>{{ spotPricingForm.marketCirculationName || spotPricingForm.productName || '-' }}</strong></div>
         <div><span>本次箱数</span><strong>{{ spotPricingForm.selectedBoxes || 0 }} 箱</strong></div>
       </div>
+      <div class="spot-pricing-table-title">本次库存批次</div>
+      <el-table :data="spotPricingDetailRows" border size="mini" max-height="300" class="spot-pricing-detail-table">
+        <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
+        <el-table-column prop="confirmContractNo" label="确认函合同号" min-width="140" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="warehouseName" label="仓库" min-width="125" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="sourceContainerNo" label="柜号" min-width="115" show-overflow-tooltip></el-table-column>
+        <el-table-column label="生产日期" width="105">
+          <template slot-scope="scope">{{ formatDateOnly(scope.row.productionDate) }}</template>
+        </el-table-column>
+        <el-table-column label="过期日期" width="105">
+          <template slot-scope="scope">{{ formatDateOnly(scope.row.expiryDate) }}</template>
+        </el-table-column>
+        <el-table-column prop="availableBoxes" label="可售箱数" width="85" align="right"></el-table-column>
+        <el-table-column label="本次销售箱数" width="125">
+          <template slot-scope="scope">
+            <el-input-number
+              v-model="scope.row.boxes"
+              :controls="false"
+              :min="1"
+              :max="scope.row.availableBoxes || 999999"
+              :precision="0"
+              size="mini"
+              style="width: 100%;"
+              @change="spotPricingBoxesChange">
+            </el-input-number>
+          </template>
+        </el-table-column>
+      </el-table>
       <el-form label-width="145px" size="small">
         <el-form-item required label="销售价（元/千克）">
           <el-input-number
@@ -1673,6 +1701,7 @@ export default {
       spotPricingMode: 'ADD',
       spotPricingCandidates: [],
       spotPricingRows: [],
+      spotPricingDetailRows: [],
       spotPricingForm: {
         productId: '',
         productCode: '',
@@ -2133,6 +2162,7 @@ export default {
       this.spotPricingMode = 'ADD'
       this.spotPricingCandidates = []
       this.spotPricingRows = []
+      this.spotPricingDetailRows = []
       this.spotSummaryDialogVisible = false
       this.dataForm = this.defaultForm()
       this.detailLoading = true
@@ -2993,10 +3023,24 @@ export default {
         return
       }
       const first = selectable[0].lot || {}
-      const expectedWeight = selectable.reduce((sum, item) => sum + this.spotCandidateUnitWeight(item.lot), 0)
+      const detailRows = selectable.map(({ contract, lot }) => ({
+        confirmContractNo: lot.confirmContractNo || contract.confirmContractNo || '',
+        warehouseName: lot.warehouseName || '',
+        sourceContainerNo: lot.sourceContainerNo || contract.containerNo || '',
+        productionDate: lot.productionDate || '',
+        expiryDate: lot.expiryDate || '',
+        availableBoxes: Number(lot.availableBoxes || 0),
+        boxes: 1,
+        estimatedUnitWeightKg: this.spotCandidateUnitWeight(lot),
+        _contract: contract,
+        _lot: lot,
+        _allocationRow: null
+      }))
+      const expectedWeight = detailRows.reduce((sum, item) => sum + Number(item.estimatedUnitWeightKg || 0) * Number(item.boxes || 0), 0)
       this.spotPricingMode = 'ADD'
       this.spotPricingCandidates = selectable
       this.spotPricingRows = []
+      this.spotPricingDetailRows = detailRows
       this.spotPricingForm = {
         productId: first.productId,
         productCode: first.productCode,
@@ -3004,7 +3048,7 @@ export default {
         marketCirculationName: first.marketCirculationName,
         salePriceKg: this.existingSpotSalePrice(first),
         expectedWeightKg: Number(expectedWeight.toFixed(2)),
-        selectedBoxes: selectable.length
+        selectedBoxes: detailRows.reduce((sum, item) => sum + Number(item.boxes || 0), 0)
       }
       this.spotPricingDialogVisible = true
     },
@@ -3014,6 +3058,19 @@ export default {
       this.spotPricingMode = 'EDIT'
       this.spotPricingCandidates = []
       this.spotPricingRows = rows
+      this.spotPricingDetailRows = rows.map(item => ({
+        confirmContractNo: item.confirmContractNo || '',
+        warehouseName: item.warehouseName || '',
+        sourceContainerNo: item.sourceContainerNo || '',
+        productionDate: item.productionDate || '',
+        expiryDate: item.expiryDate || '',
+        availableBoxes: Number(item.availableBoxes || item.boxes || 0),
+        boxes: Number(item.boxes || 0),
+        estimatedUnitWeightKg: Number(item.estimatedUnitWeightKg || 0),
+        _contract: null,
+        _lot: null,
+        _allocationRow: item
+      }))
       this.spotPricingForm = {
         productId: row.productId,
         productCode: row.productCode,
@@ -3024,6 +3081,14 @@ export default {
         selectedBoxes: rows.reduce((sum, item) => sum + Number(item.boxes || 0), 0)
       }
       this.spotPricingDialogVisible = true
+    },
+    spotPricingBoxesChange () {
+      const detailRows = this.spotPricingDetailRows || []
+      this.spotPricingForm.selectedBoxes = detailRows.reduce((sum, item) => sum + Number(item.boxes || 0), 0)
+      const expectedWeight = detailRows.reduce((sum, item) => {
+        return sum + Number(item.estimatedUnitWeightKg || 0) * Number(item.boxes || 0)
+      }, 0)
+      this.spotPricingForm.expectedWeightKg = Number(expectedWeight.toFixed(2))
     },
     distributeSpotWeight (rows, totalWeight) {
       const totalCents = Math.round(Number(totalWeight || 0) * 100)
@@ -3040,6 +3105,23 @@ export default {
     confirmSpotPricing () {
       const salePrice = Number(this.spotPricingForm.salePriceKg || 0)
       const expectedWeight = Number(this.spotPricingForm.expectedWeightKg || 0)
+      const detailRows = this.spotPricingDetailRows || []
+      if (!detailRows.length) {
+        this.$message.error('本次库存批次不能为空')
+        return
+      }
+      for (let index = 0; index < detailRows.length; index++) {
+        const detail = detailRows[index]
+        const boxes = Number(detail.boxes || 0)
+        if (!Number.isInteger(boxes) || boxes <= 0) {
+          this.$message.error(`第${index + 1}行本次销售箱数必须为大于0的整数`)
+          return
+        }
+        if (Number(detail.availableBoxes || 0) > 0 && boxes > Number(detail.availableBoxes)) {
+          this.$message.error(`第${index + 1}行本次销售箱数不能超过可售箱数${detail.availableBoxes}`)
+          return
+        }
+      }
       if (salePrice <= 0) {
         this.$message.error('销售价必须大于0')
         return
@@ -3048,9 +3130,7 @@ export default {
         this.$message.error('预计重量必须大于0')
         return
       }
-      const targetCount = this.spotPricingMode === 'ADD'
-        ? (this.spotPricingCandidates || []).filter(({ lot }) => this.spotLotSelectable(lot)).length
-        : (this.spotPricingRows || []).length
+      const targetCount = detailRows.length
       if (targetCount > 0 && expectedWeight < targetCount / 100) {
         this.$message.error(`预计重量不能小于${(targetCount / 100).toFixed(2)}KG`)
         return
@@ -3058,9 +3138,17 @@ export default {
       let rows = this.spotPricingRows || []
       if (this.spotPricingMode === 'ADD') {
         rows = []
-        ;(this.spotPricingCandidates || []).forEach(({ contract, lot }) => {
-          const added = this.appendSpotLot(contract, lot)
-          if (added) rows.push(added)
+        detailRows.forEach(detail => {
+          const added = this.appendSpotLot(detail._contract, detail._lot)
+          if (added) {
+            added.boxes = Number(detail.boxes || 0)
+            rows.push(added)
+          }
+        })
+      } else {
+        rows = detailRows.map(detail => {
+          detail._allocationRow.boxes = Number(detail.boxes || 0)
+          return detail._allocationRow
         })
       }
       if (!rows.length) {
@@ -4081,6 +4169,16 @@ export default {
   margin-top: 6px;
   color: #8492a6;
   font-size: 12px;
+}
+
+.spot-pricing-table-title {
+  margin-bottom: 8px;
+  color: #26384a;
+  font-weight: 600;
+}
+
+.spot-pricing-detail-table {
+  margin-bottom: 18px;
 }
 
 .spot-search-bar {
