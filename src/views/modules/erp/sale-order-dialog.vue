@@ -359,6 +359,8 @@
           </div>
 
           <el-table
+            v-if="spotContractList.length"
+            :key="spotContractTableVersion"
             ref="spotContractTable"
             v-loading="spotContractLoading"
             :data="spotContractList"
@@ -393,16 +395,16 @@
                 </el-table>
               </template>
             </el-table-column>
-            <el-table-column prop="confirmContractNo" label="确认函合同号" min-width="145"></el-table-column>
+            <el-table-column label="确认函合同号" min-width="145"><template slot-scope="scope">{{ scope.row.confirmContractNo || '-' }}</template></el-table-column>
             <el-table-column label="预计到港" width="115"><template slot-scope="scope">{{ formatDateOnly(scope.row.expectedArrivalDate) }}</template></el-table-column>
-            <el-table-column prop="productCode" label="产品编码" width="105"></el-table-column>
-            <el-table-column prop="marketCirculationName" label="市场流通名称" min-width="160"></el-table-column>
-            <el-table-column prop="containerNo" label="柜号" min-width="125"></el-table-column>
-            <el-table-column prop="factoryNos" label="厂号" min-width="110" show-overflow-tooltip></el-table-column>
-            <el-table-column prop="warehouseNames" label="仓库" min-width="140" show-overflow-tooltip></el-table-column>
-            <el-table-column prop="ownershipNames" label="货权" min-width="130" show-overflow-tooltip></el-table-column>
-            <el-table-column prop="availableBoxes" label="可售箱数" width="90" align="right"></el-table-column>
-            <el-table-column prop="availableWeightKg" label="可售重量KG" width="120" align="right"></el-table-column>
+            <el-table-column label="产品编码" width="105"><template slot-scope="scope">{{ scope.row.productCode || '-' }}</template></el-table-column>
+            <el-table-column label="市场流通名称" min-width="160"><template slot-scope="scope">{{ scope.row.marketCirculationName || scope.row.productName || '-' }}</template></el-table-column>
+            <el-table-column label="柜号" min-width="125"><template slot-scope="scope">{{ scope.row.containerNo || '-' }}</template></el-table-column>
+            <el-table-column label="厂号" min-width="110" show-overflow-tooltip><template slot-scope="scope">{{ scope.row.factoryNos || '-' }}</template></el-table-column>
+            <el-table-column label="仓库" min-width="140" show-overflow-tooltip><template slot-scope="scope">{{ scope.row.warehouseNames || '-' }}</template></el-table-column>
+            <el-table-column label="货权" min-width="130" show-overflow-tooltip><template slot-scope="scope">{{ scope.row.ownershipNames || '-' }}</template></el-table-column>
+            <el-table-column label="可售箱数" width="90" align="right"><template slot-scope="scope">{{ scope.row.availableBoxes }}</template></el-table-column>
+            <el-table-column label="可售重量KG" width="120" align="right"><template slot-scope="scope">{{ scope.row.availableWeightKg }}</template></el-table-column>
             <el-table-column v-if="!contentReadonly" label="选择合同" width="125" fixed="right" align="center">
               <template slot-scope="scope">
                 <el-button
@@ -1630,6 +1632,7 @@ export default {
       spotContractLoading: false,
       spotContractList: [],
       spotContractRequestSeq: 0,
+      spotContractTableVersion: 0,
       presaleOrderOptions: [],
       presaleOrderKeyword: '',
       presaleOrderLoading: false,
@@ -2867,6 +2870,7 @@ export default {
         }
         const list = data && data.code === 0 ? (data.list || []) : []
         this.spotContractList = list.filter(Boolean).map((contract, contractIndex) => this.normalizeSpotContractRow(contract, contractIndex))
+        this.spotContractTableVersion++
         if (!this.spotContractList.length) {
           this.$message.warning('当前产品没有可售库存')
         }
