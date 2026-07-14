@@ -1856,6 +1856,13 @@ export default {
       }
       return `销售单箱数${saleBoxes}箱，所有出库批次实际箱数${shippedBoxes}箱，请核对`
     },
+    spotAllocationSummaryKey () {
+      if (!this.isSpotSale) return ''
+      return (this.dataForm.allocationItemList || []).map(item => {
+        const productKey = item.productId ? `id:${item.productId}` : `code:${item.productCode || ''}`
+        return `${item._sourceKey || this.saleStockSourceKey(item)}|${productKey}|${Number(item.boxes || 0)}`
+      }).join('||')
+    },
     canConfirmOutboundBatch () {
       const batch = this.currentOutboundBatch
       if (!batch || !this.currentOutboundBatchEditable) return false
@@ -1863,6 +1870,12 @@ export default {
       const hasReceipt = !!(receipt && receipt.itemList && receipt.itemList.length)
       const hasBankSlip = !!batch.bankSlipFileId || !!batch.bankSlipFile
       return hasReceipt && hasBankSlip && this.currentOutboundHasReceiptFile
+    }
+  },
+  watch: {
+    spotAllocationSummaryKey (value, oldValue) {
+      if (value === oldValue || !this.isSpotSale) return
+      this.$nextTick(() => this.rebuildSpotProductSummary())
     }
   },
   methods: {
@@ -2920,14 +2933,17 @@ export default {
     },
     rebuildSpotProductSummary () {
       const previous = {}
-      ;(this.dataForm.itemList || []).forEach(item => { previous[String(item.productId)] = item })
+      ;(this.dataForm.itemList || []).forEach(item => {
+        const key = item.productId ? `id:${item.productId}` : `code:${item.productCode || ''}`
+        previous[key] = item
+      })
       const grouped = {}
       ;(this.dataForm.allocationItemList || []).forEach(allocation => {
-        const key = String(allocation.productId)
+        const key = allocation.productId ? `id:${allocation.productId}` : `code:${allocation.productCode || ''}`
         if (!grouped[key]) grouped[key] = []
         grouped[key].push(allocation)
       })
-      this.dataForm.itemList = Object.keys(grouped).map(key => {
+      const summaryList = Object.keys(grouped).map(key => {
         const allocations = grouped[key]
         const first = allocations[0]
         const old = previous[key] || {}
@@ -2948,6 +2964,14 @@ export default {
         })
         allocations.forEach(item => { item.salePriceKg = row.salePriceKg })
         return row
+      })
+      if (!Array.isArray(this.dataForm.itemList)) {
+        this.$set(this.dataForm, 'itemList', [])
+      }
+      this.dataForm.itemList.splice(0, this.dataForm.itemList.length, ...summaryList)
+      this.$nextTick(() => {
+        const table = this.$refs.spotProductSummaryTable
+        if (table && table.doLayout) table.doLayout()
       })
     },
     redistributeSpotProductWeight (productId) {
