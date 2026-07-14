@@ -42,20 +42,20 @@
       </el-form-item>
     </el-form>
 
-    <el-table :data="dataList" border stripe v-loading="dataListLoading" style="margin-top: 15px;">
-      <el-table-column prop="orderNo" label="销售单号" min-width="150"></el-table-column>
-      <el-table-column label="类型" width="100" align="center">
+    <el-table :data="dataList" border stripe v-loading="dataListLoading" class="sale-order-table" style="margin-top: 15px;">
+      <el-table-column prop="orderNo" label="销售单号" min-width="150" show-overflow-tooltip></el-table-column>
+      <el-table-column label="类型" width="100" align="center" show-overflow-tooltip>
         <template slot-scope="scope">{{ getSaleTypeLabel(scope.row.saleType) }}</template>
       </el-table-column>
-      <el-table-column prop="secondaryPartnerName" label="二批商" min-width="180"></el-table-column>
-      <el-table-column prop="salespersonName" label="销售" min-width="130">
+      <el-table-column prop="secondaryPartnerName" label="二批商" min-width="180" show-overflow-tooltip></el-table-column>
+      <el-table-column prop="salespersonName" label="销售" min-width="130" show-overflow-tooltip>
         <template slot-scope="scope">{{ scope.row.salespersonName || '-' }}</template>
       </el-table-column>
-      <el-table-column prop="warehouseName" label="仓库" min-width="160"></el-table-column>
-      <el-table-column label="关联预销售单" min-width="170">
+      <el-table-column prop="warehouseName" label="仓库" min-width="160" show-overflow-tooltip></el-table-column>
+      <el-table-column label="关联预销售单" min-width="170" show-overflow-tooltip>
         <template slot-scope="scope">{{ scope.row.sourcePresaleOrderNo || '-' }}</template>
       </el-table-column>
-      <el-table-column label="预售关联状态" width="120" align="center">
+      <el-table-column label="预售关联状态" width="120" align="center" show-overflow-tooltip>
         <template slot-scope="scope">
           <el-tag v-if="scope.row.saleType === 'FUTURES'" size="small" :type="Number(scope.row.presaleLinkConfirmed || 0) === 1 ? 'success' : 'warning'">
             {{ Number(scope.row.presaleLinkConfirmed || 0) === 1 ? '已确认' : '未确认' }}
@@ -63,12 +63,12 @@
           <span v-else>-</span>
         </template>
       </el-table-column>
-      <el-table-column label="流程状态" min-width="180" align="center">
+      <el-table-column label="流程状态" min-width="180" align="center" show-overflow-tooltip>
         <template slot-scope="scope">
           <el-tag size="small" :type="getStatusType(scope.row.status)">{{ getStatusLabel(scope.row.status) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="库存分配/风控" min-width="160" align="center">
+      <el-table-column label="库存分配/风控" min-width="160" align="center" show-overflow-tooltip>
         <template slot-scope="scope">
           <el-tooltip v-if="scope.row.riskReason" :content="scope.row.riskReason" placement="top">
             <el-tag size="small" :type="allocationStatusType(scope.row)">{{ allocationStatusLabel(scope.row) }}</el-tag>
@@ -76,14 +76,14 @@
           <el-tag v-else size="small" :type="allocationStatusType(scope.row)">{{ allocationStatusLabel(scope.row) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="收款方式" width="120" align="center">
+      <el-table-column label="收款方式" width="120" align="center" show-overflow-tooltip>
         <template slot-scope="scope">
           <el-tag size="small" :type="Number(scope.row.paymentMode || 1) === 2 ? 'success' : 'info'">
             {{ Number(scope.row.paymentMode || 1) === 2 ? '全款付款' : '分批付款' }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="全款水单" width="120" align="center">
+      <el-table-column label="全款水单" width="120" align="center" show-overflow-tooltip>
         <template slot-scope="scope">
           <span v-if="Number(scope.row.paymentMode || 1) !== 2">-</span>
           <el-tag v-else size="small" :type="Number(scope.row.fullPaymentUploaded || 0) === 1 ? 'success' : 'warning'">
@@ -91,7 +91,7 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="合同页面" min-width="180">
+      <el-table-column label="合同页面" width="250" show-overflow-tooltip>
         <template slot-scope="scope">
           <el-button
             v-if="scope.row.contractUrl"
@@ -117,7 +117,7 @@
           <span v-else>-</span>
         </template>
       </el-table-column>
-      <el-table-column label="上传通知" width="130" align="center">
+      <el-table-column label="上传通知" width="130" align="center" show-overflow-tooltip>
         <template slot-scope="scope">
           <el-tooltip
             v-if="Number(scope.row.uploadNoticeStatus || 0) === 9 && scope.row.uploadNoticeErrorMessage"
@@ -130,7 +130,7 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column fixed="right" label="操作" width="220" align="center">
+      <el-table-column fixed="right" label="操作" width="220" align="center" class-name="operation-column">
         <template slot-scope="scope">
           <div class="action-wrap">
             <el-button
@@ -696,6 +696,18 @@ export default {
 </script>
 
 <style scoped>
+.sale-order-table /deep/ .el-table__header .cell,
+.sale-order-table /deep/ .el-table__body .cell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sale-order-table /deep/ .operation-column .cell {
+  overflow: visible;
+  white-space: normal;
+}
+
 .action-wrap {
   display: flex;
   flex-wrap: wrap;
