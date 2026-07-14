@@ -369,7 +369,7 @@
             size="mini"
             row-key="_rowKey"
             class="spot-contract-table">
-            <el-table-column type="expand" label="明细" width="70" align="center" header-align="center">
+            <el-table-column type="expand" width="48">
               <template slot-scope="scope">
                 <el-table
                   :ref="`spotLots_${scope.row._rowKey}`"
@@ -476,20 +476,6 @@
         <template v-if="dataForm.id && (dataForm.riskAuditList || []).length">
           <div class="sub-title"><span>货物风控记录</span><span class="sub-title-tip">记录非先进先出判断、审核意见及被跳过的更早确认函库存</span></div>
           <el-table :data="dataForm.riskAuditList" border size="mini" row-key="id" class="risk-audit-table">
-            <el-table-column type="expand" width="48">
-              <template slot-scope="scope">
-                <el-table v-if="(scope.row.detailList || []).length" :data="scope.row.detailList" border size="mini">
-                  <el-table-column prop="productCode" label="产品编码" width="110"></el-table-column>
-                  <el-table-column prop="productName" label="产品名称" min-width="160"></el-table-column>
-                  <el-table-column prop="selectedContractNo" label="已选确认函" min-width="145"></el-table-column>
-                  <el-table-column label="已选预计到港" width="120"><template slot-scope="detailScope">{{ formatDateOnly(detailScope.row.selectedExpectedArrivalDate) }}</template></el-table-column>
-                  <el-table-column prop="skippedContractNo" label="被跳过更早确认函" min-width="160"></el-table-column>
-                  <el-table-column label="更早预计到港" width="120"><template slot-scope="detailScope">{{ formatDateOnly(detailScope.row.skippedExpectedArrivalDate) }}</template></el-table-column>
-                  <el-table-column prop="skippedAvailableBoxes" label="剩余可售箱数" width="110" align="right"></el-table-column>
-                </el-table>
-                <div v-else class="empty-risk-detail">本次操作没有跳过库存明细</div>
-              </template>
-            </el-table-column>
             <el-table-column label="操作" width="130" show-overflow-tooltip><template slot-scope="scope">{{ riskActionLabel(scope.row.actionType) }}</template></el-table-column>
             <el-table-column prop="operatorName" label="操作人" width="120"></el-table-column>
             <el-table-column label="操作时间" width="170"><template slot-scope="scope">{{ formatDateTime(scope.row.createTime) }}</template></el-table-column>
@@ -4212,17 +4198,6 @@ export default {
   margin-right: 6px;
   color: #e23b3b;
   font-weight: 600;
-}
-
-.risk-audit-table /deep/ .el-table__expanded-cell {
-  padding: 12px 16px;
-  background: #f8fafc;
-}
-
-.empty-risk-detail {
-  padding: 18px;
-  text-align: center;
-  color: #909399;
 }
 
 .outbound-receipt-pane {
