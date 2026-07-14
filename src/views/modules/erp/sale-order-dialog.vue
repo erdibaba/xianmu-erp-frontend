@@ -426,7 +426,9 @@
         </template>
         <el-table
           v-if="isSpotSale"
+          ref="spotAllocationTable"
           :data="dataForm.allocationItemList"
+          height="300"
           border
           size="mini"
           class="allocation-table">
@@ -3014,8 +3016,10 @@ export default {
       }
       this.dataForm.itemList.splice(0, this.dataForm.itemList.length, ...summaryList)
       this.$nextTick(() => {
-        const table = this.$refs.spotProductSummaryTable
-        if (table && table.doLayout) table.doLayout()
+        const summaryTable = this.$refs.spotProductSummaryTable
+        const allocationTable = this.$refs.spotAllocationTable
+        if (summaryTable && summaryTable.doLayout) summaryTable.doLayout()
+        if (allocationTable && allocationTable.doLayout) allocationTable.doLayout()
       })
     },
     redistributeSpotProductWeight (productId) {
@@ -3876,10 +3880,13 @@ export default {
   overflow-y: auto;
 }
 
-.allocation-table /deep/ .el-table__body-wrapper,
 .attachment-table /deep/ .el-table__body-wrapper {
   max-height: 220px;
   overflow-y: auto;
+}
+
+.allocation-table {
+  margin-bottom: 12px;
 }
 
 .attachment-toolbar {
