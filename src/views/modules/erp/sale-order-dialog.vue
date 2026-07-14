@@ -6,7 +6,7 @@
     width="96%"
     top="3vh"
     custom-class="sale-order-dialog-modal">
-    <div class="sale-order-dialog" v-loading.fullscreen.lock="dialogLoading">
+    <div ref="saleOrderScroll" class="sale-order-dialog" v-loading.fullscreen.lock="dialogLoading">
       <el-form
         ref="dataForm"
         :model="dataForm"
@@ -468,7 +468,7 @@
           <el-table-column v-if="!contentReadonly" label="操作" width="70" fixed="right"><template slot-scope="scope"><el-button type="text" size="small" @click="removeSpotAllocation(scope.$index)">移除</el-button></template></el-table-column>
         </el-table>
 
-        <template v-if="isSpotSale">
+        <div v-if="isSpotSale" ref="spotProductSummarySection" class="spot-product-summary-section">
           <el-alert
             v-if="(dataForm.allocationItemList || []).length && !contentReadonly"
             title="下一步：请在下方By产品销售汇总中，为每个产品填写大于0的销售价，并确认总重量后再保存。"
@@ -490,7 +490,7 @@
             </el-table-column>
             <el-table-column prop="remark" label="备注" min-width="150"><template slot-scope="scope"><el-input v-model="scope.row.remark" :disabled="contentReadonly" size="mini"></el-input></template></el-table-column>
           </el-table>
-        </template>
+        </div>
 
         <template v-if="dataForm.id && (dataForm.riskAuditList || []).length">
           <div class="sub-title"><span>货物风控记录</span><span class="sub-title-tip">记录非先进先出判断、审核意见及被跳过的更早确认函库存</span></div>
@@ -2908,9 +2908,13 @@ export default {
         return
       }
       this.$nextTick(() => {
-        const table = this.$refs.spotProductSummaryTable
-        if (table && table.$el) {
-          table.$el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        const container = this.$refs.saleOrderScroll
+        const section = this.$refs.spotProductSummarySection
+        if (container && section) {
+          container.scrollTo({
+            top: Math.max(0, section.offsetTop - 12),
+            behavior: 'smooth'
+          })
         }
       })
     },
@@ -3792,11 +3796,13 @@ export default {
 
 <style scoped>
 .sale-order-dialog {
-  height: calc(100vh - 180px);
-  max-height: calc(100vh - 180px);
+  box-sizing: border-box;
+  height: calc(94vh - 180px);
+  max-height: calc(94vh - 180px);
   overflow-y: auto;
   overflow-x: hidden;
-  padding-right: 8px;
+  padding: 0 8px 28px 0;
+  overscroll-behavior: contain;
 }
 
 .sale-order-dialog /deep/ .el-form-item {
@@ -3850,6 +3856,11 @@ export default {
 
 .spot-pricing-alert {
   margin-top: 12px;
+}
+
+.spot-product-summary-section {
+  scroll-margin-top: 12px;
+  padding-bottom: 8px;
 }
 
 .required-mark {
