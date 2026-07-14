@@ -318,7 +318,7 @@
 
         <template v-if="isSpotSale">
           <el-alert
-            title="现货录单顺序：1. 查询产品  2. 选择单个库存批次或整份合同  3. 在By产品销售汇总填写销售价并确认重量  4. 保存销售单"
+            title="现货录单顺序：1. 查询产品  2. 选择该产品所在合同或具体批次  3. 在By产品销售汇总填写销售价并确认重量  4. 保存销售单"
             type="info"
             :closable="false"
             show-icon
@@ -399,21 +399,23 @@
             <el-table-column prop="ownershipNames" label="货权" min-width="130" show-overflow-tooltip></el-table-column>
             <el-table-column prop="availableBoxes" label="可售箱数" width="90" align="right"></el-table-column>
             <el-table-column prop="availableWeightKg" label="可售重量KG" width="120" align="right"></el-table-column>
-            <el-table-column v-if="!contentReadonly" label="整份合同" width="125" fixed="right" align="center">
+            <el-table-column v-if="!contentReadonly" label="选择合同" width="125" fixed="right" align="center">
               <template slot-scope="scope">
                 <el-button
                   type="primary"
                   plain
                   size="mini"
-                  :loading="Boolean(scope.row._wholeContractLoading)"
-                  @click="addWholeContractStock(scope.row)">全部带入</el-button>
+                  @click="addSearchedProductStock(scope.row)">加入该产品</el-button>
               </template>
             </el-table-column>
           </el-table>
 
           <div class="sub-title">
             <span>已选库存明细</span>
-            <span class="sub-title-tip">销售箱数必填，预计重量按当前批次可售重量/可售箱数自动计算</span>
+            <div class="sub-title-actions">
+              <span class="sub-title-tip">销售箱数必填，预计重量按当前批次可售重量/可售箱数自动计算</span>
+              <el-button v-if="(dataForm.allocationItemList || []).length" type="warning" plain size="mini" @click="goToSpotProductSummary">下一步：填写销售价</el-button>
+            </div>
           </div>
         </template>
         <el-table
@@ -2802,7 +2804,6 @@ export default {
       const row = Object.assign({}, contract)
       row._rowKey = `${contract.confirmId || contract.confirmContractNo || contractIndex}:${contract.productId}`
       row._selectedLots = []
-      row._wholeContractLoading = false
       row.lotList = (contract.lotList || []).map(lot => {
         const detail = Object.assign({}, lot)
         detail._sourceKey = this.saleStockSourceKey(detail)
@@ -2877,38 +2878,27 @@ export default {
       this.rebuildSpotProductSummary()
       this.clearSpotContractSelections()
     },
-    addWholeContractStock (contract) {
-      if (!contract || (!contract.confirmId && !contract.confirmContractNo)) {
-        this.$message.warning('当前库存没有关联确认函合同，无法整份带入')
+    addSearchedProductStock (contract) {
+      const lots = (contract && contract.lotList ? contract.lotList : []).filter(lot => this.spotLotSelectable(lot))
+      if (!lots.length) {
+        this.$message.warning('该合同下当前搜索产品的库存批次已全部加入')
         return
       }
-      this.$set(contract, '_wholeContractLoading', true)
-      this.$http({
-        url: this.$http.adornUrl('/erp/saleorder/spot-stock/contract-products'),
-        method: 'get',
-        params: this.$http.adornParams({
-          confirmId: contract.confirmId || undefined,
-          confirmContractNo: contract.confirmContractNo || undefined,
-          excludeOrderId: this.dataForm.id || undefined
-        })
-      }).then(({ data }) => {
-        const list = data && data.code === 0 ? (data.list || []) : []
-        list.forEach((item, index) => {
-          const contractRow = this.normalizeSpotContractRow(item, index)
-          ;(contractRow.lotList || []).forEach(lot => {
-            this.appendSpotLot(contractRow, lot)
-          })
-        })
-        this.rebuildSpotProductSummary()
-        this.clearSpotContractSelections()
-        if (!list.length) {
-          this.$message.warning('该确认函合同当前没有可售库存')
-        } else {
-          this.$message.success(`已带入合同 ${contract.confirmContractNo || ''} 的全部可售产品，请继续填写By产品销售价`)
+      lots.forEach(lot => this.appendSpotLot(contract, lot))
+      this.rebuildSpotProductSummary()
+      this.clearSpotContractSelections()
+      this.$message.success(`已加入合同 ${contract.confirmContractNo || ''} 下当前搜索的产品 ${contract.productCode || ''}`)
+    },
+    goToSpotProductSummary () {
+      if (!(this.dataForm.itemList || []).length) {
+        this.$message.warning('请先选择并加入库存产品')
+        return
+      }
+      this.$nextTick(() => {
+        const table = this.$refs.spotProductSummaryTable
+        if (table && table.$el) {
+          table.$el.scrollIntoView({ behavior: 'smooth', block: 'center' })
         }
-        this.$set(contract, '_wholeContractLoading', false)
-      }).catch(() => {
-        this.$set(contract, '_wholeContractLoading', false)
       })
     },
     clearSpotContractSelections () {
