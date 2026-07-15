@@ -51,8 +51,8 @@
       <el-form ref="financeForm" :model="financeForm" :rules="financeRules" label-width="120px">
         <el-row :gutter="18">
           <el-col :span="12">
-            <el-form-item label="确认函合同" prop="confirmId">
-              <el-select v-model="financeForm.confirmId" filterable remote clearable :remote-method="searchContracts" :loading="contractLoading" placeholder="输入合同号、柜号或采购方搜索" style="width:100%" @change="confirmChange">
+            <el-form-item label="确认函合同">
+              <el-select v-model="selectedConfirmIds" multiple collapse-tags filterable remote clearable :remote-method="searchContracts" :loading="contractLoading" placeholder="可搜索并选择多个合同" style="width:100%" @change="contractsChange">
                 <el-option v-for="item in contractOptions" :key="item.id" :value="item.id" :label="contractLabel(item)"></el-option>
               </el-select>
             </el-form-item>
@@ -70,7 +70,7 @@
             <el-form-item label="来款日期" prop="paymentDate"><el-date-picker v-model="financeForm.paymentDate" type="date" value-format="yyyy-MM-dd" style="width:100%"></el-date-picker></el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="确认融资本金" prop="modifiedAmount"><el-input-number v-model="financeForm.modifiedAmount" :min="0" :precision="2" :controls="false" style="width:100%"></el-input-number></el-form-item>
+            <el-form-item label="确认融资本金" prop="modifiedAmount"><el-input-number v-model="financeForm.modifiedAmount" :min="0" :precision="2" :controls="false" style="width:100%" @change="financingAmountChange"></el-input-number></el-form-item>
           </el-col>
           <el-col :span="24">
             <el-form-item label="资方来款水单" prop="filePath">
@@ -83,14 +83,30 @@
           </el-col>
         </el-row>
 
+        <div class="section-head allocation-head">
+          <strong>合同融资本金分摊</strong>
+          <span>分摊合计 {{ money(allocationTotal) }}，差额 {{ money(allocationDiff) }}</span>
+        </div>
+        <el-table :data="contractAllocations" border size="small" max-height="220" empty-text="请先选择确认函合同">
+          <el-table-column prop="confirmContractNo" label="确认函合同号" min-width="180"></el-table-column>
+          <el-table-column label="所选库存参考货值" width="180" align="right"><template slot-scope="scope">{{ money(scope.row.referenceStockValue) }}</template></el-table-column>
+          <el-table-column label="分摊融资本金" width="210">
+            <template slot-scope="scope"><el-input-number v-model="scope.row.allocatedPrincipal" :min="0" :precision="2" :controls="false" size="small" style="width:175px" @change="allocationChange(scope.$index)"></el-input-number></template>
+          </el-table-column>
+          <el-table-column label="货值核对" width="120" align="center">
+            <template slot-scope="scope"><el-tag :type="Number(scope.row.allocatedPrincipal || 0) > Number(scope.row.referenceStockValue || 0) ? 'danger' : 'success'" size="small">{{ Number(scope.row.allocatedPrincipal || 0) > Number(scope.row.referenceStockValue || 0) ? '超过参考' : '未超过' }}</el-tag></template>
+          </el-table-column>
+        </el-table>
+
         <div class="section-head">
           <strong>选择融资库存</strong>
           <el-input v-model="candidateKeyword" clearable size="small" placeholder="产品编码/市场流通名称" style="width:240px" @keyup.enter.native="loadCandidates"></el-input>
           <el-button size="small" type="primary" @click="loadCandidates">查询库存</el-button>
           <span>已选 {{ selectedRows.length }} 条，{{ selectedBoxes }} 箱，参考货值 {{ money(selectedReferenceAmount) }}</span>
         </div>
-        <el-table ref="candidateTable" :data="candidateList" border height="330" v-loading="candidateLoading" @selection-change="selectionChange">
-          <el-table-column type="selection" width="46" :selectable="rowSelectable"></el-table-column>
+        <el-table ref="candidateTable" :data="candidateList" :row-key="candidateRowKey" border height="330" v-loading="candidateLoading" @selection-change="selectionChange">
+          <el-table-column type="selection" width="46" reserve-selection :selectable="rowSelectable"></el-table-column>
+          <el-table-column prop="confirmContractNo" label="确认函合同号" width="145" show-overflow-tooltip></el-table-column>
           <el-table-column prop="productCode" label="产品编码" width="105"></el-table-column>
           <el-table-column prop="marketCirculationName" label="市场流通名称" min-width="170" show-overflow-tooltip>
             <template slot-scope="scope">{{ scope.row.marketCirculationName || scope.row.productName || '-' }}</template>
@@ -104,7 +120,7 @@
           <el-table-column prop="saleLockedBoxes" label="销售锁定箱数" width="120" align="right"></el-table-column>
           <el-table-column prop="availableBoxes" label="可融资箱数" width="105" align="right"></el-table-column>
           <el-table-column label="本次融资箱数" width="145">
-            <template slot-scope="scope"><el-input-number v-model="scope.row.financingBoxes" :min="1" :max="scope.row.availableBoxes" :precision="0" :controls="false" size="small" style="width:115px"></el-input-number></template>
+            <template slot-scope="scope"><el-input-number v-model="scope.row.financingBoxes" :min="1" :max="scope.row.availableBoxes" :precision="0" :controls="false" size="small" style="width:115px" @change="financingBoxesChange"></el-input-number></template>
           </el-table-column>
           <el-table-column label="预计重量KG" width="125" align="right"><template slot-scope="scope">{{ quantity(rowWeight(scope.row)) }}</template></el-table-column>
           <el-table-column label="含税采购单价" width="125" align="right"><template slot-scope="scope">{{ price(scope.row.purchaseUnitPrice) }}</template></el-table-column>
@@ -128,8 +144,18 @@
         <el-descriptions-item label="贷款编号">{{ detailData.loanNo || '-' }}</el-descriptions-item>
       </el-descriptions>
       <el-alert v-if="detailData.overReferenceFlag === 1" title="确认融资本金超过所选库存采购货值，确认时已按业务要求允许通过。" type="error" :closable="false" style="margin:16px 0"></el-alert>
+      <el-table :data="detailData.contractList || []" border size="small" max-height="220" style="margin-top:16px">
+        <el-table-column prop="lineNo" label="序号" width="60" align="center"></el-table-column>
+        <el-table-column prop="confirmContractNo" label="确认函合同号" min-width="170"></el-table-column>
+        <el-table-column label="参考货值" width="140" align="right"><template slot-scope="scope">{{ money(scope.row.referenceStockValue) }}</template></el-table-column>
+        <el-table-column label="分摊本金" width="140" align="right"><template slot-scope="scope">{{ money(scope.row.allocatedPrincipal) }}</template></el-table-column>
+        <el-table-column prop="loanNo" label="贷款编号" min-width="185"></el-table-column>
+        <el-table-column label="剩余本金" width="140" align="right"><template slot-scope="scope">{{ money(scope.row.remainingPrincipal) }}</template></el-table-column>
+        <el-table-column label="状态" width="100" align="center"><template slot-scope="scope">{{ scope.row.status === 2 ? '贷款结清' : '融资生效' }}</template></el-table-column>
+      </el-table>
       <el-table :data="detailData.itemList || []" border height="360" style="margin-top:16px">
         <el-table-column prop="lineNo" label="序号" width="60" align="center"></el-table-column>
+        <el-table-column prop="confirmContractNo" label="确认函合同号" width="145"></el-table-column>
         <el-table-column prop="productCode" label="产品编码" width="105"></el-table-column>
         <el-table-column prop="marketCirculationName" label="市场流通名称" min-width="170" show-overflow-tooltip></el-table-column>
         <el-table-column prop="warehouseName" label="仓库" min-width="150"></el-table-column>
@@ -166,16 +192,18 @@ export default {
       contractSearchTimer: null,
       contractRequestSeq: 0,
       contractOptionsLoadedAt: 0,
+      selectedConfirmIds: [],
+      contractAllocations: [],
       funderOptions: [],
       funderLoading: false,
       candidateList: [],
       candidateLoading: false,
       candidateKeyword: '',
       selectedRows: [],
+      selectedRowMap: {},
       recognizeLoading: false,
       financeForm: this.emptyForm(),
       financeRules: {
-        confirmId: [{ required: true, message: '请选择确认函合同', trigger: 'change' }],
         funderId: [{ required: true, message: '请选择融资资方', trigger: 'change' }],
         paymentDate: [{ required: true, message: '请选择来款日期', trigger: 'change' }],
         modifiedAmount: [{ required: true, validator: (r, v, cb) => Number(v) > 0 ? cb() : cb(new Error('确认融资本金必须大于0')), trigger: 'blur' }],
@@ -186,12 +214,15 @@ export default {
   computed: {
     selectedBoxes () { return this.selectedRows.reduce((sum, row) => sum + Number(row.financingBoxes || 0), 0) },
     selectedReferenceAmount () { return this.selectedRows.reduce((sum, row) => sum + this.rowReference(row), 0) },
-    isOverReference () { return Number(this.financeForm.modifiedAmount || 0) > Number(this.selectedReferenceAmount || 0) && this.selectedRows.length > 0 }
+    allocationTotal () { return this.contractAllocations.reduce((sum, row) => sum + Number(row.allocatedPrincipal || 0), 0) },
+    allocationDiff () { return Number(this.financeForm.modifiedAmount || 0) - this.allocationTotal },
+    isOverReference () { return Number(this.financeForm.modifiedAmount || 0) > Number(this.selectedReferenceAmount || 0) && this.selectedRows.length > 0 },
+    hasContractOverReference () { return this.contractAllocations.some(row => Number(row.allocatedPrincipal || 0) > Number(row.referenceStockValue || 0)) }
   },
   activated () { this.getDataList(); this.loadContractOptions('', false) },
   beforeDestroy () { if (this.contractSearchTimer) clearTimeout(this.contractSearchTimer) },
   methods: {
-    emptyForm () { return { confirmId: null, funderId: null, paymentDate: '', recognizedAmount: 0, modifiedAmount: 0, filePath: '', fileName: '', rawText: '', payerNameRecognized: '', payerNameModified: '', payeeNameRecognized: '', payeeNameModified: '', serialNoRecognized: '', serialNoModified: '', remark: '', itemList: [] } },
+    emptyForm () { return { funderId: null, paymentDate: '', recognizedAmount: 0, modifiedAmount: 0, filePath: '', fileName: '', rawText: '', payerNameRecognized: '', payerNameModified: '', payeeNameRecognized: '', payeeNameModified: '', serialNoRecognized: '', serialNoModified: '', remark: '', contractList: [], itemList: [] } },
     getDataList () {
       this.dataListLoading = true
       this.$http({ url: this.$http.adornUrl('/erp/spot-financing/list'), method: 'get', params: this.$http.adornParams({ page: this.pageIndex, limit: this.pageSize, ...this.queryForm }) }).then(({ data }) => {
@@ -201,7 +232,7 @@ export default {
     sizeChangeHandle (val) { this.pageSize = val; this.pageIndex = 1; this.getDataList() },
     currentChangeHandle (val) { this.pageIndex = val; this.getDataList() },
     openCreate () {
-      this.financeForm = this.emptyForm(); this.candidateList = []; this.selectedRows = []; this.candidateKeyword = ''; this.createVisible = true
+      this.financeForm = this.emptyForm(); this.selectedConfirmIds = []; this.contractAllocations = []; this.candidateList = []; this.selectedRows = []; this.selectedRowMap = {}; this.candidateKeyword = ''; this.createVisible = true
       if (!this.contractOptionsLoadedAt || Date.now() - this.contractOptionsLoadedAt > 30000) this.loadContractOptions('', true)
       this.searchFunders('')
     },
@@ -214,7 +245,11 @@ export default {
       if (showLoading) this.contractLoading = true
       this.$http({ url: this.$http.adornUrl('/erp/spot-financing/contract-options'), method: 'get', params: this.$http.adornParams({ keyword }, false) }).then(({ data }) => {
         if (requestSeq !== this.contractRequestSeq) return
-        this.contractOptions = data && data.code === 0 ? (data.list || []) : []
+        const result = data && data.code === 0 ? (data.list || []) : []
+        const selectedOptions = this.contractOptions.filter(item => this.selectedConfirmIds.includes(item.id))
+        const optionMap = {}
+        selectedOptions.concat(result).forEach(item => { optionMap[item.id] = item })
+        this.contractOptions = Object.keys(optionMap).map(key => optionMap[key])
         if (!keyword) this.contractOptionsLoadedAt = Date.now()
       }).finally(() => { if (showLoading && requestSeq === this.contractRequestSeq) this.contractLoading = false })
     },
@@ -223,16 +258,72 @@ export default {
       this.$http({ url: this.$http.adornUrl('/erp/funder-finance/funder-options'), method: 'get', params: this.$http.adornParams({ keyword }, false) }).then(({ data }) => { this.funderOptions = data && data.code === 0 ? (data.list || []) : [] }).finally(() => { this.funderLoading = false })
     },
     contractLabel (item) { return `${item.contractNo || '-'} / ${item.containerNo || '-'} / ${item.buyerPartnerName || '-'}` },
-    confirmChange () { this.selectedRows = []; this.loadCandidates() },
+    contractsChange () {
+      const allocationMap = {}
+      this.contractAllocations.forEach(row => { allocationMap[row.confirmId] = row })
+      this.contractAllocations = this.selectedConfirmIds.map(id => {
+        if (allocationMap[id]) return allocationMap[id]
+        const option = this.contractOptions.find(item => item.id === id) || {}
+        return { confirmId: id, confirmContractNo: option.contractNo || '', referenceStockValue: 0, allocatedPrincipal: 0, _manual: false }
+      })
+      Object.keys(this.selectedRowMap).forEach(key => {
+        if (!this.selectedConfirmIds.includes(Number(this.selectedRowMap[key].confirmId))) delete this.selectedRowMap[key]
+      })
+      this.selectedRows = Object.keys(this.selectedRowMap).map(key => this.selectedRowMap[key])
+      this.syncLastAllocation(true)
+      this.loadCandidates()
+    },
     loadCandidates () {
-      if (!this.financeForm.confirmId) { this.candidateList = []; return }
+      if (!this.selectedConfirmIds.length) { this.candidateList = []; return }
       this.candidateLoading = true
-      this.$http({ url: this.$http.adornUrl('/erp/spot-financing/candidates'), method: 'get', params: this.$http.adornParams({ confirmId: this.financeForm.confirmId, keyword: this.candidateKeyword }, false) }).then(({ data }) => {
-        this.candidateList = data && data.code === 0 ? (data.list || []).map(row => ({ ...row, financingBoxes: row.availableBoxes })) : []
+      const requests = this.selectedConfirmIds.map(confirmId => this.$http({ url: this.$http.adornUrl('/erp/spot-financing/candidates'), method: 'get', params: this.$http.adornParams({ confirmId, keyword: this.candidateKeyword }, false) }))
+      Promise.all(requests).then(responses => {
+        const rows = []
+        responses.forEach(({ data }) => {
+          if (data && data.code === 0) rows.push(...(data.list || []))
+        })
+        this.candidateList = rows.map(row => {
+          const key = this.candidateRowKey(row)
+          const selected = this.selectedRowMap[key]
+          const candidate = { ...row, financingBoxes: selected ? selected.financingBoxes : row.availableBoxes }
+          if (selected) this.selectedRowMap[key] = candidate
+          return candidate
+        })
+        this.selectedRows = Object.keys(this.selectedRowMap).map(key => this.selectedRowMap[key])
+        this.$nextTick(() => {
+          this.candidateList.forEach(row => { if (this.selectedRowMap[this.candidateRowKey(row)]) this.$refs.candidateTable.toggleRowSelection(row, true) })
+        })
       }).finally(() => { this.candidateLoading = false })
     },
-    selectionChange (rows) { this.selectedRows = rows },
+    candidateRowKey (row) { return `${row.confirmId || 0}:${row.sourceKey || ''}` },
+    selectionChange (rows) {
+      this.candidateList.forEach(row => { delete this.selectedRowMap[this.candidateRowKey(row)] })
+      rows.forEach(row => { this.selectedRowMap[this.candidateRowKey(row)] = row })
+      this.selectedRows = Object.keys(this.selectedRowMap).map(key => this.selectedRowMap[key])
+      this.syncAllocationReferences()
+    },
     rowSelectable (row) { return Number(row.availableBoxes || 0) > 0 },
+    financingBoxesChange () { this.syncAllocationReferences() },
+    syncAllocationReferences () {
+      this.contractAllocations.forEach(allocation => {
+        allocation.referenceStockValue = this.selectedRows.filter(row => Number(row.confirmId) === Number(allocation.confirmId)).reduce((sum, row) => sum + this.rowReference(row), 0)
+      })
+    },
+    financingAmountChange () { this.syncLastAllocation(true) },
+    allocationChange (index) {
+      if (!this.contractAllocations[index]) return
+      this.contractAllocations[index]._manual = true
+      if (index < this.contractAllocations.length - 1) this.syncLastAllocation(true)
+    },
+    syncLastAllocation (force) {
+      if (!this.contractAllocations.length) return
+      const lastIndex = this.contractAllocations.length - 1
+      const last = this.contractAllocations[lastIndex]
+      if (!force && last._manual) return
+      const previousTotal = this.contractAllocations.slice(0, lastIndex).reduce((sum, row) => sum + Number(row.allocatedPrincipal || 0), 0)
+      last.allocatedPrincipal = Math.max(Number(this.financeForm.modifiedAmount || 0) - previousTotal, 0)
+      last._manual = false
+    },
     recognizeVoucher (request) {
       const form = new FormData(); form.append('file', request.file); this.recognizeLoading = true
       this.$http({ url: this.$http.adornUrl('/erp/spot-financing/voucher/recognize'), method: 'post', data: form, headers: { 'Content-Type': 'multipart/form-data' } }).then(({ data }) => {
@@ -254,23 +345,27 @@ export default {
           serialNoRecognized: serialNo,
           serialNoModified: serialNo
         }
-        this.$nextTick(() => this.$refs.financeForm && this.$refs.financeForm.clearValidate('filePath'))
+        this.$nextTick(() => { this.syncLastAllocation(true); this.$refs.financeForm && this.$refs.financeForm.clearValidate('filePath') })
       }).finally(() => { this.recognizeLoading = false })
     },
     submitFinance () {
       this.$refs.financeForm.validate(valid => {
         if (!valid) return
+        if (!this.selectedConfirmIds.length) { this.$message.warning('请至少选择一个确认函合同'); return }
         if (!this.selectedRows.length) { this.$message.warning('请至少勾选一条需要融资的库存'); return }
+        if (this.contractAllocations.some(row => !this.selectedRows.some(item => Number(item.confirmId) === Number(row.confirmId)))) { this.$message.warning('每个所选合同都必须勾选融资库存'); return }
+        if (this.contractAllocations.some(row => Number(row.allocatedPrincipal || 0) <= 0)) { this.$message.warning('每个合同的分摊融资本金必须大于0'); return }
+        if (Math.abs(this.allocationDiff) > 0.005) { this.$message.warning('合同分摊融资本金合计必须等于确认融资本金'); return }
         if (this.selectedRows.some(row => Number(row.financingBoxes || 0) <= 0 || Number(row.financingBoxes) > Number(row.availableBoxes))) { this.$message.warning('请核对本次融资箱数'); return }
         const doSubmit = () => {
           this.submitLoading = true
           const loading = this.$loading({ lock: true, text: '正在确认融资并更新货权...' })
-          const payload = { ...this.financeForm, itemList: this.selectedRows.map(row => ({ ...row, financingBoxes: Number(row.financingBoxes) })) }
+          const payload = { ...this.financeForm, contractList: this.contractAllocations.map(({ _manual, ...row }) => ({ ...row, allocatedPrincipal: Number(row.allocatedPrincipal) })), itemList: this.selectedRows.map(row => ({ ...row, financingBoxes: Number(row.financingBoxes) })) }
           this.$http({ url: this.$http.adornUrl('/erp/spot-financing/confirm'), method: 'post', data: this.$http.adornData(payload) }).then(({ data }) => {
             if (data && data.code === 0) { this.$message.success('现货融资确认成功'); this.createVisible = false; this.contractOptionsLoadedAt = 0; this.contractOptions = []; this.getDataList() } else { this.$message.error((data && data.msg) || '确认融资失败') }
           }).finally(() => { this.submitLoading = false; loading.close() })
         }
-        if (this.isOverReference) { this.$confirm(`确认融资本金超过参考货值 ${this.money(this.selectedReferenceAmount)}，是否仍要确认？`, '金额核对提醒', { type: 'warning', confirmButtonText: '仍然确认', cancelButtonText: '返回核对' }).then(doSubmit).catch(() => {}) } else doSubmit()
+        if (this.isOverReference || this.hasContractOverReference) { this.$confirm(`融资本金存在超过所选库存参考货值的合同，是否仍要确认？`, '金额核对提醒', { type: 'warning', confirmButtonText: '仍然确认', cancelButtonText: '返回核对' }).then(doSubmit).catch(() => {}) } else doSubmit()
       })
     },
     openDetail (id) { this.detailVisible = true; this.detailData = {}; this.$http({ url: this.$http.adornUrl(`/erp/spot-financing/info/${id}`), method: 'get' }).then(({ data }) => { if (data && data.code === 0) this.detailData = data.financing || {} }) },
