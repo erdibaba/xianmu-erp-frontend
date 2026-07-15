@@ -9,36 +9,32 @@
 
     <el-form :inline="true" :model="queryForm" class="query-form" size="small">
       <el-form-item>
-        <el-input
-          v-model="queryForm.keyword"
-          placeholder="预售单号 / 预售合同号 / 采购方 / 品牌方"
-          clearable
-          @keyup.enter.native="getDataList()">
-        </el-input>
+        <el-select v-model="queryForm.contractNo" filterable remote clearable reserve-keyword placeholder="请选择预售合同号"
+          :remote-method="keyword => remoteOption('contract', keyword)" :loading="isOptionLoading('contract')"
+          @visible-change="visible => openOption('contract', visible)">
+          <el-option v-for="item in optionList('contract')" :key="item.value" :label="item.label" :value="item.value"></el-option>
+        </el-select>
       </el-form-item>
       <el-form-item>
-        <el-input
-          v-model="queryForm.contractNo"
-          placeholder="预售合同号"
-          clearable
-          @keyup.enter.native="getDataList()">
-        </el-input>
+        <el-select v-model="queryForm.productCode" filterable remote clearable reserve-keyword placeholder="请选择产品"
+          :remote-method="keyword => remoteOption('product', keyword)" :loading="isOptionLoading('product')"
+          @visible-change="visible => openOption('product', visible)">
+          <el-option v-for="item in optionList('product')" :key="item.value" :label="item.label" :value="item.value"></el-option>
+        </el-select>
       </el-form-item>
       <el-form-item>
-        <el-input
-          v-model="queryForm.productCode"
-          placeholder="产品编码"
-          clearable
-          @keyup.enter.native="getDataList()">
-        </el-input>
+        <el-select v-model="queryForm.buyerName" filterable remote clearable reserve-keyword placeholder="请选择采购方"
+          :remote-method="keyword => remoteOption('buyer', keyword)" :loading="isOptionLoading('buyer')"
+          @visible-change="visible => openOption('buyer', visible)">
+          <el-option v-for="item in optionList('buyer')" :key="item.value" :label="item.label" :value="item.value"></el-option>
+        </el-select>
       </el-form-item>
       <el-form-item>
-        <el-input
-          v-model="queryForm.marketCirculationName"
-          placeholder="市场流通名称"
-          clearable
-          @keyup.enter.native="getDataList()">
-        </el-input>
+        <el-select v-model="queryForm.brandName" filterable remote clearable reserve-keyword placeholder="请选择品牌方"
+          :remote-method="keyword => remoteOption('brand', keyword)" :loading="isOptionLoading('brand')"
+          @visible-change="visible => openOption('brand', visible)">
+          <el-option v-for="item in optionList('brand')" :key="item.value" :label="item.label" :value="item.value"></el-option>
+        </el-select>
       </el-form-item>
       <el-form-item>
         <el-select v-model="queryForm.status" clearable placeholder="确认状态" style="width: 130px;">
@@ -168,12 +164,16 @@ export default {
   data () {
     return {
       queryForm: {
-        keyword: '',
         contractNo: '',
         productCode: '',
-        marketCirculationName: '',
+        buyerName: '',
+        brandName: '',
         status: ''
       },
+      optionMap: {},
+      optionLoading: {},
+      optionTimers: {},
+      optionRequestMap: {},
       orderDateRange: [],
       dataList: [],
       pageIndex: 1,
@@ -197,15 +197,62 @@ export default {
     }
   },
   methods: {
+    optionList (optionType) {
+      return this.optionMap[optionType] || []
+    },
+    isOptionLoading (optionType) {
+      return !!this.optionLoading[optionType]
+    },
+    openOption (optionType, visible) {
+      if (visible) this.remoteOption(optionType, '')
+    },
+    remoteOption (optionType, keyword) {
+      if (this.optionTimers[optionType]) clearTimeout(this.optionTimers[optionType])
+      this.optionTimers[optionType] = setTimeout(() => this.loadOptions(optionType, keyword), 250)
+    },
+    loadOptions (optionType, keyword) {
+      const fieldMap = {
+        contract: 'contractNo',
+        product: 'productCode',
+        buyer: 'buyerName',
+        brand: 'brandName'
+      }
+      const selected = this.queryForm[fieldMap[optionType]] || ''
+      const params = Object.assign({}, this.queryForm, {
+        optionType: optionType,
+        optionKeyword: keyword || '',
+        orderDateStart: this.orderDateRange && this.orderDateRange.length ? this.orderDateRange[0] : '',
+        orderDateEnd: this.orderDateRange && this.orderDateRange.length ? this.orderDateRange[1] : ''
+      })
+      const requestId = (this.optionRequestMap[optionType] || 0) + 1
+      this.optionRequestMap[optionType] = requestId
+      this.$set(this.optionLoading, optionType, true)
+      this.$http({
+        url: this.$http.adornUrl('/erp/presale/presale-inventory/options'),
+        method: 'get',
+        params: this.$http.adornParams(params)
+      }).then(({data}) => {
+        if (this.optionRequestMap[optionType] !== requestId) return
+        let list = (data && data.list) || []
+        if (selected && !list.some(item => String(item.value) === String(selected))) {
+          list = [{ value: selected, label: selected }].concat(list)
+        }
+        this.$set(this.optionMap, optionType, list.slice(0, 15))
+        this.$set(this.optionLoading, optionType, false)
+      }).catch(() => {
+        if (this.optionRequestMap[optionType] !== requestId) return
+        this.$set(this.optionLoading, optionType, false)
+      })
+    },
     getDataList () {
       this.dataListLoading = true
       const params = {
         page: this.pageIndex,
         limit: this.pageSize,
-        keyword: this.queryForm.keyword,
         contractNo: this.queryForm.contractNo,
         productCode: this.queryForm.productCode,
-        marketCirculationName: this.queryForm.marketCirculationName,
+        buyerName: this.queryForm.buyerName,
+        brandName: this.queryForm.brandName,
         status: this.queryForm.status,
         orderDateStart: this.orderDateRange && this.orderDateRange.length ? this.orderDateRange[0] : '',
         orderDateEnd: this.orderDateRange && this.orderDateRange.length ? this.orderDateRange[1] : ''
@@ -231,10 +278,10 @@ export default {
     },
     resetQuery () {
       this.queryForm = {
-        keyword: '',
         contractNo: '',
         productCode: '',
-        marketCirculationName: '',
+        buyerName: '',
+        brandName: '',
         status: ''
       }
       this.orderDateRange = []
@@ -290,6 +337,10 @@ export default {
 <style scoped>
 .mod-erp-presale-inventory .query-form {
   margin-top: 12px;
+}
+
+.mod-erp-presale-inventory .query-form .el-select {
+  width: 210px;
 }
 
 .detail-summary {

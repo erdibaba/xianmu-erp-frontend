@@ -4,10 +4,18 @@
       <el-tab-pane label="现货库存" name="spot">
         <el-form :inline="true" :model="spotQuery" size="small">
           <el-form-item>
-            <el-input v-model="spotQuery.keyword" placeholder="产品编码/中文名/英文名" clearable @keyup.enter.native="getSpotList()"></el-input>
+            <el-select v-model="spotQuery.keyword" filterable remote clearable reserve-keyword placeholder="请选择产品"
+              :remote-method="keyword => remoteInventoryOption('spot', 'product', keyword)" :loading="inventoryOptionLoading('spot', 'product')"
+              @visible-change="visible => openInventoryOption('spot', 'product', visible)">
+              <el-option v-for="item in inventoryOptionList('spot', 'product')" :key="item.value" :label="item.label" :value="item.value"></el-option>
+            </el-select>
           </el-form-item>
           <el-form-item>
-            <el-input v-model="spotQuery.contractNo" placeholder="合同号" clearable @keyup.enter.native="getSpotList()"></el-input>
+            <el-select v-model="spotQuery.contractNo" filterable remote clearable reserve-keyword placeholder="请选择合同号"
+              :remote-method="keyword => remoteInventoryOption('spot', 'contract', keyword)" :loading="inventoryOptionLoading('spot', 'contract')"
+              @visible-change="visible => openInventoryOption('spot', 'contract', visible)">
+              <el-option v-for="item in inventoryOptionList('spot', 'contract')" :key="item.value" :label="item.label" :value="item.value"></el-option>
+            </el-select>
           </el-form-item>
           <el-form-item>
             <el-select v-model="spotQuery.warehouseId" filterable clearable placeholder="请选择仓库" style="width: 190px;" @change="spotWarehouseChange">
@@ -31,7 +39,11 @@
             </el-select>
           </el-form-item>
           <el-form-item>
-            <el-input v-model="spotQuery.factoryNo" placeholder="厂号" clearable @keyup.enter.native="getSpotList()"></el-input>
+            <el-select v-model="spotQuery.factoryNo" filterable remote clearable reserve-keyword placeholder="请选择厂号"
+              :remote-method="keyword => remoteInventoryOption('spot', 'factory', keyword)" :loading="inventoryOptionLoading('spot', 'factory')"
+              @visible-change="visible => openInventoryOption('spot', 'factory', visible)">
+              <el-option v-for="item in inventoryOptionList('spot', 'factory')" :key="item.value" :label="item.label" :value="item.value"></el-option>
+            </el-select>
           </el-form-item>
           <el-form-item>
             <el-checkbox v-model="spotQuery.onlyAvailable" true-label="1" false-label="0">只看可售库存</el-checkbox>
@@ -98,10 +110,18 @@
       <el-tab-pane label="柜号产品库存" name="spotContainerProduct">
         <el-form :inline="true" :model="spotContainerProductQuery" size="small">
           <el-form-item>
-            <el-input v-model="spotContainerProductQuery.keyword" placeholder="产品编码/中文名/英文名" clearable @keyup.enter.native="getSpotContainerProductList()"></el-input>
+            <el-select v-model="spotContainerProductQuery.keyword" filterable remote clearable reserve-keyword placeholder="请选择产品"
+              :remote-method="keyword => remoteInventoryOption('spotContainerProduct', 'product', keyword)" :loading="inventoryOptionLoading('spotContainerProduct', 'product')"
+              @visible-change="visible => openInventoryOption('spotContainerProduct', 'product', visible)">
+              <el-option v-for="item in inventoryOptionList('spotContainerProduct', 'product')" :key="item.value" :label="item.label" :value="item.value"></el-option>
+            </el-select>
           </el-form-item>
           <el-form-item>
-            <el-input v-model="spotContainerProductQuery.contractNo" placeholder="合同号" clearable @keyup.enter.native="getSpotContainerProductList()"></el-input>
+            <el-select v-model="spotContainerProductQuery.contractNo" filterable remote clearable reserve-keyword placeholder="请选择合同号"
+              :remote-method="keyword => remoteInventoryOption('spotContainerProduct', 'contract', keyword)" :loading="inventoryOptionLoading('spotContainerProduct', 'contract')"
+              @visible-change="visible => openInventoryOption('spotContainerProduct', 'contract', visible)">
+              <el-option v-for="item in inventoryOptionList('spotContainerProduct', 'contract')" :key="item.value" :label="item.label" :value="item.value"></el-option>
+            </el-select>
           </el-form-item>
           <el-form-item>
             <el-select v-model="spotContainerProductQuery.warehouseId" filterable clearable placeholder="请选择仓库" style="width: 190px;" @change="spotContainerProductWarehouseChange">
@@ -125,7 +145,11 @@
             </el-select>
           </el-form-item>
           <el-form-item>
-            <el-input v-model="spotContainerProductQuery.factoryNo" placeholder="厂号" clearable @keyup.enter.native="getSpotContainerProductList()"></el-input>
+            <el-select v-model="spotContainerProductQuery.factoryNo" filterable remote clearable reserve-keyword placeholder="请选择厂号"
+              :remote-method="keyword => remoteInventoryOption('spotContainerProduct', 'factory', keyword)" :loading="inventoryOptionLoading('spotContainerProduct', 'factory')"
+              @visible-change="visible => openInventoryOption('spotContainerProduct', 'factory', visible)">
+              <el-option v-for="item in inventoryOptionList('spotContainerProduct', 'factory')" :key="item.value" :label="item.label" :value="item.value"></el-option>
+            </el-select>
           </el-form-item>
           <el-form-item>
             <el-date-picker
@@ -205,10 +229,18 @@
       <el-tab-pane label="加权单价报告" name="weightedCost">
         <el-form :inline="true" :model="weightedCostQuery" size="small">
           <el-form-item>
-            <el-input v-model="weightedCostQuery.keyword" placeholder="产品编码/中文名/英文名" clearable @keyup.enter.native="getWeightedCostList()"></el-input>
+            <el-select v-model="weightedCostQuery.keyword" filterable remote clearable reserve-keyword placeholder="请选择产品"
+              :remote-method="keyword => remoteInventoryOption('weightedCost', 'product', keyword)" :loading="inventoryOptionLoading('weightedCost', 'product')"
+              @visible-change="visible => openInventoryOption('weightedCost', 'product', visible)">
+              <el-option v-for="item in inventoryOptionList('weightedCost', 'product')" :key="item.value" :label="item.label" :value="item.value"></el-option>
+            </el-select>
           </el-form-item>
           <el-form-item>
-            <el-input v-model="weightedCostQuery.contractNo" placeholder="合同号" clearable @keyup.enter.native="getWeightedCostList()"></el-input>
+            <el-select v-model="weightedCostQuery.contractNo" filterable remote clearable reserve-keyword placeholder="请选择合同号"
+              :remote-method="keyword => remoteInventoryOption('weightedCost', 'contract', keyword)" :loading="inventoryOptionLoading('weightedCost', 'contract')"
+              @visible-change="visible => openInventoryOption('weightedCost', 'contract', visible)">
+              <el-option v-for="item in inventoryOptionList('weightedCost', 'contract')" :key="item.value" :label="item.label" :value="item.value"></el-option>
+            </el-select>
           </el-form-item>
           <el-form-item>
             <el-select v-model="weightedCostQuery.warehouseId" filterable clearable placeholder="请选择仓库" style="width: 190px;" @change="weightedCostWarehouseChange">
@@ -232,7 +264,11 @@
             </el-select>
           </el-form-item>
           <el-form-item>
-            <el-input v-model="weightedCostQuery.factoryNo" placeholder="厂号" clearable @keyup.enter.native="getWeightedCostList()"></el-input>
+            <el-select v-model="weightedCostQuery.factoryNo" filterable remote clearable reserve-keyword placeholder="请选择厂号"
+              :remote-method="keyword => remoteInventoryOption('weightedCost', 'factory', keyword)" :loading="inventoryOptionLoading('weightedCost', 'factory')"
+              @visible-change="visible => openInventoryOption('weightedCost', 'factory', visible)">
+              <el-option v-for="item in inventoryOptionList('weightedCost', 'factory')" :key="item.value" :label="item.label" :value="item.value"></el-option>
+            </el-select>
           </el-form-item>
           <el-form-item>
             <el-date-picker
@@ -283,10 +319,18 @@
       <el-tab-pane label="期货库存" name="futures">
         <el-form :inline="true" :model="futuresQuery" size="small">
           <el-form-item>
-            <el-input v-model="futuresQuery.keyword" placeholder="产品编码/中文名/英文名" clearable @keyup.enter.native="getFuturesList()"></el-input>
+            <el-select v-model="futuresQuery.keyword" filterable remote clearable reserve-keyword placeholder="请选择产品"
+              :remote-method="keyword => remoteInventoryOption('futures', 'product', keyword)" :loading="inventoryOptionLoading('futures', 'product')"
+              @visible-change="visible => openInventoryOption('futures', 'product', visible)">
+              <el-option v-for="item in inventoryOptionList('futures', 'product')" :key="item.value" :label="item.label" :value="item.value"></el-option>
+            </el-select>
           </el-form-item>
           <el-form-item>
-            <el-input v-model="futuresQuery.contractNo" placeholder="合同号" clearable @keyup.enter.native="getFuturesList()"></el-input>
+            <el-select v-model="futuresQuery.contractNo" filterable remote clearable reserve-keyword placeholder="请选择合同号"
+              :remote-method="keyword => remoteInventoryOption('futures', 'contract', keyword)" :loading="inventoryOptionLoading('futures', 'contract')"
+              @visible-change="visible => openInventoryOption('futures', 'contract', visible)">
+              <el-option v-for="item in inventoryOptionList('futures', 'contract')" :key="item.value" :label="item.label" :value="item.value"></el-option>
+            </el-select>
           </el-form-item>
           <el-form-item>
             <el-select v-model="futuresQuery.warehouseId" filterable clearable placeholder="请选择仓库" style="width: 190px;" @change="futuresWarehouseChange">
@@ -310,7 +354,11 @@
             </el-select>
           </el-form-item>
           <el-form-item>
-            <el-input v-model="futuresQuery.factoryNo" placeholder="厂号" clearable @keyup.enter.native="getFuturesList()"></el-input>
+            <el-select v-model="futuresQuery.factoryNo" filterable remote clearable reserve-keyword placeholder="请选择厂号"
+              :remote-method="keyword => remoteInventoryOption('futures', 'factory', keyword)" :loading="inventoryOptionLoading('futures', 'factory')"
+              @visible-change="visible => openInventoryOption('futures', 'factory', visible)">
+              <el-option v-for="item in inventoryOptionList('futures', 'factory')" :key="item.value" :label="item.label" :value="item.value"></el-option>
+            </el-select>
           </el-form-item>
           <el-form-item>
             <el-checkbox v-model="futuresQuery.onlyAvailable" true-label="1" false-label="0">只看期货可售</el-checkbox>
@@ -361,7 +409,25 @@
       <el-tab-pane label="出入库记录" name="records">
         <el-form :inline="true" :model="recordQuery" size="small">
           <el-form-item>
-            <el-input v-model="recordQuery.keyword" placeholder="产品/单号/客户" clearable @keyup.enter.native="getRecordList()"></el-input>
+            <el-select v-model="recordQuery.productKeyword" filterable remote clearable reserve-keyword placeholder="请选择产品"
+              :remote-method="keyword => remoteInventoryOption('records', 'product', keyword)" :loading="inventoryOptionLoading('records', 'product')"
+              @visible-change="visible => openInventoryOption('records', 'product', visible)">
+              <el-option v-for="item in inventoryOptionList('records', 'product')" :key="item.value" :label="item.label" :value="item.value"></el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-select v-model="recordQuery.orderNo" filterable remote clearable reserve-keyword placeholder="请选择单号"
+              :remote-method="keyword => remoteInventoryOption('records', 'order', keyword)" :loading="inventoryOptionLoading('records', 'order')"
+              @visible-change="visible => openInventoryOption('records', 'order', visible)">
+              <el-option v-for="item in inventoryOptionList('records', 'order')" :key="item.value" :label="item.label" :value="item.value"></el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-select v-model="recordQuery.customerName" filterable remote clearable reserve-keyword placeholder="请选择客户"
+              :remote-method="keyword => remoteInventoryOption('records', 'customer', keyword)" :loading="inventoryOptionLoading('records', 'customer')"
+              @visible-change="visible => openInventoryOption('records', 'customer', visible)">
+              <el-option v-for="item in inventoryOptionList('records', 'customer')" :key="item.value" :label="item.label" :value="item.value"></el-option>
+            </el-select>
           </el-form-item>
           <el-form-item>
             <el-select v-model="recordQuery.recordType" clearable placeholder="记录类型" style="width: 120px;">
@@ -370,16 +436,33 @@
             </el-select>
           </el-form-item>
           <el-form-item>
-            <el-input v-model="recordQuery.contractNo" placeholder="合同号" clearable @keyup.enter.native="getRecordList()"></el-input>
+            <el-select v-model="recordQuery.contractNo" filterable remote clearable reserve-keyword placeholder="请选择合同号"
+              :remote-method="keyword => remoteInventoryOption('records', 'contract', keyword)" :loading="inventoryOptionLoading('records', 'contract')"
+              @visible-change="visible => openInventoryOption('records', 'contract', visible)">
+              <el-option v-for="item in inventoryOptionList('records', 'contract')" :key="item.value" :label="item.label" :value="item.value"></el-option>
+            </el-select>
           </el-form-item>
           <el-form-item>
-            <el-input v-model="recordQuery.warehouseName" placeholder="仓库" clearable @keyup.enter.native="getRecordList()"></el-input>
+            <el-select v-model="recordQuery.warehouseName" filterable remote clearable reserve-keyword placeholder="请选择仓库"
+              :remote-method="keyword => remoteInventoryOption('records', 'warehouse', keyword)" :loading="inventoryOptionLoading('records', 'warehouse')"
+              @change="recordWarehouseChange"
+              @visible-change="visible => openInventoryOption('records', 'warehouse', visible)">
+              <el-option v-for="item in inventoryOptionList('records', 'warehouse')" :key="item.value" :label="item.label" :value="item.value"></el-option>
+            </el-select>
           </el-form-item>
           <el-form-item>
-            <el-input v-model="recordQuery.containerNo" placeholder="柜号" clearable @keyup.enter.native="getRecordList()"></el-input>
+            <el-select v-model="recordQuery.containerNo" filterable remote clearable reserve-keyword placeholder="请选择柜号"
+              :remote-method="keyword => remoteInventoryOption('records', 'container', keyword)" :loading="inventoryOptionLoading('records', 'container')"
+              @visible-change="visible => openInventoryOption('records', 'container', visible)">
+              <el-option v-for="item in inventoryOptionList('records', 'container')" :key="item.value" :label="item.label" :value="item.value"></el-option>
+            </el-select>
           </el-form-item>
           <el-form-item>
-            <el-input v-model="recordQuery.factoryNo" placeholder="厂号" clearable @keyup.enter.native="getRecordList()"></el-input>
+            <el-select v-model="recordQuery.factoryNo" filterable remote clearable reserve-keyword placeholder="请选择厂号"
+              :remote-method="keyword => remoteInventoryOption('records', 'factory', keyword)" :loading="inventoryOptionLoading('records', 'factory')"
+              @visible-change="visible => openInventoryOption('records', 'factory', visible)">
+              <el-option v-for="item in inventoryOptionList('records', 'factory')" :key="item.value" :label="item.label" :value="item.value"></el-option>
+            </el-select>
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="getRecordList()">查询</el-button>
@@ -543,6 +626,10 @@
         weightedCostContainerOptions: [],
         weightedCostInboundDateRange: [],
         futuresContainerOptions: [],
+        inventoryOptionMap: {},
+        inventoryOptionLoadingMap: {},
+        inventoryOptionTimers: {},
+        inventoryOptionRequestMap: {},
         spotQuery: {
           keyword: '',
           warehouseId: '',
@@ -575,7 +662,9 @@
           onlyAvailable: '0'
         },
         recordQuery: {
-          keyword: '',
+          productKeyword: '',
+          orderNo: '',
+          customerName: '',
           recordType: '',
           contractNo: '',
           warehouseName: '',
@@ -613,6 +702,78 @@
       this.getDataList()
     },
     methods: {
+      inventoryOptionKey (scope, optionType) {
+        return `${scope}:${optionType}`
+      },
+      inventoryOptionList (scope, optionType) {
+        return this.inventoryOptionMap[this.inventoryOptionKey(scope, optionType)] || []
+      },
+      inventoryOptionLoading (scope, optionType) {
+        return !!this.inventoryOptionLoadingMap[this.inventoryOptionKey(scope, optionType)]
+      },
+      openInventoryOption (scope, optionType, visible) {
+        if (visible) this.remoteInventoryOption(scope, optionType, '')
+      },
+      remoteInventoryOption (scope, optionType, keyword) {
+        const key = this.inventoryOptionKey(scope, optionType)
+        if (this.inventoryOptionTimers[key]) clearTimeout(this.inventoryOptionTimers[key])
+        this.inventoryOptionTimers[key] = setTimeout(() => {
+          this.loadInventoryOptions(scope, optionType, keyword)
+        }, 250)
+      },
+      loadInventoryOptions (scope, optionType, keyword) {
+        const queryMap = {
+          spot: this.spotQuery,
+          spotContainerProduct: this.spotContainerProductQuery,
+          weightedCost: this.weightedCostQuery,
+          futures: this.futuresQuery,
+          records: this.recordQuery
+        }
+        const query = queryMap[scope] || {}
+        const params = Object.assign({}, query, {
+          scope: scope,
+          optionType: optionType,
+          optionKeyword: keyword || ''
+        })
+        if (Array.isArray(params.containerNos)) params.containerNos = params.containerNos.join(',')
+        if (scope === 'spotContainerProduct') {
+          params.inboundDateStart = this.spotContainerProductInboundDateRange[0] || ''
+          params.inboundDateEnd = this.spotContainerProductInboundDateRange[1] || ''
+        } else if (scope === 'weightedCost') {
+          params.inboundDateStart = this.weightedCostInboundDateRange[0] || ''
+          params.inboundDateEnd = this.weightedCostInboundDateRange[1] || ''
+        }
+        const fieldMap = {
+          product: scope === 'records' ? 'productKeyword' : 'keyword',
+          order: 'orderNo',
+          customer: 'customerName',
+          contract: 'contractNo',
+          warehouse: 'warehouseName',
+          container: 'containerNo',
+          factory: 'factoryNo'
+        }
+        const selected = query[fieldMap[optionType]] || ''
+        const key = this.inventoryOptionKey(scope, optionType)
+        const requestId = (this.inventoryOptionRequestMap[key] || 0) + 1
+        this.inventoryOptionRequestMap[key] = requestId
+        this.$set(this.inventoryOptionLoadingMap, key, true)
+        this.$http({
+          url: this.$http.adornUrl('/erp/inventory/options'),
+          method: 'get',
+          params: this.$http.adornParams(params)
+        }).then(({data}) => {
+          if (this.inventoryOptionRequestMap[key] !== requestId) return
+          let list = (data && data.list) || []
+          if (selected && !list.some(item => String(item.value) === String(selected))) {
+            list = [{ value: selected, label: selected }].concat(list)
+          }
+          this.$set(this.inventoryOptionMap, key, list.slice(0, 15))
+          this.$set(this.inventoryOptionLoadingMap, key, false)
+        }).catch(() => {
+          if (this.inventoryOptionRequestMap[key] !== requestId) return
+          this.$set(this.inventoryOptionLoadingMap, key, false)
+        })
+      },
       handleTabChange () {
         this.getDataList()
       },
@@ -876,7 +1037,9 @@
       },
       resetRecordQuery () {
         this.recordQuery = {
-          keyword: '',
+          productKeyword: '',
+          orderNo: '',
+          customerName: '',
           recordType: '',
           contractNo: '',
           warehouseName: '',
@@ -884,6 +1047,10 @@
           factoryNo: ''
         }
         this.getRecordList()
+      },
+      recordWarehouseChange () {
+        this.recordQuery.containerNo = ''
+        this.$set(this.inventoryOptionMap, this.inventoryOptionKey('records', 'container'), [])
       },
       formatContractNos (row) {
         if (!row) return '-'
@@ -1026,6 +1193,10 @@
 <style scoped>
   .mod-erp-inventory .el-form {
     margin-bottom: 12px;
+  }
+
+  .mod-erp-inventory .el-form .el-select {
+    width: 210px;
   }
 
   .inventory-danger {
