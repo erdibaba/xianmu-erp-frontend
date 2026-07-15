@@ -31,7 +31,7 @@ const globalRoutes = [
   { path: '/login', component: _import('common/login'), name: 'login', meta: { title: '登录' } },
   { path: '/sale-upload/:token', component: _import('common/sale-upload'), name: 'sale-upload', meta: { title: '销售单上传' } },
   { path: '/mobile-home', component: _import('common/mobile-home'), name: 'mobile-home', meta: { title: '手机工作台' }, beforeEnter: requireToken },
-  { path: '/mobile/inventory-cost', component: _import('modules/erp/inventory-cost-mobile'), name: 'mobile-inventory-cost', meta: { title: '库存成本' }, beforeEnter: requireToken }
+  { path: '/mobile/inventory-cost', component: _import('modules/erp/inventory-cost-mobile'), name: 'mobile-inventory-cost', meta: { title: '销售库存查询' }, beforeEnter: requireToken }
 ]
 
 // 主入口路由(需嵌套上左右整体布局)

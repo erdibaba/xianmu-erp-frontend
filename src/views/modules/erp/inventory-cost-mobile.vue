@@ -1,19 +1,41 @@
 <template>
-  <div class="inventory-cost-mobile-page">
+  <div class="sales-inventory-mobile-page">
     <div class="mobile-shell">
-      <div class="mobile-hero">
-        <div>
-          <div class="eyebrow">鲜牧ERP</div>
-          <h2>库存成本价</h2>
-          <p>销售端仅展示建议销售价、保质期和当前可售库存。</p>
+      <header class="mobile-hero">
+        <span class="eyebrow">鲜牧 ERP · 销售端</span>
+        <h2>销售库存查询</h2>
+        <p>按确认函合同查看产品可售库存与保质期批次。</p>
+        <div class="inventory-tabs">
+          <button :class="{ active: inventoryType === 'spot' }" @click="changeInventoryType('spot')">现货库存</button>
+          <button :class="{ active: inventoryType === 'futures' }" @click="changeInventoryType('futures')">期货库存</button>
         </div>
-      </div>
+      </header>
 
-      <div class="search-card">
-        <el-input v-model="queryForm.keyword" placeholder="产品编码/名称" clearable @keyup.enter.native="getDataList"></el-input>
-        <el-select v-model="queryForm.warehouseId" filterable clearable placeholder="仓库" @change="warehouseChange">
-          <el-option v-for="item in warehouseList" :key="item.id" :label="item.warehouseName" :value="item.id"></el-option>
+      <section class="search-card">
+        <el-select
+          v-model="queryForm.contractNo"
+          filterable
+          remote
+          clearable
+          reserve-keyword
+          :loading="optionLoading.contract"
+          :remote-method="keyword => remoteOptions('contract', keyword)"
+          placeholder="确认函合同号">
+          <el-option v-for="item in contractOptions" :key="item.value" :label="item.label" :value="item.value"></el-option>
         </el-select>
+
+        <el-select
+          v-model="queryForm.productId"
+          filterable
+          remote
+          clearable
+          reserve-keyword
+          :loading="optionLoading.product"
+          :remote-method="keyword => remoteOptions('product', keyword)"
+          placeholder="产品编码 / 市场流通名称">
+          <el-option v-for="item in productOptions" :key="item.value" :label="item.label" :value="item.value"></el-option>
+        </el-select>
+
         <el-select
           v-model="queryForm.containerNos"
           multiple
@@ -22,102 +44,132 @@
           clearable
           collapse-tags
           reserve-keyword
-          :disabled="!queryForm.warehouseId"
-          :loading="containerLoading"
-          :remote-method="remoteSearchContainers"
-          placeholder="柜号">
-          <el-option v-for="item in containerOptions" :key="item" :label="item" :value="item"></el-option>
+          :loading="optionLoading.container"
+          :remote-method="keyword => remoteOptions('container', keyword)"
+          placeholder="柜号（可多选）">
+          <el-option v-for="item in containerOptions" :key="item.value" :label="item.label" :value="item.value"></el-option>
         </el-select>
-        <el-input v-model="queryForm.factoryNo" placeholder="厂号" clearable @keyup.enter.native="getDataList"></el-input>
+
+        <el-select
+          v-model="queryForm.ownershipName"
+          filterable
+          remote
+          clearable
+          reserve-keyword
+          :loading="optionLoading.ownership"
+          :remote-method="keyword => remoteOptions('ownership', keyword)"
+          placeholder="货权">
+          <el-option v-for="item in ownershipOptions" :key="item.value" :label="item.label" :value="item.value"></el-option>
+        </el-select>
+
+        <el-select v-model="queryForm.temperatureZone" clearable placeholder="温区">
+          <el-option label="冷鲜" value="冷鲜"></el-option>
+          <el-option label="冷冻" value="冷冻"></el-option>
+          <el-option label="冷藏" value="冷藏"></el-option>
+        </el-select>
+
+        <el-select
+          v-if="inventoryType === 'spot'"
+          v-model="queryForm.warehouseId"
+          filterable
+          clearable
+          placeholder="仓库"
+          @change="warehouseChange">
+          <el-option v-for="item in warehouseList" :key="item.id" :label="item.warehouseName" :value="item.id"></el-option>
+        </el-select>
+
         <div class="search-actions">
-          <el-checkbox v-model="queryForm.onlyAvailable" true-label="1" false-label="0">只看可售</el-checkbox>
-          <div>
-            <el-button size="small" @click="resetQuery">重置</el-button>
-            <el-button size="small" type="primary" :loading="dataListLoading" @click="getDataList">查询</el-button>
-          </div>
+          <el-button size="small" @click="resetQuery">重置</el-button>
+          <el-button size="small" type="primary" :loading="dataListLoading" @click="getDataList">查询库存</el-button>
         </div>
+      </section>
+
+      <div class="result-summary">
+        <span>{{ inventoryType === 'spot' ? '现货' : '期货' }}可售库存</span>
+        <strong>{{ dataList.length }} 项</strong>
       </div>
 
-      <div v-loading="dataListLoading" class="card-list">
-        <el-empty v-if="!dataList.length && !dataListLoading" description="暂无库存成本数据"></el-empty>
-        <div v-for="item in dataList" :key="cardKey(item)" class="cost-card">
-          <div class="card-top">
-            <div>
-              <div class="product-code">{{ item.productCode || '-' }}</div>
-              <div class="contract-no">{{ item.contractNo || '-' }}</div>
-              <div class="product-name">{{ item.productName || item.productNameEn || '-' }}</div>
+      <main v-loading="dataListLoading" class="card-list">
+        <el-empty v-if="!dataList.length && !dataListLoading" description="暂无符合条件的可售库存"></el-empty>
+        <article v-for="item in dataList" :key="cardKey(item)" class="inventory-card" @click="openDetailDialog(item)">
+          <div class="card-heading">
+            <div class="product-identity">
+              <span class="product-code">{{ item.productCode || '-' }}</span>
+              <h3>{{ item.marketCirculationName || item.productName || '-' }}</h3>
             </div>
-            <div class="cost-badge">
-              <span>{{ suggestedPriceText(item) }}</span>
-              <em>建议销售价</em>
-            </div>
-          </div>
-          <div class="en-name">{{ item.productNameEn || '-' }}</div>
-          <div class="metric-grid">
-            <div>
-              <label>货权</label>
-              <span>{{ item.ownershipName || '-' }}</span>
-            </div>
-            <div>
-              <label>厂号</label>
-              <span>{{ item.factoryNos || '-' }}</span>
-            </div>
-            <div>
-              <label>保质期</label>
-              <span>{{ dateText(item.expiryDate) }}</span>
-            </div>
-            <div>
-              <label>可售箱数</label>
-              <span>{{ numberText(item.availableBoxes, 0) }}</span>
-            </div>
-            <div>
-              <label>可售重量</label>
-              <span>{{ numberText(item.availableWeightKg, 2) }} KG</span>
+            <div v-if="inventoryType === 'spot'" class="price-badge">
+              <strong>{{ suggestedPriceText(item) }}</strong>
+              <span>建议销售价</span>
             </div>
           </div>
-        </div>
-      </div>
+
+          <div class="contract-strip">
+            <span>确认函合同</span>
+            <strong>{{ item.contractNo || '-' }}</strong>
+          </div>
+
+          <div class="stock-amounts">
+            <div>
+              <span>可售箱数</span>
+              <strong>{{ numberText(item.availableBoxes, 0) }}</strong>
+              <em>箱</em>
+            </div>
+            <div>
+              <span>可售重量</span>
+              <strong>{{ numberText(item.availableWeightKg, 2) }}</strong>
+              <em>KG</em>
+            </div>
+          </div>
+
+          <dl class="card-details">
+            <div><dt>货权</dt><dd>{{ item.ownershipName || '-' }}</dd></div>
+            <div><dt>厂号</dt><dd>{{ item.factoryNos || '-' }}</dd></div>
+            <div><dt>柜号</dt><dd>{{ item.containerNos || '-' }}</dd></div>
+            <div><dt>温区</dt><dd>{{ item.temperatureZone || '-' }}</dd></div>
+            <div v-if="inventoryType === 'spot'"><dt>仓库</dt><dd>{{ item.warehouseNames || '-' }}</dd></div>
+            <div><dt>预计到港</dt><dd>{{ dateText(item.expectedArrivalDate) }}</dd></div>
+            <div><dt>保质期起算日</dt><dd>{{ dateText(item.productionDate) }}</dd></div>
+          </dl>
+
+          <footer class="card-footer">
+            <span>查看生产日期与剩余保质期</span>
+            <i class="el-icon-arrow-right"></i>
+          </footer>
+        </article>
+      </main>
 
       <el-dialog
-        title="费用明细"
+        title="库存批次详情"
         :visible.sync="detailDialogVisible"
-        width="92%"
-        custom-class="mobile-cost-detail-dialog"
+        width="94%"
+        custom-class="sales-inventory-detail-dialog"
         append-to-body>
         <div v-if="currentRow" class="detail-head">
-          <strong>{{ currentRow.productCode || '-' }}</strong>
-          <span>确认函合同号：{{ currentRow.contractNo || '-' }}</span>
-          <span>{{ currentRow.productName || '-' }}</span>
-          <em>{{ currentRow.ownershipName || '-' }}</em>
+          <span>{{ currentRow.productCode || '-' }}</span>
+          <strong>{{ currentRow.marketCirculationName || currentRow.productName || '-' }}</strong>
+          <em>{{ currentRow.contractNo || '-' }}</em>
         </div>
-        <div v-if="currentRow" class="mobile-formula-card">
-          <strong>成本价公式</strong>
-          <span>
-            {{ moneyText(currentRow.totalCostAmount) }} ÷ {{ numberText(currentRow.availableWeightKg, 2) }}KG =
-            {{ numberText(currentRow.costPriceKg, 6) }} 元/KG
-          </span>
-          <em>
-            成本总额 = 采购成本{{ moneyText(currentRow.purchaseAmount) }} + 分摊费用{{ moneyText(currentRow.allocatedFeeAmount) }}
-          </em>
-          <em v-if="feeSummaryText">分摊费用：{{ feeSummaryText }}</em>
-        </div>
-        <div v-loading="detailLoading" class="detail-card-list">
-          <el-empty v-if="!detailList.length && !detailLoading" description="暂无费用明细"></el-empty>
-          <div v-for="(item, index) in detailList" :key="index" class="detail-card">
-            <div class="detail-title">
-              <span>{{ item.costType || '-' }}</span>
-              <strong>{{ moneyText(item.allocatedAmount) }}</strong>
+        <div v-loading="detailLoading" class="detail-list">
+          <el-empty v-if="!detailList.length && !detailLoading" description="暂无批次明细"></el-empty>
+          <section v-for="(item, index) in detailList" :key="detailKey(item, index)" class="detail-card">
+            <div class="detail-card-top">
+              <span>批次 {{ index + 1 }}</span>
+              <b :class="shelfLifeClass(item.expiryDate)">{{ shelfLifeText(item.expiryDate) }}</b>
             </div>
-            <div class="detail-line">{{ item.costName || '-' }}</div>
-            <div class="detail-line">来源：{{ item.sourceNo || '-' }}</div>
-            <div class="detail-line">合同：{{ item.contractNo || '-' }}</div>
-            <div class="detail-line">柜号：{{ item.containerNo || '-' }} / 厂号：{{ item.factoryNo || '-' }}</div>
-            <div class="detail-line">生产日期：{{ dateText(item.productionDate) }} / 过期日期：{{ dateText(item.expiryDate) }}</div>
-            <div class="detail-line">剩余箱数：{{ numberText(item.availableBoxes, 0) }}</div>
-            <div class="detail-line">本行重量：{{ numberText(item.basisWeightKg, 2) }} KG</div>
-            <div class="detail-formula">{{ detailFormula(item) }}</div>
-            <div v-if="item.remark" class="detail-remark">{{ item.remark }}</div>
-          </div>
+            <div class="detail-stock">
+              <strong>{{ numberText(item.availableBoxes, 0) }} 箱</strong>
+              <span>{{ numberText(item.availableWeightKg, 2) }} KG</span>
+            </div>
+            <dl>
+              <div><dt>生产日期</dt><dd>{{ dateText(item.productionDate) }}</dd></div>
+              <div><dt>过期日期</dt><dd>{{ dateText(item.expiryDate) }}</dd></div>
+              <div><dt>厂号</dt><dd>{{ item.factoryNo || '-' }}</dd></div>
+              <div><dt>柜号</dt><dd>{{ item.containerNo || '-' }}</dd></div>
+              <div><dt>温区</dt><dd>{{ item.temperatureZone || '-' }}</dd></div>
+              <div v-if="inventoryType === 'spot'"><dt>仓库</dt><dd>{{ item.warehouseName || '-' }}</dd></div>
+              <div v-if="inventoryType === 'spot'"><dt>入库时间</dt><dd>{{ dateText(item.inboundDate) }}</dd></div>
+            </dl>
+          </section>
         </div>
       </el-dialog>
     </div>
@@ -128,15 +180,25 @@
   export default {
     data () {
       return {
+        inventoryType: 'spot',
         warehouseList: [],
+        contractOptions: [],
+        productOptions: [],
         containerOptions: [],
-        containerLoading: false,
+        ownershipOptions: [],
+        optionLoading: {
+          contract: false,
+          product: false,
+          container: false,
+          ownership: false
+        },
         queryForm: {
-          keyword: '',
-          warehouseId: '',
+          contractNo: '',
+          productId: '',
           containerNos: [],
-          factoryNo: '',
-          onlyAvailable: '1'
+          ownershipName: '',
+          temperatureZone: '',
+          warehouseId: ''
         },
         dataList: [],
         dataListLoading: false,
@@ -146,38 +208,49 @@
         currentRow: null
       }
     },
-    computed: {
-      feeSummaryText () {
-        const summary = {}
-        ;(this.detailList || []).forEach(item => {
-          if (item.costType === '采购成本') return
-          const key = item.costType || '其他费用'
-          summary[key] = (summary[key] || 0) + Number(item.allocatedAmount || 0)
-        })
-        return Object.keys(summary).map(key => `${key}${this.moneyText(summary[key])}`).join('，')
-      }
-    },
     activated () {
       this.loadWarehouses()
+      this.primeOptions()
       this.getDataList()
     },
     methods: {
+      emptyQuery () {
+        return {
+          contractNo: '',
+          productId: '',
+          containerNos: [],
+          ownershipName: '',
+          temperatureZone: '',
+          warehouseId: ''
+        }
+      },
+      requestParams (extra) {
+        return Object.assign({
+          inventoryType: this.inventoryType,
+          contractNo: this.queryForm.contractNo || '',
+          productId: this.queryForm.productId || '',
+          containerNos: (this.queryForm.containerNos || []).join(','),
+          ownershipName: this.queryForm.ownershipName || '',
+          temperatureZone: this.queryForm.temperatureZone || '',
+          warehouseId: this.inventoryType === 'spot' ? (this.queryForm.warehouseId || '') : ''
+        }, extra || {})
+      },
       getDataList () {
         this.dataListLoading = true
-        const params = Object.assign({}, this.queryForm, {
-          containerNos: (this.queryForm.containerNos || []).join(',')
-        })
         this.$http({
-          url: this.$http.adornUrl('/erp/inventory-cost/spot'),
+          url: this.$http.adornUrl('/erp/inventory-cost/mobile/list'),
           method: 'get',
-          params: this.$http.adornParams(params)
+          params: this.$http.adornParams(this.requestParams())
         }).then(({ data }) => {
           if (data && data.code === 0) {
             this.dataList = data.list || []
           } else {
             this.dataList = []
-            this.$message.error((data && data.msg) || '获取库存成本失败')
+            this.$message.error((data && data.msg) || '获取销售库存失败')
           }
+        }).catch(() => {
+          this.dataList = []
+          this.$message.error('获取销售库存失败，请检查后端服务')
         }).finally(() => {
           this.dataListLoading = false
         })
@@ -187,38 +260,86 @@
         this.detailList = []
         this.detailDialogVisible = true
         this.detailLoading = true
-        const params = Object.assign({}, this.queryForm, {
-          productId: row.productId,
-          confirmId: row.confirmId || '',
-          contractNo: row.contractNo || '',
-          ownershipName: row.ownershipName || '',
-          containerNos: (this.queryForm.containerNos || []).join(',')
-        })
         this.$http({
-          url: this.$http.adornUrl('/erp/inventory-cost/spot/details'),
+          url: this.$http.adornUrl('/erp/inventory-cost/mobile/details'),
           method: 'get',
-          params: this.$http.adornParams(params)
+          params: this.$http.adornParams(this.requestParams({
+            productId: row.productId,
+            confirmId: row.confirmId || '',
+            contractNo: row.contractNo || '',
+            ownershipName: row.ownershipName || ''
+          }))
         }).then(({ data }) => {
           if (data && data.code === 0) {
             this.detailList = data.list || []
           } else {
-            this.detailList = []
-            this.$message.error((data && data.msg) || '获取成本明细失败')
+            this.$message.error((data && data.msg) || '获取库存批次失败')
           }
         }).finally(() => {
           this.detailLoading = false
         })
       },
-      resetQuery () {
-        this.queryForm = {
-          keyword: '',
-          warehouseId: '',
-          containerNos: [],
-          factoryNo: '',
-          onlyAvailable: '1'
-        }
-        this.containerOptions = []
+      changeInventoryType (type) {
+        if (this.inventoryType === type) return
+        this.inventoryType = type
+        this.queryForm = this.emptyQuery()
+        this.clearOptions()
+        this.primeOptions()
         this.getDataList()
+      },
+      resetQuery () {
+        this.queryForm = this.emptyQuery()
+        this.clearOptions()
+        this.primeOptions()
+        this.getDataList()
+      },
+      warehouseChange () {
+        this.queryForm.containerNos = []
+        this.containerOptions = []
+        this.remoteOptions('container', '')
+      },
+      clearOptions () {
+        this.contractOptions = []
+        this.productOptions = []
+        this.containerOptions = []
+        this.ownershipOptions = []
+      },
+      primeOptions () {
+        this.remoteOptions('contract', '')
+        this.remoteOptions('product', '')
+        this.remoteOptions('container', '')
+        this.remoteOptions('ownership', '')
+      },
+      remoteOptions (optionType, keyword) {
+        this.$set(this.optionLoading, optionType, true)
+        this.$http({
+          url: this.$http.adornUrl('/erp/inventory-cost/mobile/options'),
+          method: 'get',
+          params: this.$http.adornParams(this.requestParams({
+            optionType,
+            keyword: keyword || ''
+          }))
+        }).then(({ data }) => {
+          const list = data && data.code === 0 ? (data.list || []) : []
+          const property = `${optionType}Options`
+          this[property] = this.mergeSelectedOptions(optionType, list)
+        }).finally(() => {
+          this.$set(this.optionLoading, optionType, false)
+        })
+      },
+      mergeSelectedOptions (optionType, list) {
+        const selected = optionType === 'container'
+          ? (this.queryForm.containerNos || [])
+          : [this.queryForm[optionType === 'contract' ? 'contractNo' : optionType === 'product' ? 'productId' : 'ownershipName']]
+        const oldList = this[`${optionType}Options`] || []
+        const result = list.slice()
+        selected.filter(value => value !== '' && value !== null && value !== undefined).forEach(value => {
+          if (!result.some(item => String(item.value) === String(value))) {
+            const old = oldList.find(item => String(item.value) === String(value))
+            result.unshift(old || { value, label: String(value) })
+          }
+        })
+        return result
       },
       loadWarehouses () {
         this.$http({
@@ -229,126 +350,146 @@
           this.warehouseList = (data && data.list) || []
         })
       },
-      warehouseChange () {
-        this.queryForm.containerNos = []
-        this.containerOptions = []
-        this.remoteSearchContainers('')
-      },
-      remoteSearchContainers (keyword) {
-        if (!this.queryForm.warehouseId) {
-          this.containerOptions = []
-          return
-        }
-        this.containerLoading = true
-        this.$http({
-          url: this.$http.adornUrl('/erp/inventory/containers'),
-          method: 'get',
-          params: this.$http.adornParams({
-            inventoryType: 'spot',
-            warehouseId: this.queryForm.warehouseId,
-            keyword: keyword || ''
-          })
-        }).then(({ data }) => {
-          const list = (data && data.list) || []
-          const selected = this.queryForm.containerNos || []
-          this.containerOptions = Array.from(new Set(selected.concat(list)))
-        }).finally(() => {
-          this.containerLoading = false
-        })
-      },
       cardKey (item) {
-        return [item.productId, item.confirmId, item.contractNo, item.ownershipName, item.productCode].join('-')
+        return [item.inventoryType, item.productId, item.confirmId, item.contractNo, item.ownershipName].join('-')
       },
-      moneyText (value) {
-        return this.numberText(value, 2)
+      detailKey (item, index) {
+        return [item.contractNo, item.containerNo, item.factoryNo, item.productionDate, item.expiryDate, index].join('-')
       },
       suggestedPriceText (item) {
         const value = item && item.suggestedSalePriceKg
-        if (value === null || value === undefined || value === '') {
-          return '-'
-        }
-        return `${this.numberText(value, 4)} 元/KG`
+        return value === null || value === undefined || value === '' ? '待维护' : `${this.numberText(value, 4)} 元/KG`
       },
       numberText (value, digits) {
-        const num = Number(value || 0)
-        return num.toLocaleString('zh-CN', { minimumFractionDigits: digits, maximumFractionDigits: digits })
+        const number = Number(value || 0)
+        return number.toLocaleString('zh-CN', { minimumFractionDigits: digits, maximumFractionDigits: digits })
       },
       dateText (value) {
-        if (!value) return '-'
-        return String(value).slice(0, 10)
+        return value ? String(value).slice(0, 10) : '-'
       },
-      detailFormula (item) {
-        if ((item.costType || '') === '采购成本') {
-          return `采购成本 = 剩余重量${this.numberText(item.basisWeightKg, 2)}KG × 含税采购单价，计入${this.moneyText(item.allocatedAmount)}`
-        }
-        const totalBasis = Number(item.totalBasisWeightKg || 0)
-        if (totalBasis > 0) {
-          const ratio = Number(item.basisWeightKg || 0) / totalBasis * 100
-          return `分摊比例 = ${this.numberText(item.basisWeightKg, 2)} ÷ ${this.numberText(item.totalBasisWeightKg, 2)} = ${this.percentText(ratio)}；分摊金额 = ${this.moneyText(item.sourceAmount)} × 分摊比例 = ${this.moneyText(item.allocatedAmount)}`
-        }
-        return `分摊 = ${this.moneyText(item.allocatedAmount)}`
+      shelfLifeDays (expiryDate) {
+        if (!expiryDate) return null
+        const end = new Date(String(expiryDate).slice(0, 10).replace(/-/g, '/'))
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        return Math.ceil((end.getTime() - today.getTime()) / 86400000)
+      },
+      shelfLifeText (expiryDate) {
+        const days = this.shelfLifeDays(expiryDate)
+        if (days === null) return '未维护过期日期'
+        if (days < 0) return `已过期 ${Math.abs(days)} 天`
+        if (days === 0) return '今天到期'
+        return `剩余 ${days} 天`
+      },
+      shelfLifeClass (expiryDate) {
+        const days = this.shelfLifeDays(expiryDate)
+        if (days === null) return 'neutral'
+        if (days <= 0) return 'danger'
+        if (days <= 30) return 'warning'
+        return 'safe'
       }
     }
   }
 </script>
 
 <style scoped>
-  .inventory-cost-mobile-page {
+  .sales-inventory-mobile-page {
     min-height: calc(100vh - 80px);
     margin: -20px;
-    padding: 16px 10px 28px;
+    padding: 14px 10px 30px;
+    color: #183540;
     background:
-      radial-gradient(circle at 15% 8%, rgba(23, 179, 163, 0.18), transparent 26%),
-      linear-gradient(180deg, #edf8f7 0%, #f6fbfa 45%, #eef4f2 100%);
+      radial-gradient(circle at 12% 3%, rgba(36, 135, 210, 0.18), transparent 28%),
+      radial-gradient(circle at 90% 22%, rgba(246, 164, 62, 0.16), transparent 24%),
+      linear-gradient(180deg, #eef7fb 0%, #f7faf9 45%, #edf3f1 100%);
   }
 
   .mobile-shell {
-    width: 390px;
+    width: 420px;
     max-width: 100%;
     margin: 0 auto;
   }
 
   .mobile-hero {
-    padding: 20px 18px;
-    border-radius: 24px;
-    color: #ffffff;
-    background: linear-gradient(135deg, #0b7d88 0%, #17b3a3 58%, #46c7a8 100%);
-    box-shadow: 0 18px 34px rgba(12, 115, 112, 0.24);
+    position: relative;
+    overflow: hidden;
+    padding: 21px 18px 16px;
+    border-radius: 25px;
+    color: #fff;
+    background: linear-gradient(135deg, #075e8f 0%, #1687b8 52%, #30a99b 100%);
+    box-shadow: 0 18px 38px rgba(11, 95, 130, 0.24);
   }
 
-  .mobile-hero .eyebrow {
-    font-size: 12px;
+  .mobile-hero::after {
+    position: absolute;
+    top: -52px;
+    right: -44px;
+    width: 150px;
+    height: 150px;
+    border: 24px solid rgba(255, 255, 255, 0.09);
+    border-radius: 50%;
+    content: '';
+  }
+
+  .eyebrow {
+    font-size: 11px;
     letter-spacing: 2px;
-    opacity: 0.86;
+    opacity: 0.82;
   }
 
   .mobile-hero h2 {
-    margin: 8px 0 6px;
+    margin: 7px 0 5px;
+    font-family: "Microsoft YaHei", sans-serif;
     font-size: 28px;
-    line-height: 1;
   }
 
   .mobile-hero p {
     margin: 0;
     font-size: 13px;
-    line-height: 1.6;
-    opacity: 0.9;
+    opacity: 0.88;
+  }
+
+  .inventory-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+    margin-top: 17px;
+    padding: 4px;
+    border-radius: 14px;
+    background: rgba(2, 46, 70, 0.24);
+  }
+
+  .inventory-tabs button {
+    position: relative;
+    z-index: 1;
+    padding: 9px;
+    border: 0;
+    border-radius: 11px;
+    color: rgba(255, 255, 255, 0.76);
+    background: transparent;
+    font-weight: 700;
+  }
+
+  .inventory-tabs button.active {
+    color: #075e8f;
+    background: #fff;
+    box-shadow: 0 6px 15px rgba(0, 50, 77, 0.16);
   }
 
   .search-card,
-  .cost-card,
+  .inventory-card,
   .detail-card {
-    border: 1px solid rgba(23, 179, 163, 0.14);
-    border-radius: 18px;
-    background: rgba(255, 255, 255, 0.92);
-    box-shadow: 0 12px 28px rgba(28, 83, 80, 0.08);
+    border: 1px solid rgba(12, 99, 127, 0.11);
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 11px 28px rgba(30, 79, 90, 0.08);
   }
 
   .search-card {
     display: grid;
-    gap: 10px;
-    margin: 12px 0;
-    padding: 12px;
+    gap: 9px;
+    margin: 12px 0 15px;
+    padding: 13px;
+    border-radius: 20px;
   }
 
   .search-card /deep/ .el-select,
@@ -356,199 +497,282 @@
     width: 100%;
   }
 
+  .search-card /deep/ .el-input__inner {
+    border-color: #dbe9ec;
+    border-radius: 11px;
+  }
+
   .search-actions {
+    display: grid;
+    grid-template-columns: 0.72fr 1.28fr;
+    gap: 9px;
+  }
+
+  .search-actions .el-button {
+    width: 100%;
+    margin: 0;
+    border-radius: 11px;
+  }
+
+  .result-summary {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    padding: 0 5px 9px;
+    color: #5b737c;
+    font-size: 12px;
+  }
+
+  .result-summary strong {
+    color: #0d789d;
   }
 
   .card-list {
-    min-height: 260px;
+    min-height: 180px;
   }
 
-  .cost-card {
+  .inventory-card {
+    overflow: hidden;
     margin-bottom: 12px;
-    padding: 14px;
+    border-radius: 21px;
+    cursor: pointer;
   }
 
-  .card-top,
-  .card-footer,
-  .detail-title {
+  .card-heading {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     gap: 10px;
+    padding: 16px 16px 11px;
+  }
+
+  .product-identity {
+    min-width: 0;
   }
 
   .product-code {
-    color: #0b7d88;
-    font-size: 13px;
-    font-weight: 700;
-  }
-
-  .contract-no {
-    margin-top: 2px;
-    color: #6b7a78;
-    font-size: 12px;
-    font-weight: 650;
-  }
-
-  .product-name {
-    margin-top: 3px;
-    color: #1f2d2b;
-    font-size: 16px;
-    font-weight: 700;
-  }
-
-  .en-name {
-    margin: 8px 0 10px;
-    color: #6b7a78;
-    font-size: 12px;
-    line-height: 1.45;
-  }
-
-  .cost-badge {
-    min-width: 92px;
-    padding: 8px 10px;
-    border-radius: 14px;
-    text-align: right;
-    color: #0b7d88;
-    background: #e8f8f5;
-  }
-
-  .cost-badge span {
-    display: block;
-    font-size: 16px;
+    color: #0a719c;
+    font-size: 18px;
     font-weight: 800;
+    letter-spacing: 0.5px;
   }
 
-  .cost-badge em {
+  .product-identity h3 {
+    margin: 4px 0 0;
+    font-size: 15px;
+    line-height: 1.35;
+  }
+
+  .price-badge {
+    flex: none;
+    padding: 7px 9px;
+    border-radius: 12px;
+    color: #a95500;
+    text-align: right;
+    background: #fff3df;
+  }
+
+  .price-badge strong,
+  .price-badge span {
+    display: block;
+  }
+
+  .price-badge strong {
+    font-size: 13px;
+  }
+
+  .price-badge span {
+    margin-top: 2px;
+    font-size: 10px;
+    opacity: 0.72;
+  }
+
+  .contract-strip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0 16px;
+    padding: 9px 11px;
+    border-radius: 11px;
+    color: #38616f;
+    background: #edf7fa;
+    font-size: 12px;
+  }
+
+  .contract-strip strong {
+    overflow: hidden;
+    color: #075e8f;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .stock-amounts {
+    display: grid;
+    grid-template-columns: 1fr 1.25fr;
+    gap: 9px;
+    padding: 12px 16px 10px;
+  }
+
+  .stock-amounts > div {
+    padding: 11px;
+    border-radius: 13px;
+    background: #f6f9f8;
+  }
+
+  .stock-amounts span {
+    display: block;
+    margin-bottom: 3px;
+    color: #75888d;
     font-size: 11px;
+  }
+
+  .stock-amounts strong {
+    color: #173f4c;
+    font-size: 20px;
+  }
+
+  .stock-amounts em {
+    margin-left: 3px;
+    color: #74888d;
+    font-size: 10px;
     font-style: normal;
   }
 
-  .metric-grid {
+  .card-details,
+  .detail-card dl {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    gap: 7px;
+    margin: 0;
   }
 
-  .metric-grid div {
-    padding: 9px 10px;
-    border-radius: 12px;
-    background: #f5faf9;
+  .card-details {
+    grid-template-columns: 1fr 1fr;
+    padding: 0 16px 14px;
   }
 
-  .metric-grid label {
-    display: block;
-    color: #8a9695;
-    font-size: 11px;
+  .card-details div,
+  .detail-card dl div {
+    min-width: 0;
   }
 
-  .metric-grid span {
-    display: block;
-    margin-top: 3px;
-    color: #1f2d2b;
-    font-size: 13px;
-    font-weight: 650;
-    word-break: break-all;
+  .card-details dt,
+  .detail-card dt {
+    color: #84969b;
+    font-size: 10px;
+  }
+
+  .card-details dd,
+  .detail-card dd {
+    overflow: hidden;
+    margin: 2px 0 0;
+    color: #38545d;
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .card-footer {
-    margin-top: 10px;
-    color: #4d5c5a;
-    font-size: 13px;
-    font-weight: 650;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 11px 16px;
+    border-top: 1px solid #edf1f1;
+    color: #0c779b;
+    font-size: 12px;
+    font-weight: 700;
   }
 
   .detail-head {
     display: grid;
     gap: 4px;
-    margin-bottom: 10px;
-    padding: 10px 12px;
+    margin-bottom: 12px;
+    padding: 12px;
     border-radius: 14px;
-    background: #edf8f7;
-  }
-
-  .detail-head strong {
-    color: #0b7d88;
+    color: #fff;
+    background: linear-gradient(135deg, #075e8f, #2b9d9c);
   }
 
   .detail-head span,
   .detail-head em {
-    color: #4d5c5a;
+    font-size: 11px;
     font-style: normal;
+    opacity: 0.86;
   }
 
-  .mobile-formula-card {
-    display: grid;
-    gap: 5px;
-    margin-bottom: 10px;
-    padding: 10px 12px;
-    border: 1px solid rgba(23, 179, 163, 0.22);
-    border-radius: 14px;
-    background: #f0fbf9;
-  }
-
-  .mobile-formula-card strong {
-    color: #0b7d88;
-  }
-
-  .mobile-formula-card span {
-    color: #1f2d2b;
-    font-weight: 700;
-  }
-
-  .mobile-formula-card em {
-    color: #60706d;
-    font-size: 12px;
-    font-style: normal;
-    line-height: 1.45;
-  }
-
-  .detail-card-list {
-    min-height: 220px;
-    max-height: 62vh;
+  .detail-list {
+    max-height: 58vh;
+    min-height: 120px;
     overflow-y: auto;
   }
 
   .detail-card {
     margin-bottom: 10px;
-    padding: 12px;
+    padding: 13px;
+    border-radius: 16px;
   }
 
-  .detail-title span {
-    color: #0b7d88;
+  .detail-card-top,
+  .detail-stock {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .detail-card-top span {
+    color: #6d858c;
+    font-size: 11px;
+  }
+
+  .detail-card-top b {
+    padding: 4px 7px;
+    border-radius: 8px;
+    font-size: 10px;
+  }
+
+  .detail-card-top b.safe { color: #087658; background: #e2f7ee; }
+  .detail-card-top b.warning { color: #a85b00; background: #fff0d9; }
+  .detail-card-top b.danger { color: #bd3030; background: #ffe8e8; }
+  .detail-card-top b.neutral { color: #66777c; background: #edf1f2; }
+
+  .detail-stock {
+    margin: 10px 0;
+    padding: 10px;
+    border-radius: 11px;
+    color: #0c7296;
+    background: #eff8fa;
+  }
+
+  .detail-stock strong {
+    font-size: 19px;
+  }
+
+  .detail-stock span {
+    font-size: 13px;
     font-weight: 700;
   }
 
-  .detail-title strong {
-    color: #1f2d2b;
+  .detail-card dl {
+    grid-template-columns: 1fr 1fr;
   }
 
-  .detail-line,
-  .detail-formula,
-  .detail-remark {
-    margin-top: 6px;
-    color: #606f6d;
-    font-size: 12px;
-    line-height: 1.45;
+  @media (max-width: 480px) {
+    .sales-inventory-mobile-page {
+      min-height: 100vh;
+      margin: -10px;
+      padding-top: 10px;
+    }
+  }
+</style>
+
+<style>
+  .sales-inventory-detail-dialog {
+    max-width: 430px;
+    margin-top: 8vh !important;
+    border-radius: 20px;
   }
 
-  .detail-formula {
-    padding: 7px 8px;
-    border-radius: 10px;
-    background: #f0fbf9;
-    color: #0b7d88;
-  }
-
-  .detail-remark {
-    padding-top: 6px;
-    border-top: 1px dashed #d8e8e5;
-  }
-
-  /deep/ .mobile-cost-detail-dialog {
-    max-width: 420px;
-    border-radius: 18px;
+  .sales-inventory-detail-dialog .el-dialog__body {
+    padding: 12px 14px 16px;
   }
 </style>
