@@ -163,6 +163,9 @@ export default {
       submitLoading: false,
       contractOptions: [],
       contractLoading: false,
+      contractSearchTimer: null,
+      contractRequestSeq: 0,
+      contractOptionsLoadedAt: 0,
       funderOptions: [],
       funderLoading: false,
       candidateList: [],
@@ -185,7 +188,8 @@ export default {
     selectedReferenceAmount () { return this.selectedRows.reduce((sum, row) => sum + this.rowReference(row), 0) },
     isOverReference () { return Number(this.financeForm.modifiedAmount || 0) > Number(this.selectedReferenceAmount || 0) && this.selectedRows.length > 0 }
   },
-  activated () { this.getDataList() },
+  activated () { this.getDataList(); this.loadContractOptions('', false) },
+  beforeDestroy () { if (this.contractSearchTimer) clearTimeout(this.contractSearchTimer) },
   methods: {
     emptyForm () { return { confirmId: null, funderId: null, paymentDate: '', recognizedAmount: 0, modifiedAmount: 0, filePath: '', fileName: '', rawText: '', payerNameRecognized: '', payerNameModified: '', payeeNameRecognized: '', payeeNameModified: '', serialNoRecognized: '', serialNoModified: '', remark: '', itemList: [] } },
     getDataList () {
@@ -196,10 +200,23 @@ export default {
     },
     sizeChangeHandle (val) { this.pageSize = val; this.pageIndex = 1; this.getDataList() },
     currentChangeHandle (val) { this.pageIndex = val; this.getDataList() },
-    openCreate () { this.financeForm = this.emptyForm(); this.candidateList = []; this.selectedRows = []; this.candidateKeyword = ''; this.createVisible = true; this.searchContracts(''); this.searchFunders('') },
+    openCreate () {
+      this.financeForm = this.emptyForm(); this.candidateList = []; this.selectedRows = []; this.candidateKeyword = ''; this.createVisible = true
+      if (!this.contractOptionsLoadedAt || Date.now() - this.contractOptionsLoadedAt > 30000) this.loadContractOptions('', true)
+      this.searchFunders('')
+    },
     searchContracts (keyword) {
-      this.contractLoading = true
-      this.$http({ url: this.$http.adornUrl('/erp/spot-financing/contract-options'), method: 'get', params: this.$http.adornParams({ keyword }, false) }).then(({ data }) => { this.contractOptions = data && data.code === 0 ? (data.list || []) : [] }).finally(() => { this.contractLoading = false })
+      if (this.contractSearchTimer) clearTimeout(this.contractSearchTimer)
+      this.contractSearchTimer = setTimeout(() => this.loadContractOptions(keyword, true), 250)
+    },
+    loadContractOptions (keyword, showLoading) {
+      const requestSeq = ++this.contractRequestSeq
+      if (showLoading) this.contractLoading = true
+      this.$http({ url: this.$http.adornUrl('/erp/spot-financing/contract-options'), method: 'get', params: this.$http.adornParams({ keyword }, false) }).then(({ data }) => {
+        if (requestSeq !== this.contractRequestSeq) return
+        this.contractOptions = data && data.code === 0 ? (data.list || []) : []
+        if (!keyword) this.contractOptionsLoadedAt = Date.now()
+      }).finally(() => { if (showLoading && requestSeq === this.contractRequestSeq) this.contractLoading = false })
     },
     searchFunders (keyword) {
       this.funderLoading = true
@@ -250,7 +267,7 @@ export default {
           const loading = this.$loading({ lock: true, text: '正在确认融资并更新货权...' })
           const payload = { ...this.financeForm, itemList: this.selectedRows.map(row => ({ ...row, financingBoxes: Number(row.financingBoxes) })) }
           this.$http({ url: this.$http.adornUrl('/erp/spot-financing/confirm'), method: 'post', data: this.$http.adornData(payload) }).then(({ data }) => {
-            if (data && data.code === 0) { this.$message.success('现货融资确认成功'); this.createVisible = false; this.getDataList() } else { this.$message.error((data && data.msg) || '确认融资失败') }
+            if (data && data.code === 0) { this.$message.success('现货融资确认成功'); this.createVisible = false; this.contractOptionsLoadedAt = 0; this.contractOptions = []; this.getDataList() } else { this.$message.error((data && data.msg) || '确认融资失败') }
           }).finally(() => { this.submitLoading = false; loading.close() })
         }
         if (this.isOverReference) { this.$confirm(`确认融资本金超过参考货值 ${this.money(this.selectedReferenceAmount)}，是否仍要确认？`, '金额核对提醒', { type: 'warning', confirmButtonText: '仍然确认', cancelButtonText: '返回核对' }).then(doSubmit).catch(() => {}) } else doSubmit()
