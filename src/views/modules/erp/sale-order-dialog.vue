@@ -1558,7 +1558,7 @@
         </div>
         <el-alert
           v-if="!fullPaymentUploaded"
-          title="全款付款模式允许先保存销售单，但上传客户全款水单前不能新增出库批次，也不能按销售合同还款。"
+          title="全款付款模式允许先保存销售单，但上传客户全款水单前不能新增出库批次，也不能进行客户一次性付款还款。"
           type="warning"
           :closable="false"
           show-icon>

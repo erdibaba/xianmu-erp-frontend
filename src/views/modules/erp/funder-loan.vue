@@ -22,7 +22,7 @@
       <el-form-item>
       </el-form-item>
       <el-form-item>
-        <el-button v-if="isAuth('erp:funderloan:update')" type="warning" @click="openSaleOrderSettlement">按销售合同还款</el-button>
+        <el-button v-if="isAuth('erp:funderloan:update')" type="warning" @click="openSaleOrderSettlement">客户一次性付款还款</el-button>
       </el-form-item>
     </el-form>
 
@@ -611,7 +611,7 @@ export default {
   },
   computed: {
     batchSettlementDialogTitle () {
-      return this.settlementMode === 'SALE_ORDER' ? '按销售合同还款' : '按出库批次还款'
+      return this.settlementMode === 'SALE_ORDER' ? '客户一次性付款还款' : '按出库批次还款'
     },
     batchSettlementLoadingText () {
       return this.settlementMode === 'SALE_ORDER' ? '正在加载销售合同还款数据...' : '正在加载批次还款数据...'
