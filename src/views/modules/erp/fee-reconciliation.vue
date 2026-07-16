@@ -2,7 +2,7 @@
   <div class="mod-fee-reconciliation">
     <el-form :inline="true" :model="queryForm" class="query-form">
       <el-form-item>
-        <el-input v-model="queryForm.keyword" clearable placeholder="批次号/销售单号/确认函合同号/资方" @keyup.enter.native="getDataList"></el-input>
+        <el-input v-model="queryForm.keyword" clearable placeholder="批次号/销售单号/确认函合同号/客户/货权" @keyup.enter.native="getDataList"></el-input>
       </el-form-item>
       <el-form-item>
         <el-select v-model="queryForm.workflowStatus" clearable placeholder="对账状态">
@@ -20,9 +20,11 @@
       <el-table-column prop="batchNo" label="出库批次号" min-width="160" show-overflow-tooltip></el-table-column>
       <el-table-column prop="saleOrderNo" label="销售单号" min-width="170" show-overflow-tooltip></el-table-column>
       <el-table-column prop="confirmContractNos" label="确认函合同号" min-width="180" show-overflow-tooltip></el-table-column>
+      <el-table-column prop="customerName" label="客户" min-width="180" show-overflow-tooltip></el-table-column>
       <el-table-column prop="ownershipName" label="货权" min-width="180" show-overflow-tooltip></el-table-column>
-      <el-table-column prop="funderName" label="资方" min-width="180" show-overflow-tooltip></el-table-column>
-      <el-table-column prop="settlementDate" label="核算日期" width="115" align="center"></el-table-column>
+      <el-table-column label="核算日期" width="115" align="center">
+        <template slot-scope="scope">{{ dateOnly(scope.row.settlementDate) }}</template>
+      </el-table-column>
       <el-table-column label="系统预计应付" width="135" align="right">
         <template slot-scope="scope">{{ amount(scope.row.expectedPaymentAmount) }}</template>
       </el-table-column>
@@ -325,6 +327,10 @@ export default {
     this.getDataList()
   },
   methods: {
+    dateOnly (value) {
+      if (!value) return '-'
+      return String(value).slice(0, 10)
+    },
     getDataList () {
       this.dataListLoading = true
       this.$http({
