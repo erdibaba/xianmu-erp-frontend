@@ -629,7 +629,7 @@ export default {
 .amount-difference, .difference-tip { color: #f04444; font-weight: 600; }
 .difference-tip { margin: -5px 0 8px 120px; font-size: 12px; }
 .reconciliation-dialog-body { display: flex; flex-direction: column; height: 72vh; min-height: 520px; overflow: hidden; }
-.reconciliation-scroll-area { flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px; }
+.reconciliation-scroll-area { flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; padding-right: 4px; }
 .reconciliation-dock { flex: 0 0 auto; padding: 0 12px 2px; border-top: 1px solid #dfe6e4; background: #fff; box-shadow: 0 -5px 12px rgba(24, 65, 58, 0.08); }
 .reconciliation-dock .section-title { margin-top: 10px; }
 .reconciliation-dock .el-form-item { margin-bottom: 8px; }
