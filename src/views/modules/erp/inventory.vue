@@ -610,6 +610,7 @@
 </template>
 
 <script>
+  import axios from 'axios'
   import PresaleInventory from './presale-inventory'
 
   export default {
@@ -630,6 +631,8 @@
         inventoryOptionLoadingMap: {},
         inventoryOptionTimers: {},
         inventoryOptionRequestMap: {},
+        inventoryOptionCancelMap: {},
+        inventoryOptionCache: {},
         spotQuery: {
           keyword: '',
           warehouseId: '',
@@ -754,24 +757,45 @@
         }
         const selected = query[fieldMap[optionType]] || ''
         const key = this.inventoryOptionKey(scope, optionType)
+        const cacheKey = `${key}:${JSON.stringify(params)}`
+        const cached = this.inventoryOptionCache[cacheKey]
+        if (cached && Date.now() - cached.time < 30000) {
+          let list = cached.list.slice()
+          if (selected && !list.some(item => String(item.value) === String(selected))) {
+            list = [{ value: selected, label: selected }].concat(list)
+          }
+          this.$set(this.inventoryOptionMap, key, list.slice(0, 15))
+          return
+        }
+        if (this.inventoryOptionCancelMap[key]) {
+          this.inventoryOptionCancelMap[key]('已发起新的候选项查询')
+        }
         const requestId = (this.inventoryOptionRequestMap[key] || 0) + 1
         this.inventoryOptionRequestMap[key] = requestId
         this.$set(this.inventoryOptionLoadingMap, key, true)
+        const cancelToken = new axios.CancelToken(cancel => {
+          this.inventoryOptionCancelMap[key] = cancel
+        })
         this.$http({
           url: this.$http.adornUrl('/erp/inventory/options'),
           method: 'get',
-          params: this.$http.adornParams(params)
+          params: this.$http.adornParams(params),
+          cancelToken: cancelToken
         }).then(({data}) => {
           if (this.inventoryOptionRequestMap[key] !== requestId) return
           let list = (data && data.list) || []
+          this.$set(this.inventoryOptionCache, cacheKey, { time: Date.now(), list: list.slice(0, 15) })
           if (selected && !list.some(item => String(item.value) === String(selected))) {
             list = [{ value: selected, label: selected }].concat(list)
           }
           this.$set(this.inventoryOptionMap, key, list.slice(0, 15))
           this.$set(this.inventoryOptionLoadingMap, key, false)
-        }).catch(() => {
+          delete this.inventoryOptionCancelMap[key]
+        }).catch(error => {
+          if (axios.isCancel(error)) return
           if (this.inventoryOptionRequestMap[key] !== requestId) return
           this.$set(this.inventoryOptionLoadingMap, key, false)
+          delete this.inventoryOptionCancelMap[key]
         })
       },
       handleTabChange () {
