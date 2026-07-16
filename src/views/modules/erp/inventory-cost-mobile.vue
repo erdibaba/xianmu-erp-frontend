@@ -13,6 +13,7 @@
 
       <section class="search-card">
         <el-select
+          ref="contractSelect"
           v-model="queryForm.contractNo"
           filterable
           remote
@@ -20,11 +21,14 @@
           reserve-keyword
           :loading="optionLoading.contract"
           :remote-method="keyword => remoteOptions('contract', keyword)"
+          popper-class="sales-inventory-mobile-dropdown"
+          @touchstart.native.capture="unlockMobileSelectInput('contractSelect')"
           placeholder="确认函合同号">
           <el-option v-for="item in contractOptions" :key="item.value" :label="item.label" :value="item.value"></el-option>
         </el-select>
 
         <el-select
+          ref="productSelect"
           v-model="queryForm.productId"
           filterable
           remote
@@ -32,6 +36,8 @@
           reserve-keyword
           :loading="optionLoading.product"
           :remote-method="keyword => remoteOptions('product', keyword)"
+          popper-class="sales-inventory-mobile-dropdown"
+          @touchstart.native.capture="unlockMobileSelectInput('productSelect')"
           placeholder="产品编码 / 市场流通名称">
           <el-option v-for="item in productOptions" :key="item.value" :label="item.label" :value="item.value"></el-option>
         </el-select>
@@ -46,11 +52,13 @@
           reserve-keyword
           :loading="optionLoading.container"
           :remote-method="keyword => remoteOptions('container', keyword)"
+          popper-class="sales-inventory-mobile-dropdown"
           placeholder="柜号（可多选）">
           <el-option v-for="item in containerOptions" :key="item.value" :label="item.label" :value="item.value"></el-option>
         </el-select>
 
         <el-select
+          ref="ownershipSelect"
           v-model="queryForm.ownershipName"
           filterable
           remote
@@ -58,22 +66,27 @@
           reserve-keyword
           :loading="optionLoading.ownership"
           :remote-method="keyword => remoteOptions('ownership', keyword)"
+          popper-class="sales-inventory-mobile-dropdown"
+          @touchstart.native.capture="unlockMobileSelectInput('ownershipSelect')"
           placeholder="货权">
           <el-option v-for="item in ownershipOptions" :key="item.value" :label="item.label" :value="item.value"></el-option>
         </el-select>
 
-        <el-select v-model="queryForm.temperatureZone" clearable placeholder="温区">
+        <el-select v-model="queryForm.temperatureZone" clearable popper-class="sales-inventory-mobile-dropdown" placeholder="温区">
           <el-option label="冷鲜" value="冷鲜"></el-option>
           <el-option label="冷冻" value="冷冻"></el-option>
           <el-option label="冷藏" value="冷藏"></el-option>
         </el-select>
 
         <el-select
+          ref="warehouseSelect"
           v-if="inventoryType === 'spot'"
           v-model="queryForm.warehouseId"
           filterable
           clearable
+          popper-class="sales-inventory-mobile-dropdown"
           placeholder="仓库"
+          @touchstart.native.capture="unlockMobileSelectInput('warehouseSelect')"
           @change="warehouseChange">
           <el-option v-for="item in warehouseList" :key="item.id" :label="item.warehouseName" :value="item.id"></el-option>
         </el-select>
@@ -214,6 +227,11 @@
       this.getDataList()
     },
     methods: {
+      unlockMobileSelectInput (refName) {
+        const select = this.$refs[refName]
+        const input = select && select.$el && select.$el.querySelector('.el-input__inner')
+        if (input) input.removeAttribute('readonly')
+      },
       emptyQuery () {
         return {
           contractNo: '',
@@ -766,6 +784,16 @@
 </style>
 
 <style>
+  .sales-inventory-mobile-dropdown {
+    z-index: 6000 !important;
+    max-width: calc(100vw - 24px);
+  }
+
+  .sales-inventory-mobile-dropdown .el-select-dropdown__item {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .sales-inventory-detail-dialog {
     max-width: 430px;
     margin-top: 8vh !important;
