@@ -1970,7 +1970,7 @@ export default {
       return {
         id: 0,
         orderNo: '',
-        saleType: 'FUTURES',
+        saleType: 'SPOT',
         secondaryPartnerId: '',
         secondaryPartnerName: '',
         secondaryPartnerColdStorageFreeDays: '',
