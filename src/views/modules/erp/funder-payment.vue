@@ -442,7 +442,12 @@
       </span>
     </el-dialog>
 
-    <el-dialog title="预销售单打款详情" :visible.sync="detailVisible" width="950px">
+    <el-dialog
+      title="预销售单打款详情"
+      :visible.sync="detailVisible"
+      width="96%"
+      top="5vh"
+      @opened="layoutDetailTable">
       <el-descriptions v-if="detailData.id" :column="3" border>
         <el-descriptions-item label="打款单号">{{ detailData.paymentNo }}</el-descriptions-item>
         <el-descriptions-item label="付款类型">{{ paymentTypeName(detailData.paymentType) }}</el-descriptions-item>
@@ -463,7 +468,14 @@
           <span v-else>-</span>
         </el-descriptions-item>
       </el-descriptions>
-      <el-table :data="detailData.allocationList || []" border style="margin-top: 16px">
+      <el-table
+        v-if="detailVisible && detailData.id"
+        ref="detailAllocationTable"
+        :key="`payment-detail-${detailData.id}-${detailData.paymentType}`"
+        :data="detailData.allocationList || []"
+        border
+        max-height="480"
+        style="margin-top: 16px">
         <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
         <el-table-column prop="presaleOrderNo" label="预销售单号" min-width="180"></el-table-column>
         <el-table-column prop="confirmContractNo" label="确认函合同号" min-width="180"></el-table-column>
@@ -1176,6 +1188,8 @@ export default {
     },
     openDetail (id) {
       const loading = this.$loading({ lock: true, text: '正在加载预销售单打款详情...' })
+      this.detailVisible = false
+      this.detailData = {}
       this.$http({
         url: this.$http.adornUrl(`/erp/funder-finance/payment/info/${id}`),
         method: 'get',
@@ -1188,6 +1202,13 @@ export default {
           this.$message.error((data && data.msg) || '获取打款详情失败')
         }
       }).finally(() => loading.close())
+    },
+    layoutDetailTable () {
+      this.$nextTick(() => {
+        if (this.$refs.detailAllocationTable) {
+          this.$refs.detailAllocationTable.doLayout()
+        }
+      })
     },
     downloadVoucher (id, fileName) {
       const loading = this.$loading({ lock: true, text: '正在下载归档凭证...' })
