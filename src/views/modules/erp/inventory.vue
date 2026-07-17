@@ -75,6 +75,7 @@
           <el-table-column label="涉及合同号" min-width="190" show-overflow-tooltip>
             <template slot-scope="scope">{{ formatContractNos(scope.row) }}</template>
           </el-table-column>
+          <el-table-column prop="businessEntityName" label="业务归属主体" min-width="180" show-overflow-tooltip></el-table-column>
           <el-table-column prop="ownershipName" label="货权" min-width="170" show-overflow-tooltip></el-table-column>
           <el-table-column prop="earliestInboundDate" label="最早入库" width="115" align="center" header-align="center">
             <template slot-scope="scope">{{ formatDate(scope.row.earliestInboundDate || scope.row.inboundDate) }}</template>
@@ -183,6 +184,7 @@
           <el-table-column prop="marketCirculationName" label="市场流通名称" min-width="180" show-overflow-tooltip></el-table-column>
           <el-table-column prop="productName" label="中文名称" min-width="170" show-overflow-tooltip></el-table-column>
           <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="businessEntityName" label="业务归属主体" min-width="180" show-overflow-tooltip></el-table-column>
           <el-table-column prop="ownershipName" label="货权" min-width="170" show-overflow-tooltip></el-table-column>
           <el-table-column prop="temperatureZone" label="温区" width="90" align="center" header-align="center"></el-table-column>
           <el-table-column prop="inboundDate" label="入库时间" width="115" align="center" header-align="center">
@@ -297,6 +299,7 @@
           <el-table-column label="涉及合同号" min-width="190" show-overflow-tooltip>
             <template slot-scope="scope">{{ formatContractNos(scope.row) }}</template>
           </el-table-column>
+          <el-table-column prop="businessEntityName" label="业务归属主体" min-width="180" show-overflow-tooltip></el-table-column>
           <el-table-column prop="ownershipName" label="货权" min-width="170" show-overflow-tooltip></el-table-column>
           <el-table-column prop="availableBoxes" label="当前剩余箱数" width="120" align="right" header-align="center"></el-table-column>
           <el-table-column label="当前剩余重量(KG)" width="145" align="right" header-align="center">
@@ -506,6 +509,7 @@
       <div v-if="currentInventoryRow" class="batch-summary">
         <span>产品编码：{{ currentInventoryRow.productCode || '-' }}</span>
         <span>产品名称：{{ currentInventoryRow.productName || '-' }}</span>
+        <span>业务归属：{{ currentInventoryRow.businessEntityName || '-' }}</span>
         <span>货权：{{ currentInventoryRow.ownershipName || '-' }}</span>
       </div>
       <el-table :data="batchList" border stripe v-loading="batchLoading" height="430">
@@ -514,6 +518,7 @@
           <el-table-column prop="warehouseName" label="仓库" min-width="140" show-overflow-tooltip></el-table-column>
           <el-table-column prop="containerNo" label="柜号" min-width="130" show-overflow-tooltip></el-table-column>
           <el-table-column prop="factoryNo" label="厂号" width="100" align="center" header-align="center"></el-table-column>
+          <el-table-column prop="businessEntityName" label="业务归属主体" min-width="180" show-overflow-tooltip></el-table-column>
           <el-table-column prop="ownershipName" label="货权" min-width="170" show-overflow-tooltip></el-table-column>
           <el-table-column prop="contractNo" label="合同号" min-width="140" show-overflow-tooltip></el-table-column>
           <el-table-column prop="customerName" label="客户" min-width="160" show-overflow-tooltip></el-table-column>
@@ -533,6 +538,7 @@
           <el-table-column prop="contractNo" label="合同号" min-width="140" show-overflow-tooltip></el-table-column>
           <el-table-column prop="containerNo" label="柜号" min-width="130" show-overflow-tooltip></el-table-column>
           <el-table-column prop="factoryNo" label="厂号" width="100" align="center" header-align="center"></el-table-column>
+          <el-table-column prop="businessEntityName" label="业务归属主体" min-width="180" show-overflow-tooltip></el-table-column>
           <el-table-column prop="ownershipName" label="货权" min-width="170" show-overflow-tooltip></el-table-column>
           <el-table-column prop="customerReference" label="采购方" min-width="160" show-overflow-tooltip></el-table-column>
           <el-table-column prop="brandName" label="品牌方" min-width="160" show-overflow-tooltip></el-table-column>
@@ -939,7 +945,8 @@
             containerNos: (this.futuresQuery.containerNos || []).join(','),
             ownershipName: row.ownershipName || '',
             factoryNo: this.futuresQuery.factoryNo,
-            onlyAvailable: this.futuresQuery.onlyAvailable
+            onlyAvailable: this.futuresQuery.onlyAvailable,
+            businessEntityId: row.businessEntityId
           }
           : type === 'spotContainerProduct'
           ? {

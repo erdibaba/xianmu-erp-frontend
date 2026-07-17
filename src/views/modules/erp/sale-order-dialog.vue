@@ -15,6 +15,26 @@
         @keyup.enter.native="dataFormSubmit()">
         <el-row :gutter="20">
           <el-col :span="6">
+            <el-form-item label="销售主体" prop="sellingEntityId">
+              <el-select
+                v-model="dataForm.sellingEntityId"
+                :disabled="contentReadonly"
+                filterable
+                style="width: 100%;"
+                placeholder="请选择销售主体"
+                @change="sellingEntityChangeHandle">
+                <el-option
+                  v-for="item in internalEntityList"
+                  :key="item.id"
+                  :label="item.entityName"
+                  :value="item.id">
+                  <span>{{ item.entityName }}</span>
+                  <el-tag v-if="Number(item.defaultFlag) === 1" size="mini" type="success" style="float:right;margin-top:6px;">默认</el-tag>
+                </el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="6">
             <el-form-item label="销售类型" prop="saleType">
               <el-select
                 v-model="dataForm.saleType"
@@ -380,6 +400,7 @@
                   @selection-change="selection => spotLotSelectionChange(scope.row, selection)">
                   <el-table-column v-if="!contentReadonly" type="selection" width="48" :selectable="spotLotSelectable"></el-table-column>
                   <el-table-column prop="warehouseName" label="仓库" min-width="140"></el-table-column>
+                  <el-table-column prop="businessEntityName" label="业务归属" min-width="150"></el-table-column>
                   <el-table-column prop="ownershipName" label="货权" min-width="130"></el-table-column>
                   <el-table-column prop="factoryNo" label="厂号" width="100"></el-table-column>
                   <el-table-column label="生产日期" width="115"><template slot-scope="lotScope">{{ formatDateOnly(lotScope.row.productionDate) }}</template></el-table-column>
@@ -402,6 +423,7 @@
             <el-table-column label="柜号" min-width="125"><template slot-scope="scope">{{ scope.row.containerNo || '-' }}</template></el-table-column>
             <el-table-column label="厂号" min-width="110" show-overflow-tooltip><template slot-scope="scope">{{ scope.row.factoryNos || '-' }}</template></el-table-column>
             <el-table-column label="仓库" min-width="140" show-overflow-tooltip><template slot-scope="scope">{{ scope.row.warehouseNames || '-' }}</template></el-table-column>
+            <el-table-column label="业务归属" min-width="150" show-overflow-tooltip><template slot-scope="scope">{{ scope.row.businessEntityNames || '-' }}</template></el-table-column>
             <el-table-column label="货权" min-width="130" show-overflow-tooltip><template slot-scope="scope">{{ scope.row.ownershipNames || '-' }}</template></el-table-column>
             <el-table-column label="可售箱数" width="90" align="right"><template slot-scope="scope">{{ scope.row.availableBoxes }}</template></el-table-column>
             <el-table-column label="可售重量KG" width="120" align="right"><template slot-scope="scope">{{ scope.row.availableWeightKg }}</template></el-table-column>
@@ -446,6 +468,7 @@
           <el-table-column prop="ownershipName" label="货权" min-width="120" show-overflow-tooltip>
             <template slot-scope="scope">{{ scope.row.ownershipName || '-' }}</template>
           </el-table-column>
+          <el-table-column prop="businessEntityName" label="业务归属" min-width="150" show-overflow-tooltip></el-table-column>
           <el-table-column prop="confirmContractNo" label="确认函合同号" min-width="150" show-overflow-tooltip>
             <template slot-scope="scope">{{ scope.row.confirmContractNo || '-' }}</template>
           </el-table-column>
@@ -1673,6 +1696,7 @@ export default {
       bankVoucherSupportTip: '支持浦发银行、建设银行、工商银行、兴业银行、中国银行、农发行电子回单样本，支持 PDF / JPG / PNG。',
       activeOutboundBatchId: '',
       outboundTableVersion: 0,
+      internalEntityList: [],
       secondaryPartnerList: [],
       warehouseList: [],
       productList: [],
@@ -1707,6 +1731,7 @@ export default {
       salespersonLoading: false,
       dataForm: this.defaultForm(),
       dataRule: {
+        sellingEntityId: [{ required: true, message: '请选择销售主体', trigger: 'change' }],
         saleType: [{ required: true, message: '请选择销售类型', trigger: 'change' }],
         secondaryPartnerId: [{ required: true, message: '请选择二批商', trigger: 'change' }],
         salespersonId: [{ required: true, message: '请选择销售', trigger: 'change' }],
@@ -1971,6 +1996,8 @@ export default {
         id: 0,
         orderNo: '',
         saleType: 'SPOT',
+        sellingEntityId: '',
+        sellingEntityName: '',
         secondaryPartnerId: '',
         secondaryPartnerName: '',
         secondaryPartnerColdStorageFreeDays: '',
@@ -2160,7 +2187,26 @@ export default {
       })
     },
     loadBaseOptions () {
-      return Promise.all([this.loadSecondaryPartners(), this.loadWarehouses(), this.loadProductList(), this.remoteSearchSalespersons('')])
+      return Promise.all([this.loadInternalEntities(), this.loadSecondaryPartners(), this.loadWarehouses(), this.loadProductList(), this.remoteSearchSalespersons('')])
+    },
+    loadInternalEntities () {
+      return this.$http({
+        url: this.$http.adornUrl('/erp/internalentity/select'),
+        method: 'get'
+      }).then(({ data }) => {
+        this.internalEntityList = (data && data.list) || []
+        if (!this.dataForm.sellingEntityId) {
+          const defaultEntity = this.internalEntityList.find(item => Number(item.defaultFlag) === 1) || this.internalEntityList[0]
+          if (defaultEntity) {
+            this.dataForm.sellingEntityId = defaultEntity.id
+            this.dataForm.sellingEntityName = defaultEntity.entityName
+          }
+        }
+      })
+    },
+    sellingEntityChangeHandle (value) {
+      const entity = this.internalEntityList.find(item => String(item.id) === String(value))
+      this.dataForm.sellingEntityName = entity ? entity.entityName : ''
     },
     loadSecondaryPartners () {
       return this.$http({

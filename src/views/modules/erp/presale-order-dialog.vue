@@ -27,6 +27,24 @@
               <el-form :model="dataForm" :rules="estimateRules" label-width="120px">
                 <el-row :gutter="20">
                   <el-col :span="8">
+                    <el-form-item label="业务归属主体" prop="businessEntityId">
+                      <el-select
+                        v-model="dataForm.businessEntityId"
+                        filterable
+                        :disabled="readonly || businessEntityLocked"
+                        style="width: 100%;"
+                        placeholder="请选择内部主体">
+                        <el-option
+                          v-for="item in internalEntityList"
+                          :key="item.id"
+                          :label="item.entityName"
+                          :value="item.id">
+                        </el-option>
+                      </el-select>
+                      <div v-if="businessEntityLocked && !readonly" class="form-tip">已有客户订单确认函，业务归属主体不可修改</div>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="8">
                     <el-form-item label="预销售单号">
                       <el-input v-model="dataForm.orderNo" :disabled="true"></el-input>
                     </el-form-item>
@@ -957,6 +975,8 @@ function defaultAttachmentInfo () {
 function defaultForm () {
   return {
     id: 0,
+    businessEntityId: '',
+    businessEntityName: '',
     orderNo: '',
     sellerContractNo: '',
     customerPartnerId: '',
@@ -1010,11 +1030,15 @@ export default {
       linkedConfirmDetailVisible: false,
       linkedConfirmDetail: null,
       dataForm: defaultForm(),
+      internalEntityList: [],
       partnerList: [],
       productList: [],
       currencyOptions: ['CNY', 'USD'],
       measureUnitOptions: ['KG', 'TON', '箱', '件'],
       estimateRules: {
+        businessEntityId: [
+          { required: true, message: '请选择预售单业务归属主体', trigger: 'change' }
+        ],
         brandId: [
           { required: true, message: '请选择预售销售单品牌方', trigger: 'change' }
         ],
@@ -1065,6 +1089,9 @@ export default {
     }
   },
   computed: {
+    businessEntityLocked () {
+      return !!(this.dataForm.id && Number(this.dataForm.confirmCount || 0) > 0)
+    },
     dialogTitle () {
       if (this.onlyEstimate) {
         if (this.readonly) {
@@ -1362,8 +1389,26 @@ export default {
       })
     },
     loadBaseOptions (callback) {
-      this.loadPartners(() => {
-        this.loadProducts(callback)
+      this.loadInternalEntities(() => {
+        this.loadPartners(() => {
+          this.loadProducts(callback)
+        })
+      })
+    },
+    loadInternalEntities (callback) {
+      this.$http({
+        url: this.$http.adornUrl('/erp/internalentity/select'),
+        method: 'get'
+      }).then(({ data }) => {
+        this.internalEntityList = (data && data.list) || []
+        if (!this.dataForm.businessEntityId) {
+          const defaultEntity = this.internalEntityList.find(item => Number(item.defaultFlag) === 1) || this.internalEntityList[0]
+          if (defaultEntity) {
+            this.dataForm.businessEntityId = defaultEntity.id
+            this.dataForm.businessEntityName = defaultEntity.entityName
+          }
+        }
+        if (typeof callback === 'function') callback()
       })
     },
     loadPartners (callback) {
@@ -1451,6 +1496,11 @@ export default {
       const draft = (result && result.orderDraft) || {}
       const resolvedBrandName = this.resolveDefaultBrandName(draft.brandName)
       const form = defaultForm()
+      const defaultEntity = this.internalEntityList.find(item => Number(item.defaultFlag) === 1) || this.internalEntityList[0]
+      if (defaultEntity) {
+        form.businessEntityId = defaultEntity.id
+        form.businessEntityName = defaultEntity.entityName
+      }
       form.sellerContractNo = draft.contractNo || ''
       form.customerReference = draft.buyerPartnerName || draft.partnerName || ''
       form.customerPartnerId = this.findPartnerIdByName(form.customerReference, ['INTERNAL', 'FUNDER'])
@@ -1936,6 +1986,11 @@ export default {
       itemList.splice(index, 1)
     },
     validateEstimateRequired (payload) {
+      if (!payload.businessEntityId) {
+        this.activeTab = 'estimate'
+        this.$message.error('请选择预售单业务归属主体')
+        return false
+      }
       if (!payload.brandId) {
         this.activeTab = 'estimate'
         this.$message.error('请选择预售销售单品牌方')

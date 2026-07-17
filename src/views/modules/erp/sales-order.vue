@@ -1,7 +1,7 @@
 <template>
   <div class="mod-erp-sale-order">
     <el-alert
-      title="销售单分为期货单和现货单。期货单按箱数关联预销售单明细；现货单必须先有库存，系统会按过期日期最早、入库时间最早、柜号顺序自动扣减库存。"
+      title="销售单分为期货单和现货单。现货单从共享库存中按确认函、产品及生产日期选择；跳过更早确认函库存时会提交货物风控审核。"
       type="info"
       :closable="false"
       show-icon>
@@ -47,6 +47,7 @@
       <el-table-column label="类型" width="100" align="center" show-overflow-tooltip>
         <template slot-scope="scope">{{ getSaleTypeLabel(scope.row.saleType) }}</template>
       </el-table-column>
+      <el-table-column prop="sellingEntityName" label="销售主体" min-width="190" show-overflow-tooltip></el-table-column>
       <el-table-column prop="secondaryPartnerName" label="二批商" min-width="180" show-overflow-tooltip></el-table-column>
       <el-table-column prop="salespersonName" label="销售" min-width="130" show-overflow-tooltip>
         <template slot-scope="scope">{{ scope.row.salespersonName || '-' }}</template>

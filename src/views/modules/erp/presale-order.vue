@@ -28,6 +28,7 @@
     <el-table :data="dataList" border stripe v-loading="dataListLoading" style="margin-top: 15px;">
       <el-table-column prop="orderNo" label="预销售单号" min-width="150" align="center"></el-table-column>
       <el-table-column prop="sellerContractNo" label="合同号" min-width="160"></el-table-column>
+      <el-table-column prop="businessEntityName" label="业务归属主体" min-width="190" show-overflow-tooltip></el-table-column>
       <el-table-column prop="customerReference" label="采购方" min-width="200"></el-table-column>
       <el-table-column prop="brandName" label="品牌方" min-width="180"></el-table-column>
       <el-table-column prop="currency" label="币种" width="90" align="center"></el-table-column>
@@ -376,7 +377,7 @@ export default {
         } else {
           this.dataList = []
           this.totalPage = 0
-          this.$message.error((data && data.msg) || '??????')
+          this.$message.error((data && data.msg) || '获取预售单失败')
         }
         this.dataListLoading = false
       }).catch(() => {

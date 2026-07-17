@@ -12,13 +12,13 @@
       <el-form-item>
         <el-select v-model="queryForm.paymentType" clearable placeholder="付款类型" style="width: 150px" @change="getDataList()">
           <el-option label="资方全款" :value="1"></el-option>
-          <el-option label="鲜牧全款" :value="2"></el-option>
+          <el-option label="内部主体全款" :value="2"></el-option>
         </el-select>
       </el-form-item>
       <el-form-item>
         <el-button type="primary" @click="getDataList()">查询</el-button>
         <el-button v-if="isAuth('erp:funderpayment:save')" type="success" @click="openCreate(1)">新增资方全款打款</el-button>
-        <el-button v-if="isAuth('erp:funderpayment:save')" type="warning" @click="openCreate(2)">新增鲜牧全款打款</el-button>
+        <el-button v-if="isAuth('erp:funderpayment:save')" type="warning" @click="openCreate(2)">新增内部主体全款打款</el-button>
       </el-form-item>
     </el-form>
 
@@ -97,19 +97,17 @@
             </el-form-item>
           </el-col>
           <el-col v-else :span="12">
-            <el-form-item label="鲜牧付款主体" prop="payerId">
+            <el-form-item label="实际付款主体" prop="actualPayerEntityId">
               <el-select
-                v-model="paymentForm.payerId"
+                v-model="paymentForm.actualPayerEntityId"
                 filterable
-                remote
                 clearable
-                :remote-method="searchInternalPayers"
                 :loading="internalPayerLoading"
-                placeholder="输入鲜牧主体编码或名称搜索"
+                placeholder="请选择实际付款内部主体"
                 style="width: 100%">
-                <el-option v-for="item in internalPayerOptions" :key="item.id" :label="item.partnerName" :value="item.id">
-                  <span>{{ item.partnerName }}</span>
-                  <span class="option-extra">{{ item.partnerCode }}</span>
+                <el-option v-for="item in internalPayerOptions" :key="item.id" :label="item.entityName" :value="item.id">
+                  <span>{{ item.entityName }}</span>
+                  <span class="option-extra">{{ item.entityCode }}</span>
                 </el-option>
               </el-select>
             </el-form-item>
@@ -234,7 +232,7 @@
               </el-select>
             </template>
           </el-table-column>
-          <el-table-column v-if="isFunderPayment" label="鲜牧出资款凭证" width="190">
+          <el-table-column v-if="isFunderPayment" label="业务主体出资款凭证" width="190">
             <template slot-scope="scope">
               <template v-if="hasXianmuContribution(scope.row)">
                 <el-upload
@@ -381,7 +379,7 @@
         </div>
         </template>
         <div v-else class="xianmu-single-payment">
-          <div class="section-title">鲜牧全款打款</div>
+          <div class="section-title">内部主体全款打款</div>
           <el-alert
             v-if="!xianmuAllocation.confirmId"
             type="info"
@@ -482,7 +480,7 @@
         <el-table-column v-if="detailData.paymentType === 1" label="出资识别金额" width="150" align="right">
           <template slot-scope="scope">{{ money(scope.row.xianmuContributionRecognizedAmount) }}</template>
         </el-table-column>
-        <el-table-column v-if="detailData.paymentType === 1" label="鲜牧出资款" width="150" align="right">
+        <el-table-column v-if="detailData.paymentType === 1" label="业务主体出资款" width="150" align="right">
           <template slot-scope="scope">{{ money(scope.row.xianmuContributionModifiedAmount) }}</template>
         </el-table-column>
         <el-table-column v-if="detailData.paymentType === 1" label="出资日期" width="120" align="center">
@@ -538,6 +536,8 @@ const emptyPayment = (paymentType = PAYMENT_TYPE_FUNDER) => ({
   id: null,
   paymentType,
   payerId: null,
+  actualPayerEntityId: null,
+  actualPayerEntityName: '',
   funderId: null,
   recognizedAmount: 0,
   modifiedAmount: 0,
@@ -580,7 +580,7 @@ export default {
       submitLoading: false,
       paymentRules: {
         funderId: [{ required: true, message: '请选择资方', trigger: 'change' }],
-        payerId: [{ required: true, message: '请选择鲜牧付款主体', trigger: 'change' }],
+        actualPayerEntityId: [{ required: true, message: '请选择实际付款内部主体', trigger: 'change' }],
         paymentDate: [{ required: true, message: '请选择打款日期', trigger: 'change' }],
         modifiedAmount: [{ required: true, message: '请输入修改金额', trigger: 'blur' }],
         filePath: [{ required: true, message: '请上传打款凭证', trigger: 'change' }],
@@ -594,12 +594,12 @@ export default {
       return this.paymentForm.paymentType === PAYMENT_TYPE_FUNDER
     },
     createTitle () {
-      if (this.paymentForm.id) return '补上传鲜牧全款尾款'
-      return this.isFunderPayment ? '新增资方全款打款' : '新增鲜牧全款打款'
+      if (this.paymentForm.id) return '补上传内部主体全款尾款'
+      return this.isFunderPayment ? '新增资方全款打款' : '新增内部主体全款打款'
     },
     confirmButtonText () {
       if (this.paymentForm.id) return '保存尾款并更新状态'
-      return this.isFunderPayment ? '确认打款并生成贷款' : '确认鲜牧全款打款'
+      return this.isFunderPayment ? '确认打款并生成贷款' : '确认内部主体全款打款'
     },
     allocationTotal () {
       return (this.paymentForm.allocationList || []).reduce((sum, item) => sum + Number(item.allocationAmount || 0), 0)
@@ -654,7 +654,7 @@ export default {
       this.$set(row, 'xianmuContributionRawText', '')
     },
     paymentTypeName (value) {
-      return Number(value || PAYMENT_TYPE_FUNDER) === PAYMENT_TYPE_XIANMU ? '鲜牧全款' : '资方全款'
+      return Number(value || PAYMENT_TYPE_FUNDER) === PAYMENT_TYPE_XIANMU ? '内部主体全款' : '资方全款'
     },
     paymentStatusName (value) {
       return Number(value || 0) === 0 ? '待尾款' : '已确认'
@@ -739,15 +739,15 @@ export default {
     searchInternalPayers (keyword, setDefault = false) {
       this.internalPayerLoading = true
       this.$http({
-        url: this.$http.adornUrl('/erp/funder-finance/internal-payer-options'),
+        url: this.$http.adornUrl('/erp/internalentity/select'),
         method: 'get',
-        params: this.$http.adornParams({ keyword })
+        params: this.$http.adornParams()
       }).then(({ data }) => {
         this.internalPayerLoading = false
         this.internalPayerOptions = (data && data.list) || []
-        if (setDefault && !this.paymentForm.payerId && this.internalPayerOptions.length) {
-          const xianmu = this.internalPayerOptions.find(item => String(item.partnerName || '').indexOf('鲜牧') >= 0)
-          this.paymentForm.payerId = (xianmu || this.internalPayerOptions[0]).id
+        if (setDefault && !this.paymentForm.actualPayerEntityId && this.internalPayerOptions.length) {
+          const defaultEntity = this.internalPayerOptions.find(item => Number(item.defaultFlag || 0) === 1)
+          this.paymentForm.actualPayerEntityId = (defaultEntity || this.internalPayerOptions[0]).id
         }
       }).catch(() => { this.internalPayerLoading = false })
     },
@@ -823,7 +823,7 @@ export default {
       const confirm = option.confirmInfo || {}
       const confirmAmount = Number(option.confirmInfo && option.confirmInfo.totalAmount ? option.confirmInfo.totalAmount : 0)
       if (confirmAmount <= 0) {
-        this.$message.error('所选确认函总金额为空，不能进行鲜牧全款打款')
+        this.$message.error('所选确认函总金额为空，不能进行内部主体全款打款')
         this.paymentForm.selectedConfirmId = null
         this.paymentForm.allocationList = []
         return
@@ -940,7 +940,7 @@ export default {
       const formData = new FormData()
       formData.append('file', request.file)
       this.xianmuContributionLoadingIndex = index
-      const loading = this.$loading({ lock: true, text: '正在识别并归档鲜牧出资款凭证...' })
+      const loading = this.$loading({ lock: true, text: '正在识别并归档业务主体出资款凭证...' })
       this.$http({
         url: this.$http.adornUrl('/erp/funder-finance/voucher/recognize'),
         method: 'post',
@@ -957,11 +957,11 @@ export default {
           this.$set(row, 'xianmuContributionFilePath', voucher.filePath || '')
           this.$set(row, 'xianmuContributionFileName', voucher.fileName || request.file.name)
           this.$set(row, 'xianmuContributionRawText', voucher.rawText || '')
-          this.$message.success('鲜牧出资款凭证识别完成，请核对金额和日期')
+          this.$message.success('业务主体出资款凭证识别完成，请核对金额和日期')
         } else {
-          this.$message.error((data && data.msg) || '鲜牧出资款凭证识别失败')
+          this.$message.error((data && data.msg) || '业务主体出资款凭证识别失败')
         }
-      }).catch(() => this.$message.error('鲜牧出资款凭证识别请求失败')).finally(() => {
+      }).catch(() => this.$message.error('业务主体出资款凭证识别请求失败')).finally(() => {
         this.xianmuContributionLoadingIndex = -1
         loading.close()
       })
@@ -974,7 +974,7 @@ export default {
       const loadingKey = this.installmentLoadingKey(index, kind)
       const name = kind === 'deposit' ? '定金' : '尾款'
       this.xianmuInstallmentLoadingKey = loadingKey
-      const loading = this.$loading({ lock: true, text: `正在识别并归档鲜牧全款${name}凭证...` })
+      const loading = this.$loading({ lock: true, text: `正在识别并归档内部主体全款${name}凭证...` })
       this.$http({
         url: this.$http.adornUrl('/erp/funder-finance/voucher/recognize'),
         method: 'post',
@@ -992,11 +992,11 @@ export default {
           this.$set(row, `${prefix}FilePath`, voucher.filePath || '')
           this.$set(row, `${prefix}FileName`, voucher.fileName || request.file.name)
           this.$set(row, `${prefix}RawText`, voucher.rawText || '')
-          this.$message.success(`鲜牧全款${name}凭证识别完成，请核对金额和日期`)
+          this.$message.success(`内部主体全款${name}凭证识别完成，请核对金额和日期`)
         } else {
-          this.$message.error((data && data.msg) || `鲜牧全款${name}凭证识别失败`)
+          this.$message.error((data && data.msg) || `内部主体全款${name}凭证识别失败`)
         }
-      }).catch(() => this.$message.error(`鲜牧全款${name}凭证识别请求失败`)).finally(() => {
+      }).catch(() => this.$message.error(`内部主体全款${name}凭证识别请求失败`)).finally(() => {
         this.xianmuInstallmentLoadingKey = ''
         loading.close()
       })
@@ -1062,7 +1062,7 @@ export default {
       this.paymentForm.modifiedAmount = this.roundMoney(this.allocationTotal)
       this.paymentForm.paymentDate = latestDate
       this.paymentForm.filePath = firstFilePath
-      this.paymentForm.fileName = firstFileName || '鲜牧全款定金/尾款凭证'
+      this.paymentForm.fileName = firstFileName || '内部主体全款定金/尾款凭证'
       return true
     },
     confirmPayment () {
@@ -1099,12 +1099,12 @@ export default {
               contributionAmount > Number(item.allocationAmount || 0)
           })
           if (invalidContributionIndex >= 0) {
-            this.$message.error(`第${invalidContributionIndex + 1}行鲜牧出资款凭证、日期和金额必须填写，且出资款不能大于资方全款金额`)
+            this.$message.error(`第${invalidContributionIndex + 1}行业务主体出资款凭证、日期和金额必须填写，且出资款不能大于资方全款金额`)
             return
           }
         }
         this.submitLoading = true
-        const loadingText = this.isFunderPayment ? '正在确认打款并生成贷款记录...' : '正在确认鲜牧全款打款...'
+        const loadingText = this.isFunderPayment ? '正在确认打款并生成贷款记录...' : '正在确认内部主体全款打款...'
         const loading = this.$loading({ lock: true, text: loadingText })
         const payload = Object.assign({}, this.paymentForm)
         delete payload.recognizedReceipt
@@ -1129,7 +1129,7 @@ export default {
           data: this.$http.adornData(payload)
         }).then(({ data }) => {
           if (data && data.code === 0) {
-            this.$message.success(this.isFunderPayment ? '资方全款打款已确认，贷款记录已生成' : '鲜牧全款打款已确认')
+            this.$message.success(this.isFunderPayment ? '资方全款打款已确认，贷款记录已生成' : '内部主体全款打款已确认')
             this.createVisible = false
             this.getDataList()
           } else {
@@ -1228,7 +1228,7 @@ export default {
       window.open(this.$http.adornUrl(`/erp/funder-finance/payment/download-contract/${id}?preview=1&token=${encodeURIComponent(token)}`), '_blank')
     },
     downloadContributionVoucher (allocationId, fileName) {
-      const loading = this.$loading({ lock: true, text: '正在下载鲜牧出资款凭证...' })
+      const loading = this.$loading({ lock: true, text: '正在下载业务主体出资款凭证...' })
       this.$http({
         url: this.$http.adornUrl(`/erp/funder-finance/allocation/download/contribution/${allocationId}`),
         method: 'get',
@@ -1237,7 +1237,7 @@ export default {
         const url = URL.createObjectURL(response.data)
         const link = document.createElement('a')
         link.href = url
-        link.download = fileName || '鲜牧出资款凭证'
+        link.download = fileName || '业务主体出资款凭证'
         link.click()
         URL.revokeObjectURL(url)
       }).finally(() => loading.close())
