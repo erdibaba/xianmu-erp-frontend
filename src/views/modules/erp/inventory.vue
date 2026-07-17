@@ -51,6 +51,7 @@
           <el-form-item>
             <el-button type="primary" @click="getSpotList()">查询</el-button>
             <el-button @click="resetSpotQuery()">重置</el-button>
+            <el-button type="success" icon="el-icon-download" @click="exportSpotDetails()">导出明细</el-button>
           </el-form-item>
         </el-form>
 
@@ -175,6 +176,7 @@
           <el-form-item>
             <el-button type="primary" @click="getSpotContainerProductList()">查询</el-button>
             <el-button @click="resetSpotContainerProductQuery()">重置</el-button>
+            <el-button type="success" icon="el-icon-download" @click="exportSpotContainerProductDetails()">导出明细</el-button>
           </el-form-item>
         </el-form>
 
@@ -878,6 +880,48 @@
           this.spotContainerProductLoading = false
         }).catch(() => {
           this.spotContainerProductLoading = false
+        })
+      },
+      exportSpotDetails () {
+        const params = Object.assign({}, this.spotQuery, {
+          containerNos: (this.spotQuery.containerNos || []).join(',')
+        })
+        this.exportInventoryDetails('/erp/inventory/spot/export', params, '现货库存明细.xlsx')
+      },
+      exportSpotContainerProductDetails () {
+        const inboundRange = this.spotContainerProductInboundDateRange || []
+        const params = Object.assign({}, this.spotContainerProductQuery, {
+          containerNos: (this.spotContainerProductQuery.containerNos || []).join(','),
+          inboundDateStart: inboundRange[0] || '',
+          inboundDateEnd: inboundRange[1] || ''
+        })
+        this.exportInventoryDetails('/erp/inventory/spot/by-container-product/export', params, '柜号产品库存明细.xlsx')
+      },
+      exportInventoryDetails (url, params, fileName) {
+        const loading = this.$loading({
+          lock: true,
+          text: '正在生成库存明细，请稍候...',
+          spinner: 'el-icon-loading',
+          background: 'rgba(0, 0, 0, 0.35)'
+        })
+        this.$http({
+          url: this.$http.adornUrl(url),
+          method: 'get',
+          params: this.$http.adornParams(params),
+          responseType: 'blob'
+        }).then(({data}) => {
+          const blob = data instanceof Blob ? data : new Blob([data])
+          const link = document.createElement('a')
+          link.href = URL.createObjectURL(blob)
+          link.download = fileName
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          URL.revokeObjectURL(link.href)
+        }).catch(() => {
+          this.$message.error('导出库存明细失败')
+        }).finally(() => {
+          loading.close()
         })
       },
       getWeightedCostList () {
