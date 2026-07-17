@@ -465,7 +465,16 @@
             <el-button type="text" @click="previewContract(detailData.id)">预览合同</el-button>
             <el-button type="text" @click="downloadContract(detailData.id, detailData.contractFileName)">下载合同</el-button>
           </template>
-          <span v-else>-</span>
+          <el-upload
+            action="#"
+            :show-file-list="false"
+            :http-request="replaceDetailContract"
+            accept=".jpg,.jpeg,.png,.jfif,.bmp,.pdf,.doc,.docx,.xls,.xlsx"
+            style="display: inline-block; margin-left: 8px">
+            <el-button type="text" :loading="detailContractUploadLoading">
+              {{ detailData.contractFileName ? '重新上传' : '上传合同' }}
+            </el-button>
+          </el-upload>
         </el-descriptions-item>
       </el-descriptions>
       <el-table
@@ -587,6 +596,7 @@ export default {
       presaleLoading: false,
       recognizeLoading: false,
       contractUploadLoading: false,
+      detailContractUploadLoading: false,
       xianmuContributionLoadingIndex: -1,
       xianmuInstallmentLoadingKey: '',
       submitLoading: false,
@@ -1208,6 +1218,31 @@ export default {
         if (this.$refs.detailAllocationTable) {
           this.$refs.detailAllocationTable.doLayout()
         }
+      })
+    },
+    replaceDetailContract (request) {
+      if (!this.detailData.id) return
+      const formData = new FormData()
+      formData.append('file', request.file)
+      this.detailContractUploadLoading = true
+      const loading = this.$loading({ lock: true, text: '正在覆盖归档合同...' })
+      this.$http({
+        url: this.$http.adornUrl(`/erp/funder-finance/payment/contract/${this.detailData.id}`),
+        method: 'post',
+        data: formData,
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 120000
+      }).then(({ data }) => {
+        if (data && data.code === 0) {
+          this.detailData = data.payment || this.detailData
+          this.$message.success('合同已覆盖归档')
+          this.layoutDetailTable()
+        } else {
+          this.$message.error((data && data.msg) || '合同覆盖归档失败')
+        }
+      }).catch(() => this.$message.error('合同覆盖归档请求失败')).finally(() => {
+        this.detailContractUploadLoading = false
+        loading.close()
       })
     },
     downloadVoucher (id, fileName) {
