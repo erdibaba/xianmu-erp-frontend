@@ -19,6 +19,11 @@
       <el-form-item>
         <el-button type="primary" @click="getDataList()">查询</el-button>
         <el-button
+          v-if="isAuth('erp:tradeorder:list')"
+          type="info"
+          :loading="exportLoading"
+          @click="exportHandle()">导出Excel</el-button>
+        <el-button
           v-if="isAuth('erp:tradeorder:save')"
           type="success"
           @click="newConfirmHandle()">新建客户订单确认</el-button>
@@ -29,6 +34,7 @@
       <el-table-column prop="contractNo" label="客户订单确认合同号" min-width="180" fixed="left" show-overflow-tooltip></el-table-column>
       <el-table-column prop="sellerContractNo" label="关联预售合同号" min-width="170" show-overflow-tooltip></el-table-column>
       <el-table-column prop="containerNo" label="柜号" min-width="150" show-overflow-tooltip></el-table-column>
+      <el-table-column prop="remark" label="备注" min-width="220" show-overflow-tooltip></el-table-column>
       <el-table-column prop="buyerPartnerName" label="采购方" min-width="190" show-overflow-tooltip></el-table-column>
       <el-table-column prop="customerReference" label="预售单采购方" min-width="180" show-overflow-tooltip></el-table-column>
       <el-table-column prop="brandName" label="品牌方" min-width="180" show-overflow-tooltip></el-table-column>
@@ -300,6 +306,7 @@ export default {
       pageSize: 10,
       totalPage: 0,
       dataListLoading: false,
+      exportLoading: false,
       dialogVisible: false,
       uploadVisible: false,
       uploadType: 'confirm',
@@ -356,6 +363,35 @@ export default {
       }).finally(() => {
         this.dataListLoading = false
       })
+    },
+    exportHandle () {
+      this.exportLoading = true
+      this.$http({
+        url: this.$http.adornUrl('/erp/presale/confirm-export'),
+        method: 'get',
+        params: this.$http.adornParams({
+          keyword: this.queryForm.keyword
+        }),
+        responseType: 'blob'
+      }).then(({ data }) => {
+        this.downloadBlob(data, '客户订单确认.xlsx')
+      }).catch(() => {
+        this.$message.error('导出失败')
+      }).finally(() => {
+        this.exportLoading = false
+      })
+    },
+    downloadBlob (blob, fileName) {
+      const url = window.URL.createObjectURL(new Blob([blob], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      }))
+      const link = document.createElement('a')
+      link.href = url
+      link.download = fileName
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
     },
     sizeChangeHandle (val) {
       this.pageSize = val
