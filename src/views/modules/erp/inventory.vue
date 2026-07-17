@@ -93,7 +93,12 @@
           </el-table-column>
           <el-table-column prop="inboundWeightKg" label="入库总重量(KG)" width="135" align="right" header-align="center"></el-table-column>
           <el-table-column prop="allocatedWeightKg" label="已占用重量(KG)" width="135" align="right" header-align="center"></el-table-column>
-          <el-table-column prop="damageWeightKg" label="报损重量(KG)" width="120" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="damageWeightKg" label="报损重量(KG)" width="120" align="right" header-align="center">
+            <template slot-scope="scope">
+              <span :class="{ 'inventory-damage': Number(scope.row.damageWeightKg || 0) > 0 }">{{ formatWeight(scope.row.damageWeightKg) }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="damageReason" label="报损原因" min-width="200" show-overflow-tooltip></el-table-column>
           <el-table-column prop="availableWeightKg" label="可售重量(KG)" width="120" align="right" header-align="center"></el-table-column>
           <el-table-column label="预警" width="90" align="center" header-align="center">
             <template slot-scope="scope">
@@ -213,7 +218,12 @@
           </el-table-column>
           <el-table-column prop="inboundWeightKg" label="入库总重量(KG)" width="135" align="right" header-align="center"></el-table-column>
           <el-table-column prop="allocatedWeightKg" label="已占用重量(KG)" width="135" align="right" header-align="center"></el-table-column>
-          <el-table-column prop="damageWeightKg" label="报损重量(KG)" width="120" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="damageWeightKg" label="报损重量(KG)" width="120" align="right" header-align="center">
+            <template slot-scope="scope">
+              <span :class="{ 'inventory-damage': Number(scope.row.damageWeightKg || 0) > 0 }">{{ formatWeight(scope.row.damageWeightKg) }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="damageReason" label="报损原因" min-width="200" show-overflow-tooltip></el-table-column>
           <el-table-column prop="availableWeightKg" label="可售重量(KG)" width="120" align="right" header-align="center"></el-table-column>
           <el-table-column label="预警" width="90" align="center" header-align="center">
             <template slot-scope="scope">
@@ -559,7 +569,12 @@
           <el-table-column prop="availableBoxes" label="可售箱数" width="100" align="right" header-align="center"></el-table-column>
           <el-table-column prop="inboundWeightKg" label="入库重量(KG)" width="120" align="right" header-align="center"></el-table-column>
           <el-table-column prop="allocatedWeightKg" label="已占用重量(KG)" width="135" align="right" header-align="center"></el-table-column>
-          <el-table-column prop="damageWeightKg" label="报损重量(KG)" width="120" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="damageWeightKg" label="报损重量(KG)" width="120" align="right" header-align="center">
+            <template slot-scope="scope">
+              <span :class="{ 'inventory-damage': Number(scope.row.damageWeightKg || 0) > 0 }">{{ formatWeight(scope.row.damageWeightKg) }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="damageReason" label="报损原因" min-width="200" show-overflow-tooltip></el-table-column>
           <el-table-column prop="availableWeightKg" label="可售重量(KG)" width="120" align="right" header-align="center"></el-table-column>
         </template>
         <template v-else>
@@ -1231,6 +1246,11 @@
   }
 
   .inventory-danger {
+    color: #f56c6c;
+    font-weight: 600;
+  }
+
+  .inventory-damage {
     color: #f56c6c;
     font-weight: 600;
   }
