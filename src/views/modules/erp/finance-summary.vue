@@ -114,7 +114,7 @@
                         <el-table-column label="还款日期" width="105" align="center">
                           <template slot-scope="scope">{{ dateOnly(scope.row.paymentDate || scope.row.repaymentDate) }}</template>
                         </el-table-column>
-                        <el-table-column label="还款状态" width="120" align="center" fixed="right">
+                        <el-table-column label="还款状态" width="120" align="center">
                           <template slot-scope="scope">
                             <el-tag :type="statusTag(scope.row.repaymentStatus)" size="mini">{{ scope.row.repaymentStatusName }}</el-tag>
                           </template>
@@ -142,7 +142,7 @@
                 <el-table-column label="批次进度" width="105" align="center">
                   <template slot-scope="scope">{{ scope.row.repaidBatchCount || 0 }}/{{ scope.row.batchCount || 0 }}</template>
                 </el-table-column>
-                <el-table-column label="还款状态" width="110" align="center" fixed="right">
+                <el-table-column label="还款状态" width="110" align="center">
                   <template slot-scope="scope">
                     <el-tag :type="statusTag(scope.row.repaymentStatus)" size="mini">{{ scope.row.repaymentStatusName }}</el-tag>
                   </template>
@@ -179,7 +179,7 @@
         <el-table-column label="批次进度" width="100" align="center">
           <template slot-scope="scope">{{ scope.row.repaidBatchCount || 0 }}/{{ scope.row.batchCount || 0 }}</template>
         </el-table-column>
-        <el-table-column label="还款状态" width="100" align="center" fixed="right">
+        <el-table-column label="还款状态" width="100" align="center">
           <template slot-scope="scope">
             <el-tag :type="statusTag(scope.row.repaymentStatus)" size="small">{{ scope.row.repaymentStatusName }}</el-tag>
           </template>
