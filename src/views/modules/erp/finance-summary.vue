@@ -65,7 +65,7 @@
         v-loading="confirmLoading"
         class="confirm-table"
         @expand-change="handleConfirmExpand">
-        <el-table-column type="expand" width="48">
+        <el-table-column type="expand" width="48" fixed="left">
           <template slot-scope="confirmScope">
             <div class="level-wrap sale-level" v-loading="confirmScope.row.saleLoading">
               <div class="level-heading">
@@ -80,7 +80,7 @@
                 size="mini"
                 class="sale-table"
                 @expand-change="handleSaleExpand">
-                <el-table-column type="expand" width="44">
+                <el-table-column type="expand" width="44" fixed="left">
                   <template slot-scope="saleScope">
                     <div class="level-wrap batch-level" v-loading="saleScope.row.batchLoading">
                       <div class="level-heading">
