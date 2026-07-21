@@ -7,7 +7,9 @@
   // api接口请求地址
   var host = window.location.hostname;
   var protocol = window.location.protocol || 'http:';
-  if (host === 'localhost' || host === '127.0.0.1') {
+  if (window.ERP_API_BASE_URL) {
+    window.SITE_CONFIG['baseUrl'] = window.ERP_API_BASE_URL;
+  } else if (host === 'localhost' || host === '127.0.0.1') {
     window.SITE_CONFIG['baseUrl'] = 'http://localhost:8080/renren-fast';
   } else if (host === '218.202.240.118') {
     window.SITE_CONFIG['baseUrl'] = 'http://218.202.240.118:8888/renren-fast';
