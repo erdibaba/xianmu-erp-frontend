@@ -1,6 +1,5 @@
 <template>
   <div class="mod-home">
-    
   </div>
 </template>
 
