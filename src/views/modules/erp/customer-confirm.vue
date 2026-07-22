@@ -109,6 +109,12 @@
               type="text"
               size="small"
               @click="arrivalNoticeHandle(scope.row)">到港通知</el-button>
+            <el-button
+              v-if="isAuth('erp:presale:confirm:delete')"
+              type="text"
+              size="small"
+              class="danger-action"
+              @click="deleteConfirmHandle(scope.row)">删除</el-button>
           </div>
         </template>
       </el-table-column>
@@ -703,6 +709,35 @@ export default {
         this.$refs.dialog.init(row.presaleOrderId, false, 'confirm', row.id)
       })
     },
+    deleteConfirmHandle (row) {
+      const contractNo = row.contractNo || row.id
+      this.$confirm(`删除后将同时清理该确认函的装箱单、报关单、检疫证明及归档原件。确定删除客户订单确认函[${contractNo}]吗？`, '删除确认', {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        const loading = this.$loading({ lock: true, text: '正在检查关联业务并删除确认函...' })
+        this.$http({
+          url: this.$http.adornUrl(`/erp/presale/confirm/delete/${row.id}`),
+          method: 'post',
+          data: this.$http.adornData({}, false)
+        }).then(({ data }) => {
+          if (data && data.code === 0) {
+            this.$message.success('客户订单确认函已删除')
+            if (this.dataList.length === 1 && this.pageIndex > 1) {
+              this.pageIndex--
+            }
+            this.getDataList()
+          } else {
+            this.$message.error((data && data.msg) || '删除失败')
+          }
+        }).catch(() => {
+          this.$message.error('删除失败，请检查登录状态或后端服务')
+        }).finally(() => {
+          loading.close()
+        })
+      }).catch(() => {})
+    },
     arrivalNoticeHandle (row) {
       this.arrivalNoticeForm = {
         confirmId: row.id,
@@ -793,5 +828,9 @@ export default {
 .action-wrap .el-button {
   margin-left: 0;
   margin-right: 10px;
+}
+
+.danger-action {
+  color: #f56c6c;
 }
 </style>
