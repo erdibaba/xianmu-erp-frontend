@@ -93,7 +93,14 @@
                   </el-col>
                   <el-col :span="8">
                     <el-form-item label="下单日期" prop="orderDate">
-                      <el-date-picker v-model="dataForm.orderDate" type="datetime" :disabled="readonly" style="width: 100%;"></el-date-picker>
+                      <el-date-picker
+                        v-model="dataForm.orderDate"
+                        type="datetime"
+                        format="yyyy-MM-dd HH:mm:ss"
+                        value-format="yyyy-MM-dd HH:mm:ss"
+                        :disabled="readonly"
+                        style="width: 100%;">
+                      </el-date-picker>
                     </el-form-item>
                   </el-col>
                   <el-col :span="8">
@@ -972,6 +979,22 @@ function defaultAttachmentInfo () {
   }
 }
 
+function normalizeDateTimeForSubmit (value) {
+  if (!value) return ''
+  if (typeof value === 'string') {
+    const text = value.trim()
+    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(text)) return text
+    if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return `${text} 00:00:00`
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(text) && !/(?:Z|[+-]\d{2}:?\d{2})$/i.test(text)) {
+      return text.replace('T', ' ').slice(0, 19)
+    }
+  }
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return String(value).replace('T', ' ').slice(0, 19)
+  const pad = part => String(part).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+}
+
 function defaultForm () {
   return {
     id: 0,
@@ -987,7 +1010,7 @@ function defaultForm () {
     estimateFileName: '',
     estimateRawText: '',
     currency: 'CNY',
-    orderDate: new Date(),
+    orderDate: normalizeDateTimeForSubmit(new Date()),
     expectedDate: null,
     status: 0,
     remark: '',
@@ -1510,7 +1533,7 @@ export default {
       form.estimateFileName = this.extractFileName(result.savedFilePath)
       form.estimateRawText = result.rawText || ''
       form.currency = draft.currency || 'CNY'
-      form.orderDate = draft.orderDate || new Date()
+      form.orderDate = normalizeDateTimeForSubmit(draft.orderDate || new Date())
       form.expectedDate = draft.expectedDate || null
       form.remark = ''
       form.itemList = (draft.itemList || []).map(item => this.buildEstimateItem(item))
@@ -2146,6 +2169,7 @@ export default {
       }
       const url = this.dataForm.id ? '/erp/presale/update' : '/erp/presale/save'
       const payload = JSON.parse(JSON.stringify(this.dataForm))
+      payload.orderDate = normalizeDateTimeForSubmit(this.dataForm.orderDate || payload.orderDate)
       if (!this.validateEstimateRequired(payload)) {
         return
       }
