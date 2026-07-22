@@ -90,10 +90,10 @@
               size="small"
               @click="uploadConfirmHandle(scope.row)">重新上传确认函</el-button>
             <el-button
-              v-if="isAuth('erp:tradeorder:save') && !scope.row.packingUploaded"
+              v-if="isAuth('erp:tradeorder:save')"
               type="text"
               size="small"
-              @click="uploadPackingHandle(scope.row)">上传装箱单</el-button>
+              @click="uploadPackingHandle(scope.row)">{{ scope.row.packingUploaded ? '重新上传装箱单' : '上传装箱单' }}</el-button>
             <el-button
               v-if="isAuth('erp:tradeorder:save') && !scope.row.customsUploaded"
               type="text"
@@ -231,6 +231,7 @@
       :upload-type="uploadType"
       :order-id="currentOrderId"
       :confirm-id="currentConfirmId"
+      :replace-mode="packingReplaceMode"
       @recognized="recognizedHandle"
       @uploaded="attachmentUploadedHandle">
     </presale-upload-dialog>
@@ -310,6 +311,7 @@ export default {
       dialogVisible: false,
       uploadVisible: false,
       uploadType: 'confirm',
+      packingReplaceMode: false,
       currentOrderId: 0,
       currentConfirmId: 0,
       pendingRecognizedResult: null,
@@ -636,24 +638,28 @@ export default {
       this.openUploadDialog()
     },
     uploadConfirmHandle (row) {
+      this.packingReplaceMode = false
       this.uploadType = 'confirm'
       this.currentOrderId = row.presaleOrderId
       this.currentConfirmId = row.id
       this.openUploadDialog()
     },
     uploadPackingHandle (row) {
+      this.packingReplaceMode = !!row.packingUploaded
       this.uploadType = 'packing'
       this.currentOrderId = row.presaleOrderId
       this.currentConfirmId = row.id
       this.openUploadDialog()
     },
     uploadCustomsHandle (row) {
+      this.packingReplaceMode = false
       this.uploadType = 'customs'
       this.currentOrderId = row.presaleOrderId
       this.currentConfirmId = row.id
       this.openUploadDialog()
     },
     uploadQuarantineHandle (row) {
+      this.packingReplaceMode = false
       this.uploadType = 'quarantine'
       this.currentOrderId = row.presaleOrderId
       this.currentConfirmId = row.id

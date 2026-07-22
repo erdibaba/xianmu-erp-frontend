@@ -95,7 +95,7 @@
     </div>
     <span slot="footer" class="dialog-footer">
       <el-button @click="visible = false">取消</el-button>
-      <el-button v-if="!isArchiveUpload" type="primary" :disabled="!resultData" @click="confirmHandle()">带入编辑</el-button>
+      <el-button v-if="!isArchiveUpload" type="primary" :disabled="!resultData" @click="confirmHandle()">{{ editButtonText }}</el-button>
       <el-button v-else-if="uploadType === 'customs'" type="primary" :loading="loading" :disabled="!resultData" @click="confirmCustomsUpload()">确认覆盖保存</el-button>
       <el-button v-else-if="uploadType === 'quarantine'" type="primary" :loading="loading" :disabled="!resultData" @click="confirmQuarantineUpload()">确认保存</el-button>
       <el-button v-else type="primary" :disabled="!resultData" @click="visible = false">完成</el-button>
@@ -117,6 +117,10 @@ export default {
     confirmId: {
       type: [Number, String],
       default: 0
+    },
+    replaceMode: {
+      type: Boolean,
+      default: false
     }
   },
   data () {
@@ -142,7 +146,7 @@ export default {
     },
     dialogTitle () {
       if (this.uploadType === 'confirm') return '上传客户订单确认函'
-      if (this.uploadType === 'packing') return '上传装箱单'
+      if (this.uploadType === 'packing') return this.replaceMode ? '重新上传装箱单' : '上传装箱单'
       if (this.uploadType === 'customs') return '识别报关单'
       if (this.uploadType === 'quarantine') return '上传检疫证明'
       return '上传预售销售单'
@@ -152,6 +156,9 @@ export default {
         return '上传客户订单确认函/付款通知书，识别后带入“客户订单确认函”页签，可人工核对修改。'
       }
       if (this.uploadType === 'packing') {
+        if (this.replaceMode) {
+          return '重新上传识别后将带入“装箱单”页签核对；点击保存会覆盖当前确认函原有装箱单、产品明细、生产日期明细及归档原件。'
+        }
         return '可同时上传多张装箱单 PDF/图片，识别后带入“装箱单”页签，系统会合并提取总箱数、总重量、保质期和生产日期分布。'
       }
       if (this.uploadType === 'customs') {
@@ -164,10 +171,13 @@ export default {
     },
     actionButtonText () {
       if (this.uploadType === 'confirm') return '识别客户订单确认函'
-      if (this.uploadType === 'packing') return '识别装箱单'
+      if (this.uploadType === 'packing') return this.replaceMode ? '重新识别装箱单' : '识别装箱单'
       if (this.uploadType === 'customs') return '上传报关单'
       if (this.uploadType === 'quarantine') return '上传检疫证明'
       return '识别预售销售单'
+    },
+    editButtonText () {
+      return this.uploadType === 'packing' && this.replaceMode ? '带入覆盖编辑' : '带入编辑'
     },
     acceptTypes () {
       if (this.isArchiveUpload) {
