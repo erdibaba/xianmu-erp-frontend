@@ -182,34 +182,14 @@
             </el-form-item>
           </el-col>
         </el-row>
-        <el-row v-if="isFuturesSale" :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="关联预销售单" prop="sourcePresaleOrderId">
-              <el-select
-                v-model="dataForm.sourcePresaleOrderId"
-                :disabled="contentReadonly"
-                filterable
-                clearable
-                remote
-                reserve-keyword
-                style="width: 100%;"
-                placeholder="输入预售合同号搜索"
-                :loading="presaleOrderLoading"
-                @visible-change="presaleOrderVisibleChange"
-                :remote-method="remoteSearchPresaleOrders"
-                @change="presaleOrderChangeHandle">
-                <el-option
-                  v-for="item in presaleOrderOptions"
-                  :key="item.presaleOrderId"
-                  :label="presaleOrderLabel(item)"
-                  :value="item.presaleOrderId">
-                  <div class="product-option-code">{{ presaleOrderLabel(item) }}</div>
-                  <div class="product-option-name">{{ item.customerReference || '-' }} / {{ item.brandName || '-' }}</div>
-                </el-option>
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
+        <el-alert
+          v-if="isFuturesSale && dataForm.id"
+          :title="futuresEditTip"
+          :type="futuresEditBlocked ? 'warning' : 'success'"
+          :closable="false"
+          show-icon
+          class="futures-edit-alert">
+        </el-alert>
 
         <el-form-item label="备注">
           <el-input v-model="dataForm.remark" :disabled="contentReadonly" type="textarea"></el-input>
@@ -335,6 +315,86 @@
             </template>
           </el-table-column>
         </el-table>
+
+        <template v-if="isFuturesSale">
+          <div class="sub-title futures-source-title">
+            <span>期货货源关联（支持多张预售单、多个确认函合同）</span>
+            <el-button
+              v-if="!contentReadonly"
+              size="mini"
+              type="primary"
+              plain
+              @click="addFuturesSourceRow()">
+              新增货源
+            </el-button>
+          </div>
+          <el-table :data="dataForm.sourceAllocationList" border size="mini" class="item-table futures-source-table">
+            <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
+            <el-table-column label="产品" min-width="210">
+              <template slot-scope="scope">
+                <el-select
+                  v-model="scope.row.productId"
+                  :disabled="contentReadonly"
+                  filterable
+                  clearable
+                  size="mini"
+                  style="width: 100%;"
+                  placeholder="选择销售明细产品"
+                  @change="value => futuresSourceProductChange(scope.row, value)">
+                  <el-option
+                    v-for="item in dataForm.itemList"
+                    :key="item.productId"
+                    :label="`${item.productCode || '-'} / ${saleProductDisplayName(item)}`"
+                    :value="item.productId">
+                  </el-option>
+                </el-select>
+              </template>
+            </el-table-column>
+            <el-table-column label="来源大合同 / 小合同" min-width="330">
+              <template slot-scope="scope">
+                <el-select
+                  v-model="scope.row._sourceKey"
+                  :disabled="contentReadonly || !scope.row.productId"
+                  filterable
+                  remote
+                  reserve-keyword
+                  clearable
+                  size="mini"
+                  style="width: 100%;"
+                  placeholder="输入预售或确认函合同号搜索"
+                  :loading="scope.row._sourceLoading"
+                  :remote-method="keyword => remoteSearchFuturesSources(scope.row, keyword)"
+                  @visible-change="visible => futuresSourceVisibleChange(scope.row, visible)"
+                  @change="value => futuresSourceChange(scope.row, value)">
+                  <el-option
+                    v-for="item in scope.row._sourceOptions"
+                    :key="futuresSourceKey(item)"
+                    :label="futuresSourceLabel(item)"
+                    :value="futuresSourceKey(item)">
+                    <div class="product-option-code">{{ futuresSourceLabel(item) }}</div>
+                    <div class="product-option-name">可用：{{ item.availableBoxes || '待装箱' }}箱 / {{ formatNumber(item.availableWeightKg, 2) }}KG</div>
+                  </el-option>
+                </el-select>
+              </template>
+            </el-table-column>
+            <el-table-column prop="sourceStage" label="阶段" width="95" align="center">
+              <template slot-scope="scope">{{ scope.row.sourceStage === 'CONFIRM' ? '确认函' : '待落位' }}</template>
+            </el-table-column>
+            <el-table-column label="分配箱数" width="120">
+              <template slot-scope="scope">
+                <el-input-number v-model="scope.row.allocatedBoxes" :disabled="contentReadonly" :controls="false" :min="0" :precision="0" size="mini" style="width: 100%;"></el-input-number>
+              </template>
+            </el-table-column>
+            <el-table-column label="分配重量KG" width="145">
+              <template slot-scope="scope">
+                <el-input-number v-model="scope.row.allocatedWeightKg" :disabled="contentReadonly" :controls="false" :min="0" :precision="2" size="mini" style="width: 100%;"></el-input-number>
+              </template>
+            </el-table-column>
+            <el-table-column v-if="!contentReadonly" label="操作" width="75" align="center">
+              <template slot-scope="scope"><el-button type="text" size="small" @click="removeFuturesSourceRow(scope.$index)">移除</el-button></template>
+            </el-table-column>
+          </el-table>
+        </template>
 
         <template v-if="isSpotSale">
           <el-alert
@@ -1742,6 +1802,7 @@ export default {
   computed: {
     dialogTitle () {
       if (this.readonly) return '销售单详情'
+      if (this.dataForm.id && this.isFuturesSale && !this.futuresEditBlocked) return '修改期货销售单'
       return this.dataForm.id ? '销售单附件处理' : '新增销售单'
     },
     isSpotSale () {
@@ -1762,7 +1823,24 @@ export default {
       return map[this.dataForm.status] || '待处理'
     },
     contentReadonly () {
-      return this.readonly || (!!this.dataForm.id && this.dataForm.riskStatus !== 'REJECTED')
+      if (this.readonly) return true
+      if (!this.dataForm.id) return false
+      if (this.isFuturesSale) return this.futuresEditBlocked
+      return this.dataForm.riskStatus !== 'REJECTED'
+    },
+    futuresEditBlocked () {
+      if (!this.isFuturesSale || !this.dataForm.id) return false
+      const locked = Number(this.dataForm.futuresLocked || 0) === 1 || Number(this.dataForm.confirmedOutboundBatchCount || 0) > 0
+      const unfinished = (this.dataForm.outboundBatchList || []).some(item => ![3, 9].includes(Number(item.status || 0)))
+      return locked || unfinished
+    },
+    futuresEditTip () {
+      if (Number(this.dataForm.futuresLocked || 0) === 1 || Number(this.dataForm.confirmedOutboundBatchCount || 0) > 0) {
+        return '首次出库批次已确认完成，期货单货源及销售明细已永久锁定。'
+      }
+      const unfinished = (this.dataForm.outboundBatchList || []).some(item => ![3, 9].includes(Number(item.status || 0)))
+      if (unfinished) return '当前存在未完成出库批次；如需调整期货单，请先删除未完成批次。'
+      return '首次出库批次确认完成前，可调整产品、数量及预售单/确认函货源；保存后无需重新确认合同。'
     },
     spotPendingLotCount () {
       return (this.spotContractList || []).reduce((total, contract) => total + ((contract._selectedLots || []).length), 0)
@@ -2007,6 +2085,13 @@ export default {
         warehouseName: '',
         sourcePresaleOrderId: '',
         sourcePresaleOrderNo: '',
+        sourcePresaleOrderNos: '',
+        sourceConfirmContractNos: '',
+        sourceAllocationList: [],
+        futuresLocked: 0,
+        futuresLockedAt: '',
+        futuresLockedBy: '',
+        confirmedOutboundBatchCount: 0,
         contractNo: '',
         contractToken: '',
         contractUrl: '',
@@ -2121,6 +2206,31 @@ export default {
         contractFactoryNo: '',
         contractPortCold: '',
         remark: ''
+      }
+    },
+    defaultFuturesSourceRow () {
+      return {
+        id: 0,
+        lineNo: 0,
+        productId: '',
+        productCode: '',
+        productName: '',
+        marketCirculationName: '',
+        allocatedBoxes: 0,
+        allocatedWeightKg: null,
+        presaleOrderId: '',
+        presaleOrderNo: '',
+        presaleOrderItemId: '',
+        confirmId: '',
+        confirmContractNo: '',
+        confirmItemId: '',
+        sourceStage: 'PRESALE',
+        availableBoxes: 0,
+        availableWeightKg: 0,
+        _sourceKey: '',
+        _sourceKeyword: '',
+        _sourceLoading: false,
+        _sourceOptions: []
       }
     },
     defaultOutboundReceiptItemRow () {
@@ -2445,6 +2555,15 @@ export default {
         row.estimatedUnitWeightKg = Number(row.estimatedUnitWeightKg || (row.boxes > 0 ? Number(row.contractQuantityKg || 0) / Number(row.boxes) : 0))
         return row
       })
+      result.sourceAllocationList = (source.sourceAllocationList || []).map(item => {
+        const row = Object.assign(this.defaultFuturesSourceRow(), item)
+        row._sourceKey = this.futuresSourceKey(row)
+        row._sourceOptions = [Object.assign({}, row, {
+          availableBoxes: Number(row.availableBoxes || row.allocatedBoxes || 0),
+          availableWeightKg: Number(row.availableWeightKg || row.allocatedWeightKg || 0)
+        })]
+        return row
+      })
       result.secondaryPartnerColdStorageFreeDays = this.findSecondaryPartnerColdStorageFreeDays(result.secondaryPartnerId)
       if (result.saleType === 'FUTURES' && result.itemList.length) {
         const firstItem = result.itemList[0] || {}
@@ -2662,6 +2781,7 @@ export default {
       if (value !== 'FUTURES') {
         this.dataForm.sourcePresaleOrderId = ''
         this.dataForm.sourcePresaleOrderNo = ''
+        this.dataForm.sourceAllocationList = []
       }
       this.dataForm.itemList = value === 'SPOT' ? [] : [this.defaultItemRow()]
     },
@@ -2864,6 +2984,102 @@ export default {
     saleProductDisplayName (row) {
       if (!row) return '-'
       return row.marketCirculationName || row.productName || row.productNameEn || '-'
+    },
+    addFuturesSourceRow () {
+      const row = this.defaultFuturesSourceRow()
+      if ((this.dataForm.itemList || []).length === 1 && this.dataForm.itemList[0].productId) {
+        row.productId = this.dataForm.itemList[0].productId
+        this.futuresSourceProductChange(row, row.productId)
+      }
+      this.dataForm.sourceAllocationList.push(row)
+    },
+    removeFuturesSourceRow (index) {
+      this.dataForm.sourceAllocationList.splice(index, 1)
+    },
+    futuresSourceProductChange (row, value) {
+      const product = (this.dataForm.itemList || []).find(item => String(item.productId) === String(value))
+      row.productId = product ? product.productId : ''
+      row.productCode = product ? product.productCode : ''
+      row.productName = product ? product.productName : ''
+      row.marketCirculationName = product ? product.marketCirculationName : ''
+      row.presaleOrderId = ''
+      row.presaleOrderNo = ''
+      row.presaleOrderItemId = ''
+      row.confirmId = ''
+      row.confirmContractNo = ''
+      row.confirmItemId = ''
+      row.sourceStage = 'PRESALE'
+      row._sourceKey = ''
+      row._sourceOptions = []
+    },
+    futuresSourceKey (item) {
+      if (!item || !item.presaleOrderId) return ''
+      return [item.presaleOrderId, item.presaleOrderItemId || 0, item.confirmId || 0, item.confirmItemId || 0].join('|')
+    },
+    futuresSourceLabel (item) {
+      if (!item) return ''
+      const confirm = item.confirmContractNo || '待确认函落位'
+      return `${item.presaleOrderNo || '-'} / ${confirm}`
+    },
+    futuresSourceVisibleChange (row, visible) {
+      if (!visible || this.contentReadonly || !row.productId || (row._sourceOptions || []).length > 1) return
+      this.fetchFuturesSourceOptions(row)
+    },
+    remoteSearchFuturesSources (row, keyword) {
+      row._sourceKeyword = keyword || ''
+      this.fetchFuturesSourceOptions(row)
+    },
+    fetchFuturesSourceOptions (row) {
+      if (!row.productId) {
+        row._sourceOptions = []
+        return
+      }
+      row._sourceLoading = true
+      this.$http({
+        url: this.$http.adornUrl('/erp/saleorder/futures-sources'),
+        method: 'get',
+        params: this.$http.adornParams({
+          productId: row.productId,
+          keyword: row._sourceKeyword,
+          excludeOrderId: this.dataForm.id || undefined
+        })
+      }).then(({ data }) => {
+        const list = data && data.code === 0 ? (data.list || []) : []
+        const current = (row._sourceOptions || []).find(item => this.futuresSourceKey(item) === row._sourceKey)
+        row._sourceOptions = current && !list.some(item => this.futuresSourceKey(item) === row._sourceKey)
+          ? [current].concat(list)
+          : list
+        row._sourceLoading = false
+      }).catch(() => {
+        row._sourceLoading = false
+      })
+    },
+    futuresSourceChange (row, value) {
+      const source = (row._sourceOptions || []).find(item => this.futuresSourceKey(item) === value)
+      if (!source) {
+        this.futuresSourceProductChange(row, row.productId)
+        return
+      }
+      const keepBoxes = Number(row.allocatedBoxes || 0)
+      const keepWeight = Number(row.allocatedWeightKg || 0)
+      Object.assign(row, {
+        productId: source.productId,
+        productCode: source.productCode,
+        productName: source.productName,
+        marketCirculationName: source.marketCirculationName,
+        presaleOrderId: source.presaleOrderId,
+        presaleOrderNo: source.presaleOrderNo,
+        presaleOrderItemId: source.presaleOrderItemId,
+        confirmId: source.confirmId || '',
+        confirmContractNo: source.confirmContractNo || '',
+        confirmItemId: source.confirmItemId || '',
+        sourceStage: source.sourceStage || (source.confirmId ? 'CONFIRM' : 'PRESALE'),
+        availableBoxes: Number(source.availableBoxes || 0),
+        availableWeightKg: Number(source.availableWeightKg || 0),
+        allocatedBoxes: keepBoxes || Number(source.availableBoxes || 0),
+        allocatedWeightKg: keepWeight || Number(source.availableWeightKg || 0),
+        _sourceKey: value
+      })
     },
     ensureOutboundReceiptProductState (row) {
       if (!row._productOptions) this.$set(row, '_productOptions', [])
@@ -3473,6 +3689,48 @@ export default {
             return `第${index + 1}条库存明细预计重量必须大于0`
           }
         }
+      } else {
+        const sources = this.dataForm.sourceAllocationList || []
+        if (!sources.length) return '期货单至少需要关联一条预售单或客户订单确认函货源'
+        const saleSummary = {}
+        const sourceSummary = {}
+        itemList.forEach(item => {
+          const key = String(item.productId)
+          if (!saleSummary[key]) saleSummary[key] = { boxes: 0, weight: 0, code: item.productCode }
+          saleSummary[key].boxes += Number(item.boxes || 0)
+          saleSummary[key].weight += Number(item.contractQuantityKg || 0)
+        })
+        const sourceKeys = {}
+        for (let index = 0; index < sources.length; index++) {
+          const row = sources[index]
+          if (!row.productId || !row.presaleOrderId || !row.presaleOrderItemId || !row._sourceKey) {
+            return `期货货源第${index + 1}行来源合同未选择完整`
+          }
+          if (!row.allocatedBoxes || Number(row.allocatedBoxes) <= 0) return `期货货源第${index + 1}行分配箱数必须大于0`
+          if (!row.allocatedWeightKg || Number(row.allocatedWeightKg) <= 0) return `期货货源第${index + 1}行分配重量必须大于0`
+          if (Number(row.availableBoxes || 0) > 0 && Number(row.allocatedBoxes) > Number(row.availableBoxes)) {
+            return `期货货源第${index + 1}行分配箱数不能超过可用箱数${row.availableBoxes}`
+          }
+          if (Number(row.availableWeightKg || 0) > 0 && Number(row.allocatedWeightKg) - Number(row.availableWeightKg) > 0.01) {
+            return `期货货源第${index + 1}行分配重量不能超过可用重量${this.formatNumber(row.availableWeightKg, 2)}KG`
+          }
+          const uniqueKey = `${row.productId}|${row._sourceKey}`
+          if (sourceKeys[uniqueKey]) return `期货货源第${index + 1}行来源重复，请合并箱数和重量`
+          sourceKeys[uniqueKey] = true
+          const key = String(row.productId)
+          if (!sourceSummary[key]) sourceSummary[key] = { boxes: 0, weight: 0 }
+          sourceSummary[key].boxes += Number(row.allocatedBoxes || 0)
+          sourceSummary[key].weight += Number(row.allocatedWeightKg || 0)
+        }
+        const keys = Object.keys(saleSummary)
+        if (Object.keys(sourceSummary).length !== keys.length) return '期货货源产品范围必须与By产品销售明细一致'
+        for (const key of keys) {
+          const sale = saleSummary[key]
+          const source = sourceSummary[key]
+          if (!source || source.boxes !== sale.boxes || Math.abs(source.weight - sale.weight) >= 0.01) {
+            return `产品${sale.code || key}的货源箱数/重量汇总必须与By产品销售明细一致`
+          }
+        }
       }
       return ''
     },
@@ -3480,6 +3738,23 @@ export default {
       return Object.assign({}, this.dataForm, {
         sourcePresaleOrderId: this.dataForm.sourcePresaleOrderId || null,
         sourcePresaleOrderNo: this.dataForm.sourcePresaleOrderNo || null,
+        sourceAllocationList: (this.dataForm.sourceAllocationList || []).map((item, index) => ({
+          id: item.id,
+          lineNo: index + 1,
+          productId: item.productId,
+          productCode: item.productCode,
+          productName: item.productName,
+          marketCirculationName: item.marketCirculationName,
+          allocatedBoxes: item.allocatedBoxes,
+          allocatedWeightKg: item.allocatedWeightKg,
+          presaleOrderId: item.presaleOrderId,
+          presaleOrderNo: item.presaleOrderNo,
+          presaleOrderItemId: item.presaleOrderItemId,
+          confirmId: item.confirmId || null,
+          confirmContractNo: item.confirmContractNo || null,
+          confirmItemId: item.confirmItemId || null,
+          sourceStage: item.sourceStage
+        })),
         itemList: (this.dataForm.itemList || []).map((item, index) => ({
           id: item.id,
           lineNo: index + 1,
@@ -4534,6 +4809,18 @@ export default {
   color: #909399;
   font-size: 12px;
   line-height: 18px;
+}
+
+.futures-edit-alert {
+  margin: 4px 0 12px;
+}
+
+.futures-source-title {
+  margin-top: 16px;
+}
+
+.futures-source-table {
+  margin-bottom: 12px;
 }
 </style>
 

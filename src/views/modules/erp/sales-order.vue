@@ -53,13 +53,16 @@
         <template slot-scope="scope">{{ scope.row.salespersonName || '-' }}</template>
       </el-table-column>
       <el-table-column prop="warehouseName" label="仓库" min-width="160" show-overflow-tooltip></el-table-column>
-      <el-table-column label="关联预销售单" min-width="170" show-overflow-tooltip>
-        <template slot-scope="scope">{{ scope.row.sourcePresaleOrderNo || '-' }}</template>
+      <el-table-column label="关联预售合同" min-width="190" show-overflow-tooltip>
+        <template slot-scope="scope">{{ scope.row.sourcePresaleOrderNos || scope.row.sourcePresaleOrderNo || '-' }}</template>
       </el-table-column>
-      <el-table-column label="预售关联状态" width="120" align="center" show-overflow-tooltip>
+      <el-table-column label="关联确认函合同" min-width="190" show-overflow-tooltip>
+        <template slot-scope="scope">{{ scope.row.sourceConfirmContractNos || '-' }}</template>
+      </el-table-column>
+      <el-table-column label="期货修改状态" width="125" align="center" show-overflow-tooltip>
         <template slot-scope="scope">
-          <el-tag v-if="scope.row.saleType === 'FUTURES'" size="small" :type="Number(scope.row.presaleLinkConfirmed || 0) === 1 ? 'success' : 'warning'">
-            {{ Number(scope.row.presaleLinkConfirmed || 0) === 1 ? '已确认' : '未确认' }}
+          <el-tag v-if="scope.row.saleType === 'FUTURES'" size="small" :type="Number(scope.row.futuresLocked || 0) === 1 ? 'info' : 'success'">
+            {{ Number(scope.row.futuresLocked || 0) === 1 ? '已锁定' : '可调整' }}
           </el-tag>
           <span v-else>-</span>
         </template>
@@ -139,7 +142,7 @@
               type="text"
               size="small"
               @click="editHandle(scope.row.id)">
-              {{ scope.row.riskStatus === 'REJECTED' ? '修改选货' : '编辑' }}
+              {{ scope.row.saleType === 'FUTURES' && Number(scope.row.futuresLocked || 0) !== 1 ? '修改期货单' : (scope.row.riskStatus === 'REJECTED' ? '修改选货' : '编辑') }}
             </el-button>
             <el-button
               v-if="isAuth('erp:tradeorder:risk:review') && scope.row.riskStatus === 'PENDING'"
@@ -157,13 +160,6 @@
               :loading="reviewLoadingId === scope.row.id"
               @click="reviewRiskHandle(scope.row, false)">
               风控驳回
-            </el-button>
-            <el-button
-              v-if="isAuth('erp:tradeorder:update') && scope.row.saleType === 'FUTURES'"
-              type="text"
-              size="small"
-              @click="openPresaleLinkDialog(scope.row)">
-              预售关联
             </el-button>
             <el-button
               v-if="isAuth('erp:tradeorder:update') && scope.row.saleType === 'FUTURES' && scope.row.allocationStatus === 'FUTURES_PENDING'"
