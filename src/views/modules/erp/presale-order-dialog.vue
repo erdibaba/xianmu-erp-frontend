@@ -267,11 +267,11 @@
               <el-button
                 v-if="dataForm.id && dataForm.confirmInfo && dataForm.confirmInfo.filePath"
                 type="text"
-                @click="previewFile(`/erp/presale/download/confirm/${dataForm.id}`)">预览客户订单确认函原件</el-button>
+                @click="previewFile(`/erp/presale/download/confirm-file/${dataForm.confirmInfo.id}`)">预览客户订单确认函原件</el-button>
               <el-button
                 v-if="dataForm.id && dataForm.confirmInfo && dataForm.confirmInfo.filePath"
                 type="text"
-                @click="downloadFile(`/erp/presale/download/confirm/${dataForm.id}`)">下载客户订单确认函原件</el-button>
+                @click="downloadFile(`/erp/presale/download/confirm-file/${dataForm.confirmInfo.id}`)">下载客户订单确认函原件</el-button>
             </div>
             <el-empty v-if="!hasConfirmData" description="暂未上传客户订单确认函"></el-empty>
             <div v-else class="tab-pane-content-body">
@@ -481,11 +481,11 @@
               <el-button
                 v-if="dataForm.id && dataForm.packingInfo && dataForm.packingInfo.filePath"
                 type="text"
-                @click="previewFile(`/erp/presale/download/packing/${dataForm.id}`)">预览装箱单原件</el-button>
+                @click="previewFile(`/erp/presale/download/packing-file/${dataForm.confirmInfo.id}`)">预览装箱单原件</el-button>
               <el-button
                 v-if="dataForm.id && dataForm.packingInfo && dataForm.packingInfo.filePath"
                 type="text"
-                @click="downloadFile(`/erp/presale/download/packing/${dataForm.id}`)">下载装箱单原件</el-button>
+                @click="downloadFile(`/erp/presale/download/packing-file/${dataForm.confirmInfo.id}`)">下载装箱单原件</el-button>
             </div>
             <el-empty v-if="!hasPackingData" description="暂未上传装箱单"></el-empty>
             <div v-else class="tab-pane-content-body">
@@ -678,11 +678,11 @@
               <el-button
                 v-if="dataForm.id && dataForm.customsInfo && dataForm.customsInfo.filePath"
                 type="text"
-                @click="previewFile(`/erp/presale/download/customs/${dataForm.id}`)">预览报关单原件</el-button>
+                @click="previewFile(`/erp/presale/download/customs-file/${dataForm.confirmInfo.id}`)">预览报关单原件</el-button>
               <el-button
                 v-if="dataForm.id && dataForm.customsInfo && dataForm.customsInfo.filePath"
                 type="text"
-                @click="downloadFile(`/erp/presale/download/customs/${dataForm.id}`)">下载报关单原件</el-button>
+                @click="downloadFile(`/erp/presale/download/customs-file/${dataForm.confirmInfo.id}`)">下载报关单原件</el-button>
               <el-button
                 v-if="dataForm.id"
                 type="text"
