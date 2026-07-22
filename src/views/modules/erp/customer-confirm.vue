@@ -13,11 +13,11 @@
           v-model="queryForm.keyword"
           placeholder="确认函合同号 / 柜号 / 预售合同号 / 采购方"
           clearable
-          @keyup.enter.native="getDataList()">
+          @keyup.enter.native="searchHandle()">
         </el-input>
       </el-form-item>
       <el-form-item>
-        <el-button type="primary" @click="getDataList()">查询</el-button>
+        <el-button type="primary" @click="searchHandle()">查询</el-button>
         <el-button
           v-if="isAuth('erp:tradeorder:list')"
           type="info"
@@ -349,6 +349,10 @@ export default {
     this.getDataList()
   },
   methods: {
+    searchHandle () {
+      this.pageIndex = 1
+      this.getDataList()
+    },
     getDataList () {
       this.dataListLoading = true
       this.$http({
