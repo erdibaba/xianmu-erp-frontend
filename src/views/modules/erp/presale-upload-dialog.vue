@@ -330,7 +330,7 @@ export default {
       this.$http({
         url: this.$http.adornUrl('/erp/ocr/recognize'),
         method: 'post',
-        timeout: 1000 * 180,
+        timeout: this.uploadType === 'packing' ? 1000 * 60 * 15 : 1000 * 180,
         data: formData,
         headers: {
           'Content-Type': 'multipart/form-data'
