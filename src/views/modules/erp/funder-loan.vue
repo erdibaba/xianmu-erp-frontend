@@ -81,6 +81,7 @@
         <el-descriptions-item label="预售合同号">{{ detailData.sellerContractNo }}</el-descriptions-item>
         <el-descriptions-item label="确认函合同号">{{ detailData.confirmContractNo }}</el-descriptions-item>
         <el-descriptions-item label="贷款本金">{{ money(detailData.loanAmount) }}</el-descriptions-item>
+        <el-descriptions-item v-if="detailData.internalContributionFlag === 1" label="内部出资主体">{{ detailData.contributionEntityName || '-' }}</el-descriptions-item>
         <el-descriptions-item label="年利率">{{ rate(detailData.annualInterestRate) }}%</el-descriptions-item>
         <el-descriptions-item label="账期天数">{{ detailData.loanCreditDays || '-' }}</el-descriptions-item>
         <el-descriptions-item label="预警天数">{{ detailData.warningDays === null || detailData.warningDays === undefined ? '-' : detailData.warningDays }}</el-descriptions-item>
@@ -149,6 +150,7 @@
         <el-row :gutter="18">
           <el-col :span="12"><el-form-item label="贷款编号"><el-input :value="activeLoan.loanNo" disabled></el-input></el-form-item></el-col>
           <el-col :span="12"><el-form-item label="贷款日期"><el-input :value="activeLoan.loanDate" disabled></el-input></el-form-item></el-col>
+          <el-col v-if="activeLoan.internalContributionFlag === 1" :span="12"><el-form-item label="内部出资主体"><el-input :value="activeLoan.contributionEntityName || '-'" disabled></el-input></el-form-item></el-col>
           <el-col :span="12"><el-form-item label="剩余待还本金"><el-input :value="money(activeLoan.remainingPrincipal)" disabled></el-input></el-form-item></el-col>
           <el-col :span="12">
             <el-form-item label="本次归还本金" prop="repaymentPrincipal">
@@ -257,6 +259,7 @@
             </el-form-item>
           </el-col>
           <el-col :span="6"><el-form-item label="资方规则"><el-input :value="ruleName(batchSettlementForm.ruleType)" disabled></el-input></el-form-item></el-col>
+          <el-col v-if="batchSettlementForm.internalContributionFlag === 1" :span="12"><el-form-item label="内部出资主体"><el-input :value="batchSettlementForm.contributionEntityNames || '-'" disabled></el-input></el-form-item></el-col>
           <el-col :span="6">
             <el-form-item label="计算扫码费">
               <el-switch
@@ -449,6 +452,8 @@ const emptyBatchSettlement = () => ({
   settlementSource: 'BATCH',
   settlementDate: new Date().toISOString().slice(0, 10),
   ruleType: '',
+  internalContributionFlag: 0,
+  contributionEntityNames: '',
   systemPrincipalAmount: 0,
   confirmedPrincipalAmount: 0,
   interestAmount: 0,

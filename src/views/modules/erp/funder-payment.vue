@@ -221,7 +221,7 @@
               </el-input>
             </template>
           </el-table-column>
-          <el-table-column v-if="isFunderPayment" label="鲜牧是否出资" width="135">
+          <el-table-column v-if="isFunderPayment" label="内部主体是否出资" width="155">
             <template slot-scope="scope">
               <el-select
                 v-model="scope.row.xianmuContributionFlag"
@@ -232,7 +232,25 @@
               </el-select>
             </template>
           </el-table-column>
-          <el-table-column v-if="isFunderPayment" label="业务主体出资款凭证" width="190">
+          <el-table-column v-if="isFunderPayment" label="内部出资主体" width="190">
+            <template slot-scope="scope">
+              <el-select
+                v-if="hasXianmuContribution(scope.row)"
+                v-model="scope.row.contributionEntityId"
+                filterable
+                clearable
+                :loading="internalPayerLoading"
+                placeholder="请选择内部主体"
+                style="width: 165px">
+                <el-option v-for="item in internalPayerOptions" :key="item.id" :label="item.entityName" :value="item.id">
+                  <span>{{ item.entityName }}</span>
+                  <span class="option-extra">{{ item.entityCode }}</span>
+                </el-option>
+              </el-select>
+              <span v-else>-</span>
+            </template>
+          </el-table-column>
+          <el-table-column v-if="isFunderPayment" label="内部主体出资款凭证" width="190">
             <template slot-scope="scope">
               <template v-if="hasXianmuContribution(scope.row)">
                 <el-upload
@@ -251,7 +269,7 @@
                 <div class="row-file-name">{{ scope.row.xianmuContributionFileName || '未上传' }}</div>
                 <div class="row-support-tip">支持浦发/建行/工行/兴业/农发行样本</div>
               </template>
-              <span v-else class="row-support-tip">鲜牧不出资，无需上传</span>
+              <span v-else class="row-support-tip">内部主体不出资，无需上传</span>
             </template>
           </el-table-column>
           <el-table-column v-if="isFunderPayment" label="出资识别金额" width="150" align="right">
@@ -495,13 +513,16 @@
         <el-table-column label="分摊打款金额" width="180" align="right">
           <template slot-scope="scope">{{ money(scope.row.allocationAmount) }}</template>
         </el-table-column>
-        <el-table-column v-if="detailData.paymentType === 1" label="鲜牧是否出资" width="120" align="center">
+        <el-table-column v-if="detailData.paymentType === 1" label="内部主体是否出资" width="150" align="center">
           <template slot-scope="scope">{{ hasXianmuContribution(scope.row) ? '出资' : '不出资' }}</template>
+        </el-table-column>
+        <el-table-column v-if="detailData.paymentType === 1" prop="contributionEntityName" label="内部出资主体" width="180" show-overflow-tooltip>
+          <template slot-scope="scope">{{ hasXianmuContribution(scope.row) ? (scope.row.contributionEntityName || '-') : '-' }}</template>
         </el-table-column>
         <el-table-column v-if="detailData.paymentType === 1" label="出资识别金额" width="150" align="right">
           <template slot-scope="scope">{{ money(scope.row.xianmuContributionRecognizedAmount) }}</template>
         </el-table-column>
-        <el-table-column v-if="detailData.paymentType === 1" label="业务主体出资款" width="150" align="right">
+        <el-table-column v-if="detailData.paymentType === 1" label="内部主体出资款" width="150" align="right">
           <template slot-scope="scope">{{ money(scope.row.xianmuContributionModifiedAmount) }}</template>
         </el-table-column>
         <el-table-column v-if="detailData.paymentType === 1" label="出资日期" width="120" align="center">
@@ -668,6 +689,8 @@ export default {
     },
     xianmuContributionFlagChange (row) {
       if (this.hasXianmuContribution(row)) return
+      this.$set(row, 'contributionEntityId', null)
+      this.$set(row, 'contributionEntityName', '')
       this.$set(row, 'xianmuContributionRecognizedAmount', 0)
       this.$set(row, 'xianmuContributionModifiedAmount', 0)
       this.$set(row, 'xianmuContributionDate', '')
@@ -741,6 +764,7 @@ export default {
       this.createVisible = true
       if (this.isFunderPayment) {
         this.searchFunders('')
+        this.searchInternalPayers('', false)
       } else {
         this.searchInternalPayers('', true)
       }
@@ -815,6 +839,8 @@ export default {
           orderContractAmount: this.roundMoney(confirmAmount),
           allocationAmount: this.roundMoney(confirmAmount),
           xianmuContributionFlag: 1,
+          contributionEntityId: null,
+          contributionEntityName: '',
           xianmuContributionRecognizedAmount: 0,
           xianmuContributionModifiedAmount: 0,
           xianmuContributionDate: '',
@@ -1115,13 +1141,14 @@ export default {
           const invalidContributionIndex = (this.paymentForm.allocationList || []).findIndex(item => {
             if (!this.hasXianmuContribution(item)) return false
             const contributionAmount = Number(item.xianmuContributionModifiedAmount || 0)
-            return !item.xianmuContributionFilePath ||
+            return !item.contributionEntityId ||
+              !item.xianmuContributionFilePath ||
               !item.xianmuContributionDate ||
               contributionAmount <= 0 ||
               contributionAmount > Number(item.allocationAmount || 0)
           })
           if (invalidContributionIndex >= 0) {
-            this.$message.error(`第${invalidContributionIndex + 1}行业务主体出资款凭证、日期和金额必须填写，且出资款不能大于资方全款金额`)
+            this.$message.error(`第${invalidContributionIndex + 1}行必须选择内部出资主体，并填写出资款凭证、日期和金额，且出资款不能大于资方全款金额`)
             return
           }
         }

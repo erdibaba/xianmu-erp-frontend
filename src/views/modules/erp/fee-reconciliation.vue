@@ -58,6 +58,7 @@
             <el-col :span="12"><el-form-item label="出库批次"><el-input :value="batchDisplayName" disabled></el-input></el-form-item></el-col>
             <el-col :span="6"><el-form-item label="结算日期" required><el-date-picker v-model="form.settlementDate" type="date" value-format="yyyy-MM-dd" style="width:100%" :disabled="!reconciliationEditable" @change="recalculate"></el-date-picker></el-form-item></el-col>
             <el-col :span="6"><el-form-item label="资方规则"><el-input :value="ruleName(form.ruleType)" disabled></el-input></el-form-item></el-col>
+            <el-col v-if="form.internalContributionFlag === 1" :span="12"><el-form-item label="内部出资主体"><el-input :value="form.contributionEntityNames || '-'" disabled></el-input></el-form-item></el-col>
             <el-col :span="6"><el-form-item label="计算扫码费"><el-switch v-model="includeCodeScanFee" :disabled="!reconciliationEditable" active-text="计算" inactive-text="不计算" @change="recalculate"></el-switch></el-form-item></el-col>
             <el-col v-if="form.ruleType === 'CHAOYUE'" :span="8"><el-form-item label="资方认定回款本金"><el-input-number v-model="form.confirmedPrincipalAmount" :min="0" :precision="2" :controls="false" style="width:100%" :disabled="!reconciliationEditable" @change="recalculate"></el-input-number></el-form-item></el-col>
             <el-col v-if="form.ruleType === 'WANXIANG'" :span="8"><el-form-item label="补税点费用"><el-input :value="amount(form.taxAdjustAmount)" disabled></el-input></el-form-item></el-col>
@@ -189,6 +190,8 @@ const emptyForm = () => ({
   confirmContractNos: '',
   funderName: '',
   ownershipName: '',
+  internalContributionFlag: 0,
+  contributionEntityNames: '',
   settlementDate: '',
   workflowStatus: 0,
   includeCodeScanFee: 0,
