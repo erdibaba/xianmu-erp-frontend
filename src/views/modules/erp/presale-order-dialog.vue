@@ -693,7 +693,7 @@
               <el-button
                 v-if="dataForm.id"
                 type="text"
-                @click="reuploadAttachment('customs')">重新上传</el-button>
+                @click="reuploadAttachment('customs')">重新上传报关单</el-button>
             </div>
             <el-empty v-if="!hasCustomsData" description="暂未上传报关单"></el-empty>
             <div v-else class="tab-pane-content-body">
@@ -843,6 +843,7 @@
       :upload-type="attachmentUploadType"
       :order-id="dataForm.id"
       :confirm-id="(dataForm.confirmInfo || {}).id"
+      :replace-mode="attachmentUploadType === 'customs' ? hasCustomsData : hasQuarantineData"
       @uploaded="attachmentUploadedHandle">
     </presale-upload-dialog>
   </el-dialog>

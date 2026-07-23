@@ -95,15 +95,15 @@
               size="small"
               @click="uploadPackingHandle(scope.row)">{{ scope.row.packingUploaded ? '重新上传装箱单' : '上传装箱单' }}</el-button>
             <el-button
-              v-if="isAuth('erp:tradeorder:save') && !scope.row.customsUploaded"
+              v-if="isAuth('erp:tradeorder:save')"
               type="text"
               size="small"
-              @click="uploadCustomsHandle(scope.row)">上传报关单</el-button>
+              @click="uploadCustomsHandle(scope.row)">{{ scope.row.customsUploaded ? '重新上传报关单' : '上传报关单' }}</el-button>
             <el-button
-              v-if="isAuth('erp:tradeorder:save') && !scope.row.quarantineUploaded"
+              v-if="isAuth('erp:tradeorder:save')"
               type="text"
               size="small"
-              @click="uploadQuarantineHandle(scope.row)">上传检疫证明</el-button>
+              @click="uploadQuarantineHandle(scope.row)">{{ scope.row.quarantineUploaded ? '重新上传检疫证明' : '上传检疫证明' }}</el-button>
             <el-button
               v-if="isAuth('erp:tradeorder:update')"
               type="text"
@@ -662,14 +662,14 @@ export default {
       this.openUploadDialog()
     },
     uploadCustomsHandle (row) {
-      this.packingReplaceMode = false
+      this.packingReplaceMode = !!row.customsUploaded
       this.uploadType = 'customs'
       this.currentOrderId = row.presaleOrderId
       this.currentConfirmId = row.id
       this.openUploadDialog()
     },
     uploadQuarantineHandle (row) {
-      this.packingReplaceMode = false
+      this.packingReplaceMode = !!row.quarantineUploaded
       this.uploadType = 'quarantine'
       this.currentOrderId = row.presaleOrderId
       this.currentConfirmId = row.id

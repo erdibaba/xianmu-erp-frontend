@@ -96,8 +96,8 @@
     <span slot="footer" class="dialog-footer">
       <el-button @click="visible = false">取消</el-button>
       <el-button v-if="!isArchiveUpload" type="primary" :disabled="!resultData" @click="confirmHandle()">{{ editButtonText }}</el-button>
-      <el-button v-else-if="uploadType === 'customs'" type="primary" :loading="loading" :disabled="!resultData" @click="confirmCustomsUpload()">确认覆盖保存</el-button>
-      <el-button v-else-if="uploadType === 'quarantine'" type="primary" :loading="loading" :disabled="!resultData" @click="confirmQuarantineUpload()">确认保存</el-button>
+      <el-button v-else-if="uploadType === 'customs'" type="primary" :loading="loading" :disabled="!resultData" @click="confirmCustomsUpload()">{{ replaceMode ? '确认覆盖保存' : '确认保存' }}</el-button>
+      <el-button v-else-if="uploadType === 'quarantine'" type="primary" :loading="loading" :disabled="!resultData" @click="confirmQuarantineUpload()">{{ replaceMode ? '确认覆盖保存' : '确认保存' }}</el-button>
       <el-button v-else type="primary" :disabled="!resultData" @click="visible = false">完成</el-button>
     </span>
   </el-dialog>
@@ -147,8 +147,8 @@ export default {
     dialogTitle () {
       if (this.uploadType === 'confirm') return '上传客户订单确认函'
       if (this.uploadType === 'packing') return this.replaceMode ? '重新上传装箱单' : '上传装箱单'
-      if (this.uploadType === 'customs') return '识别报关单'
-      if (this.uploadType === 'quarantine') return '上传检疫证明'
+      if (this.uploadType === 'customs') return this.replaceMode ? '重新上传报关单' : '上传报关单'
+      if (this.uploadType === 'quarantine') return this.replaceMode ? '重新上传检疫证明' : '上传检疫证明'
       return '上传预售销售单'
     },
     tipText () {
@@ -162,18 +162,22 @@ export default {
         return '可同时上传多张装箱单 PDF/图片，识别后带入“装箱单”页签，系统会合并提取总箱数、总重量、保质期和生产日期分布。'
       }
       if (this.uploadType === 'customs') {
-        return '上传报关单原件后，系统会先识别毛重；请核对确认毛重后再覆盖保存归档。'
+        return this.replaceMode
+          ? '重新上传后系统会识别毛重；请核对确认毛重，保存时将覆盖当前确认函原报关单及毛重结果。'
+          : '上传报关单原件后，系统会先识别毛重；请核对确认毛重后再保存归档。'
       }
       if (this.uploadType === 'quarantine') {
-        return '上传检疫证明原件，系统会识别检疫证日期；请核对确认日期后再保存归档。'
+        return this.replaceMode
+          ? '重新上传后系统会识别检疫证日期；请核对确认日期，保存时将覆盖当前确认函原检疫证明及日期结果。'
+          : '上传检疫证明原件，系统会识别检疫证日期；请核对确认日期后再保存归档。'
       }
       return '上传预售销售单 PDF，识别后带入“预售销售单”页签，用户修改后保存，原始记录会长期保留。'
     },
     actionButtonText () {
       if (this.uploadType === 'confirm') return '识别客户订单确认函'
       if (this.uploadType === 'packing') return this.replaceMode ? '重新识别装箱单' : '识别装箱单'
-      if (this.uploadType === 'customs') return '上传报关单'
-      if (this.uploadType === 'quarantine') return '上传检疫证明'
+      if (this.uploadType === 'customs') return this.replaceMode ? '重新识别报关单' : '识别报关单'
+      if (this.uploadType === 'quarantine') return this.replaceMode ? '重新识别检疫证明' : '识别检疫证明'
       return '识别预售销售单'
     },
     editButtonText () {
@@ -196,7 +200,7 @@ export default {
         return '支持 JPG / PNG / JFIF / BMP / PDF / XLS / XLSX / DOC / DOCX，当前用于报关单归档和毛重识别。'
       }
       if (this.uploadType === 'quarantine') {
-        return '支持 JPG / PNG / JFIF / BMP / PDF / XLS / XLSX / DOC / DOCX，当前用于检疫证明归档。'
+        return '支持 JPG / PNG / JFIF / BMP / PDF / XLS / XLSX / DOC / DOCX，当前用于检疫证明归档和检疫日期识别。'
       }
       return '支持 JPG / PNG / JFIF / BMP / PDF，当前主要用于预售销售单。'
     }
