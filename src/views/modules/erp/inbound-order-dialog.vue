@@ -437,6 +437,7 @@ export default {
       damageSaving: false,
       skuTableHeight: 300,
       packingBoxMap: {},
+      packingBoxOptionMap: {},
       productList: [],
       warehouseList: [],
       driverOptions: [],
@@ -618,8 +619,10 @@ export default {
         })
       }).then(({ data }) => {
         this.packingBoxMap = (data && data.packingBoxMap) || {}
+        this.packingBoxOptionMap = (data && data.packingBoxOptionMap) || {}
       }).catch(() => {
         this.packingBoxMap = {}
+        this.packingBoxOptionMap = {}
       })
     },
     driverSelectVisibleChange (visible) {
@@ -809,6 +812,7 @@ export default {
         productName: '',
         productNameEn: '',
         productSpec: '',
+        factoryNo: '',
         unit: '',
         expectedQty: 0,
         actualQty: 0,
@@ -824,6 +828,7 @@ export default {
         _productPageSize: 15,
         _productLoading: false,
         _productOptions: [],
+        _packingItemId: '',
         _recognizedProductCode: item.productCode || this.extractProductCodeFromSku(item.skuCode),
         _recognizedProductName: item.productName || '',
         _recognizedProductNameEn: item.productNameEn || ''
@@ -864,6 +869,7 @@ export default {
         productName: '',
         productNameEn: '',
         productSpec: '',
+        factoryNo: '',
         unit: '',
         expectedQty: null,
         actualQty: null,
@@ -879,6 +885,7 @@ export default {
         _productPageSize: 15,
         _productLoading: false,
         _productOptions: [],
+        _packingItemId: '',
         _recognizedProductCode: '',
         _recognizedProductName: '',
         _recognizedProductNameEn: ''
@@ -939,10 +946,40 @@ export default {
       row.productNameEn = product.productNameEn || row._recognizedProductNameEn || ''
       row.productSpec = product.productSpec
       row.unit = product.unit
-      row.packingBoxes = this.packingBoxMap[String(product.productCode)] || 0
+      this.assignPackingBoxes(row, product.productCode)
       if (!row._productOptions.find(item => String(item.id) === String(product.id))) {
         row._productOptions = [product].concat(row._productOptions)
       }
+    },
+    assignPackingBoxes (row, productCode) {
+      const options = this.packingBoxOptionMap[String(productCode)] || []
+      if (!options.length) {
+        if (this.packingBoxMap[String(productCode)] !== undefined) {
+          row.packingBoxes = this.packingBoxMap[String(productCode)] || 0
+        }
+        return
+      }
+      const normalizedFactoryNo = this.normalizeFactoryNo(row.factoryNo)
+      const usedIds = (this.dataForm.itemList || [])
+        .filter(item => item !== row && item._packingItemId)
+        .map(item => String(item._packingItemId))
+      let option = null
+      if (normalizedFactoryNo) {
+        option = options.find(item =>
+          this.normalizeFactoryNo(item.factoryNo) === normalizedFactoryNo &&
+          usedIds.indexOf(String(item.packingItemId)) < 0)
+      }
+      if (!option && row._packingItemId) {
+        option = options.find(item => String(item.packingItemId) === String(row._packingItemId))
+      }
+      if (!option) {
+        option = options.find(item => usedIds.indexOf(String(item.packingItemId)) < 0) || options[0]
+      }
+      row._packingItemId = option.packingItemId
+      row.packingBoxes = this.toNumber(option.totalBoxes)
+    },
+    normalizeFactoryNo (factoryNo) {
+      return String(factoryNo || '').toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^ME/, '')
     },
     productSelectVisibleChange (row, visible) {
       if (!visible || this.readonly) {
@@ -1207,7 +1244,8 @@ export default {
           return
         }
         actualQtyByCode[productCode] = this.toNumber(actualQtyByCode[productCode]) + this.toNumber(item.actualQty)
-        packingBoxesByCode[productCode] = this.toNumber(item.packingBoxes)
+        packingBoxesByCode[productCode] =
+          this.toNumber(packingBoxesByCode[productCode]) + this.toNumber(item.packingBoxes)
       })
       const mismatchCode = Object.keys(packingBoxesByCode).find(productCode =>
         this.toNumber(actualQtyByCode[productCode]) !== this.toNumber(packingBoxesByCode[productCode]))
