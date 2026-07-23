@@ -265,6 +265,7 @@
           </el-table-column>
 
           <el-table-column prop="packingBoxes" label="装箱单箱数" width="100"></el-table-column>
+          <el-table-column prop="factoryNo" label="厂号" width="100" show-overflow-tooltip></el-table-column>
           <el-table-column label="报损重量(KG)" width="120" align="right">
             <template slot-scope="scope">{{ formatDamageWeight(scope.row.damageWeightKg) }}</template>
           </el-table-column>
@@ -828,7 +829,7 @@ export default {
         _productPageSize: 15,
         _productLoading: false,
         _productOptions: [],
-        _packingItemId: '',
+        _packingItemId: item.packingItemId || '',
         _recognizedProductCode: item.productCode || this.extractProductCodeFromSku(item.skuCode),
         _recognizedProductName: item.productName || '',
         _recognizedProductNameEn: item.productNameEn || ''
@@ -848,7 +849,7 @@ export default {
           ? this.productList.find(item => String(item.id) === String(row.productId))
           : this.productList.find(item => String(item.productCode) === normalizedCode)
         if (product) {
-          this.applyProductToRow(row, product)
+          this.applyProductToRow(row, product, itemList)
           return
         }
         row.productId = ''
@@ -939,19 +940,19 @@ export default {
       row.productName = row._recognizedProductName || row.productName
       row.productNameEn = row._recognizedProductNameEn || row.productNameEn
     },
-    applyProductToRow (row, product) {
+    applyProductToRow (row, product, itemList) {
       row.productId = product.id
       row.productCode = product.productCode
       row.productName = product.productName || row._recognizedProductName || ''
       row.productNameEn = product.productNameEn || row._recognizedProductNameEn || ''
       row.productSpec = product.productSpec
       row.unit = product.unit
-      this.assignPackingBoxes(row, product.productCode)
+      this.assignPackingBoxes(row, product.productCode, itemList)
       if (!row._productOptions.find(item => String(item.id) === String(product.id))) {
         row._productOptions = [product].concat(row._productOptions)
       }
     },
-    assignPackingBoxes (row, productCode) {
+    assignPackingBoxes (row, productCode, itemList) {
       const options = this.packingBoxOptionMap[String(productCode)] || []
       if (!options.length) {
         if (this.packingBoxMap[String(productCode)] !== undefined) {
@@ -960,7 +961,7 @@ export default {
         return
       }
       const normalizedFactoryNo = this.normalizeFactoryNo(row.factoryNo)
-      const usedIds = (this.dataForm.itemList || [])
+      const usedIds = (itemList || this.dataForm.itemList || [])
         .filter(item => item !== row && item._packingItemId)
         .map(item => String(item._packingItemId))
       let option = null
@@ -976,6 +977,7 @@ export default {
         option = options.find(item => usedIds.indexOf(String(item.packingItemId)) < 0) || options[0]
       }
       row._packingItemId = option.packingItemId
+      row.factoryNo = option.factoryNo || row.factoryNo || ''
       row.packingBoxes = this.toNumber(option.totalBoxes)
     },
     normalizeFactoryNo (factoryNo) {
@@ -1225,6 +1227,8 @@ export default {
           expectedQty: item.expectedQty,
           actualQty: item.actualQty,
           packingBoxes: item.packingBoxes,
+          packingItemId: item._packingItemId || item.packingItemId || null,
+          factoryNo: item.factoryNo,
           damageWeightKg: item.damageWeightKg,
           damageReason: item.damageReason,
           temperatureZone: item.temperatureZone,
