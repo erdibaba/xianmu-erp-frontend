@@ -534,12 +534,13 @@ export default {
       this.driverOptions = []
       this.dataForm = this.defaultForm()
       this.detailLoading = true
+      const draft = (result && result.inboundDraft) || {}
+      this.dataForm = this.normalizeForm(Object.assign({}, draft, {
+        presaleOrderId: presaleOrderId,
+        confirmId: confirmId || draft.confirmId || 0
+      }))
       Promise.all([this.loadProductList(), this.loadWarehouseList(), this.loadPackingBoxMap(presaleOrderId, confirmId)]).then(() => {
-        const draft = (result && result.inboundDraft) || {}
-        this.dataForm = this.normalizeForm(Object.assign({}, draft, {
-          presaleOrderId: presaleOrderId,
-          confirmId: confirmId || draft.confirmId || 0
-        }))
+        this.syncProductRows(this.dataForm.itemList || [])
         return this.resolveRecognizedDriver()
       }).finally(() => {
         this.detailLoading = false
@@ -591,6 +592,8 @@ export default {
         params: this.$http.adornParams()
       }).then(({ data }) => {
         this.productList = (data && data.list) || []
+      }).catch(() => {
+        this.productList = []
       })
     },
     loadWarehouseList () {
@@ -600,6 +603,8 @@ export default {
         params: this.$http.adornParams()
       }).then(({ data }) => {
         this.warehouseList = (data && data.list) || []
+      }).catch(() => {
+        this.warehouseList = []
       })
     },
     loadPackingBoxMap (presaleOrderId, confirmId) {
