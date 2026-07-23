@@ -525,6 +525,7 @@ export default {
         result = confirmId
         confirmId = 0
       }
+      const recognizedResult = (result && result.result) || result || {}
       this.visible = true
       this.readonly = false
       this.$nextTick(this.updateSkuTableHeight)
@@ -534,11 +535,12 @@ export default {
       this.driverOptions = []
       this.dataForm = this.defaultForm()
       this.detailLoading = true
-      const draft = (result && result.inboundDraft) || {}
+      const draft = recognizedResult.inboundDraft || {}
       this.dataForm = this.normalizeForm(Object.assign({}, draft, {
         presaleOrderId: presaleOrderId,
         confirmId: confirmId || draft.confirmId || 0
       }))
+      this.detailLoading = false
       Promise.all([this.loadProductList(), this.loadWarehouseList(), this.loadPackingBoxMap(presaleOrderId, confirmId)]).then(() => {
         this.syncProductRows(this.dataForm.itemList || [])
         return this.resolveRecognizedDriver()

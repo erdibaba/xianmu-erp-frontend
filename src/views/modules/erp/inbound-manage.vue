@@ -160,9 +160,16 @@ export default {
       })
     },
     recognizedHandle (result) {
-      this.dialogVisible = true
+      const recognizedResult = JSON.parse(JSON.stringify(result || {}))
+      this.uploadVisible = false
+      this.dialogVisible = false
       this.$nextTick(() => {
-        this.$refs.dialog.initFromRecognizedResult(this.currentPresaleOrderId, this.currentConfirmId, result)
+        this.dialogVisible = true
+        this.$nextTick(() => {
+          if (this.$refs.dialog) {
+            this.$refs.dialog.initFromRecognizedResult(this.currentPresaleOrderId, this.currentConfirmId, recognizedResult)
+          }
+        })
       })
     },
     viewHandle (row) {

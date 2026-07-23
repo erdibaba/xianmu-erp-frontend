@@ -44,6 +44,29 @@
           <el-descriptions-item label="归档文件数">{{ ((resultData.inboundDraft || {}).fileList || []).length }}</el-descriptions-item>
           <el-descriptions-item label="识别明细行数">{{ ((resultData.inboundDraft || {}).itemList || []).length }}</el-descriptions-item>
         </el-descriptions>
+        <el-table
+          v-if="recognizedItems.length"
+          :data="recognizedItems"
+          border
+          size="mini"
+          max-height="260"
+          class="recognized-preview-table">
+          <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
+          <el-table-column prop="productCode" label="产品编码" width="110"></el-table-column>
+          <el-table-column prop="productName" label="识别品名" min-width="180" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="factoryNo" label="厂号" width="80"></el-table-column>
+          <el-table-column prop="expectedQty" label="预期数" width="85" align="right"></el-table-column>
+          <el-table-column prop="actualQty" label="实收数" width="85" align="right"></el-table-column>
+          <el-table-column prop="totalWeightKg" label="合计重量(KG)" width="120" align="right"></el-table-column>
+        </el-table>
+        <el-alert
+          v-else
+          title="本次未识别到明细行，请更换清晰文件重试或进入维护窗口手工新增。"
+          type="warning"
+          :closable="false"
+          show-icon
+          class="empty-result-alert">
+        </el-alert>
       </div>
     </div>
     <span slot="footer" class="dialog-footer">
@@ -71,6 +94,11 @@ export default {
       loading: false,
       fileList: [],
       resultData: null
+    }
+  },
+  computed: {
+    recognizedItems () {
+      return (((this.resultData || {}).inboundDraft || {}).itemList || [])
     }
   },
   methods: {
@@ -132,8 +160,15 @@ export default {
       })
     },
     confirmHandle () {
-      this.$emit('recognized', this.resultData)
+      if (!this.resultData) {
+        this.$message.error('请先完成入库单识别')
+        return
+      }
+      const result = JSON.parse(JSON.stringify(this.resultData))
       this.visible = false
+      this.$nextTick(() => {
+        this.$emit('recognized', result)
+      })
     }
   }
 }
@@ -150,5 +185,13 @@ export default {
 
 .inbound-upload-dialog .result-box {
   margin-top: 10px;
+}
+
+.recognized-preview-table {
+  margin-top: 12px;
+}
+
+.empty-result-alert {
+  margin-top: 12px;
 }
 </style>
