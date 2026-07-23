@@ -1788,7 +1788,8 @@ export default {
       this.ensureProductOption(row, product)
     },
     fillPackingProductByCode (row) {
-      const product = this.findProductByCode(row.productCode || row.sourceProductCode)
+      const rawCode = row.productCode || row.sourceProductCode
+      const product = this.findProductByAnyCode(this.extractMatchProductCodes(rawCode), rawCode)
       if (!product) return
       row.productCode = product.productCode || row.productCode || ''
       row.sourceProductCode = row.sourceProductCode || product.productCode || ''
