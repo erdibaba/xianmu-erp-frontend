@@ -318,7 +318,10 @@
 
         <template v-if="isFuturesSale">
           <div class="sub-title futures-source-title">
-            <span>期货货源关联（支持多张预售单、多个确认函合同）</span>
+            <span>
+              期货货源关联（支持多张预售单、多个确认函合同）
+              <el-tag size="mini" :type="futuresSourceStatusType">{{ futuresSourceStatusText }}</el-tag>
+            </span>
             <el-button
               v-if="!contentReadonly"
               size="mini"
@@ -328,6 +331,13 @@
               新增货源
             </el-button>
           </div>
+          <el-alert
+            class="futures-source-alert"
+            type="info"
+            :closable="false"
+            show-icon
+            title="期货单可先不关联或只关联部分货源；执行入库后实际库存分配前，必须覆盖全部产品的销售箱数和重量。">
+          </el-alert>
           <el-table :data="dataForm.sourceAllocationList" border size="mini" class="item-table futures-source-table">
             <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
             <el-table-column label="产品" min-width="210">
@@ -1841,6 +1851,39 @@ export default {
       const unfinished = (this.dataForm.outboundBatchList || []).some(item => ![3, 9].includes(Number(item.status || 0)))
       if (unfinished) return '当前存在未完成出库批次；如需调整期货单，请先删除未完成批次。'
       return '首次出库批次确认完成前，可调整产品、数量及预售单/确认函货源；保存后无需重新确认合同。'
+    },
+    futuresSourceStatusText () {
+      const sources = this.dataForm.sourceAllocationList || []
+      if (!sources.length) return '待匹配货源'
+      return this.isFuturesSourceComplete ? '货源已匹配' : '部分匹配货源'
+    },
+    futuresSourceStatusType () {
+      if (!(this.dataForm.sourceAllocationList || []).length) return 'info'
+      return this.isFuturesSourceComplete ? 'success' : 'warning'
+    },
+    isFuturesSourceComplete () {
+      const items = this.dataForm.itemList || []
+      const sources = this.dataForm.sourceAllocationList || []
+      if (!items.length || !sources.length) return false
+      const saleSummary = {}
+      const sourceSummary = {}
+      items.forEach(item => {
+        const key = String(item.productId)
+        if (!saleSummary[key]) saleSummary[key] = { boxes: 0, weight: 0 }
+        saleSummary[key].boxes += Number(item.boxes || 0)
+        saleSummary[key].weight += Number(item.contractQuantityKg || 0)
+      })
+      sources.forEach(item => {
+        const key = String(item.productId)
+        if (!sourceSummary[key]) sourceSummary[key] = { boxes: 0, weight: 0 }
+        sourceSummary[key].boxes += Number(item.allocatedBoxes || 0)
+        sourceSummary[key].weight += Number(item.allocatedWeightKg || 0)
+      })
+      const keys = Object.keys(saleSummary)
+      if (Object.keys(sourceSummary).length !== keys.length) return false
+      return keys.every(key => sourceSummary[key] &&
+        sourceSummary[key].boxes === saleSummary[key].boxes &&
+        Math.round(sourceSummary[key].weight * 100) === Math.round(saleSummary[key].weight * 100))
     },
     spotPendingLotCount () {
       return (this.spotContractList || []).reduce((total, contract) => total + ((contract._selectedLots || []).length), 0)
@@ -3691,7 +3734,7 @@ export default {
         }
       } else {
         const sources = this.dataForm.sourceAllocationList || []
-        if (!sources.length) return '期货单至少需要关联一条预售单或客户订单确认函货源'
+        if (!sources.length) return ''
         const saleSummary = {}
         const sourceSummary = {}
         itemList.forEach(item => {
@@ -3722,13 +3765,12 @@ export default {
           sourceSummary[key].boxes += Number(row.allocatedBoxes || 0)
           sourceSummary[key].weight += Number(row.allocatedWeightKg || 0)
         }
-        const keys = Object.keys(saleSummary)
-        if (Object.keys(sourceSummary).length !== keys.length) return '期货货源产品范围必须与By产品销售明细一致'
-        for (const key of keys) {
+        for (const key of Object.keys(sourceSummary)) {
           const sale = saleSummary[key]
           const source = sourceSummary[key]
-          if (!source || source.boxes !== sale.boxes || Math.abs(source.weight - sale.weight) >= 0.01) {
-            return `产品${sale.code || key}的货源箱数/重量汇总必须与By产品销售明细一致`
+          if (!sale) return `期货货源中的产品${key}不在By产品销售明细中`
+          if (source.boxes > sale.boxes || Math.round(source.weight * 100) > Math.round(sale.weight * 100)) {
+            return `产品${sale.code || key}的货源箱数/重量不能超过By产品销售明细`
           }
         }
       }

@@ -378,11 +378,19 @@ export default {
       if (row.riskStatus === 'REJECTED') return '风控已驳回'
       if (row.riskStatus === 'APPROVED') return '风控已通过'
       const map = {
-        FUTURES_PENDING: '期货待入库分配',
+        FUTURES_PENDING: this.futuresSourceStatusLabel(row),
         PENDING_RISK: '待货物风控审核',
         CONFIRMED: '库存已确认'
       }
       return map[row.allocationStatus] || '-'
+    },
+    futuresSourceStatusLabel (row) {
+      const map = {
+        UNMATCHED: '待匹配货源',
+        PARTIAL: '部分匹配货源',
+        MATCHED: '货源已匹配，待入库分配'
+      }
+      return map[row.futuresSourceStatus] || '待匹配货源'
     },
     allocationStatusType (row) {
       if (row.riskStatus === 'PENDING') return 'warning'
@@ -664,6 +672,13 @@ export default {
       })
     },
     futuresAllocationHandle (id) {
+      const row = (this.dataList || []).find(item => String(item.id) === String(id))
+      if (row && row.futuresSourceStatus !== 'MATCHED') {
+        this.$message.warning(row.futuresSourceStatus === 'PARTIAL'
+          ? '该期货单仅匹配了部分货源，请先补齐全部产品的货源箱数和重量'
+          : '该期货单尚未匹配货源，请先关联预售单或客户订单确认函')
+        return
+      }
       this.$nextTick(() => {
         this.$refs.futuresAllocationDialog.init(id)
       })
