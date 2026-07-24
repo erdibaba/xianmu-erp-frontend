@@ -468,7 +468,7 @@ export default {
         method: 'post',
         data: formData,
         headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 120000
+        timeout: 1000 * 60 * 15
       }).then(({ data }) => {
         if (data && data.code === 0) {
           const voucher = data.voucher || {}

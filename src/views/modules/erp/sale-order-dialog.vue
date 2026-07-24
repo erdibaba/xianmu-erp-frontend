@@ -2488,7 +2488,7 @@ export default {
         method: 'post',
         data: formData,
         headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 1000 * 120
+        timeout: 1000 * 60 * 15
       })).then(({ data }) => {
         if (data && data.code === 0) {
           this.$message.success('全款水单识别成功')
@@ -4337,7 +4337,7 @@ export default {
         method: 'post',
         data: formData,
         headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: this.currentUploadType === 'OUTBOUND_RECEIPT' ? 1000 * 180 : undefined
+        timeout: ['OUTBOUND_RECEIPT', 'OUTBOUND_BATCH_BANK_SLIP'].includes(this.currentUploadType) ? 1000 * 60 * 15 : undefined
       })).then(({ data }) => {
         if (data && data.code === 0) {
           if (this.currentUploadType === 'OUTBOUND_RECEIPT') {

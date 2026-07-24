@@ -232,6 +232,7 @@
         this.$http({
           url: this.$http.adornUrl('/erp/inventory-adjustment/recognize'),
           method: 'post',
+          timeout: 1000 * 60 * 15,
           data: formData,
           headers: { 'Content-Type': 'multipart/form-data' }
         }).then(({data}) => {

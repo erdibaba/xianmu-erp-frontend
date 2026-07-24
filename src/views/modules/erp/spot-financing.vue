@@ -326,7 +326,7 @@ export default {
     },
     recognizeVoucher (request) {
       const form = new FormData(); form.append('file', request.file); this.recognizeLoading = true
-      this.$http({ url: this.$http.adornUrl('/erp/spot-financing/voucher/recognize'), method: 'post', data: form, headers: { 'Content-Type': 'multipart/form-data' } }).then(({ data }) => {
+      this.$http({ url: this.$http.adornUrl('/erp/spot-financing/voucher/recognize'), method: 'post', timeout: 1000 * 60 * 15, data: form, headers: { 'Content-Type': 'multipart/form-data' } }).then(({ data }) => {
         if (!data || data.code !== 0) { this.$message.error((data && data.msg) || '水单识别失败'); return }
         const voucher = data.voucher || {}
         const serialNo = voucher.transactionNo || voucher.voucherNo || ''

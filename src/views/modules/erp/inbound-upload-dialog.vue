@@ -141,7 +141,7 @@ export default {
       this.$http({
         url: this.$http.adornUrl('/erp/inbound/recognize'),
         method: 'post',
-        timeout: 1000 * 180,
+        timeout: 1000 * 60 * 15,
         data: formData,
         headers: {
           'Content-Type': 'multipart/form-data'

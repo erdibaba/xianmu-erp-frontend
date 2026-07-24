@@ -262,7 +262,7 @@ export default {
       this.$http({
         url: this.$http.adornUrl('/erp/presale/recognize-quarantine'),
         method: 'post',
-        timeout: 1000 * 180,
+        timeout: 1000 * 60 * 15,
         data: formData,
         headers: {
           'Content-Type': 'multipart/form-data'
@@ -300,7 +300,7 @@ export default {
       this.$http({
         url: this.$http.adornUrl('/erp/presale/recognize-customs'),
         method: 'post',
-        timeout: 1000 * 180,
+        timeout: 1000 * 60 * 15,
         data: formData,
         headers: {
           'Content-Type': 'multipart/form-data'
@@ -334,7 +334,7 @@ export default {
       this.$http({
         url: this.$http.adornUrl('/erp/ocr/recognize'),
         method: 'post',
-        timeout: this.uploadType === 'packing' ? 1000 * 60 * 15 : 1000 * 180,
+        timeout: 1000 * 60 * 15,
         data: formData,
         headers: {
           'Content-Type': 'multipart/form-data'
@@ -380,6 +380,7 @@ export default {
         return this.$http({
           url: this.$http.adornUrl('/erp/presale/upload-attachment'),
           method: 'post',
+          timeout: 1000 * 60 * 15,
           data: formData,
           headers: {
             'Content-Type': 'multipart/form-data'
