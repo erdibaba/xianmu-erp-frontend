@@ -291,9 +291,27 @@
             </template>
           </el-table-column>
 
-          <el-table-column v-if="isFuturesSale" label="厂号" width="120">
+          <el-table-column label="厂号" width="130">
             <template slot-scope="scope">
-              <el-input v-model="scope.row.contractFactoryNo" :disabled="contentReadonly" size="mini"></el-input>
+              <el-select
+                v-if="isFuturesSale"
+                v-model="scope.row.contractFactoryNo"
+                :disabled="contentReadonly"
+                filterable
+                allow-create
+                default-first-option
+                size="mini"
+                style="width: 100%;"
+                placeholder="选择或输入厂号"
+                @change="value => futuresItemFactoryChange(scope.row, value)">
+                <el-option
+                  v-for="factoryNo in futuresFactoryOptions(scope.row)"
+                  :key="factoryNo"
+                  :label="factoryNo"
+                  :value="factoryNo">
+                </el-option>
+              </el-select>
+              <span v-else>{{ scope.row.contractFactoryNo || '-' }}</span>
             </template>
           </el-table-column>
 
@@ -343,7 +361,7 @@
             <el-table-column label="产品" min-width="210">
               <template slot-scope="scope">
                 <el-select
-                  v-model="scope.row.productId"
+                  v-model="scope.row._saleItemKey"
                   :disabled="contentReadonly"
                   filterable
                   clearable
@@ -353,9 +371,9 @@
                   @change="value => futuresSourceProductChange(scope.row, value)">
                   <el-option
                     v-for="item in dataForm.itemList"
-                    :key="item.productId"
-                    :label="`${item.productCode || '-'} / ${saleProductDisplayName(item)}`"
-                    :value="item.productId">
+                    :key="saleItemFactoryKey(item)"
+                    :label="`${item.productCode || '-'} / ${saleProductDisplayName(item)} / ${item.contractFactoryNo || '未定厂号'}`"
+                    :value="saleItemFactoryKey(item)">
                   </el-option>
                 </el-select>
               </template>
@@ -390,6 +408,7 @@
             <el-table-column prop="sourceStage" label="阶段" width="95" align="center">
               <template slot-scope="scope">{{ scope.row.sourceStage === 'CONFIRM' ? '确认函' : '待落位' }}</template>
             </el-table-column>
+            <el-table-column prop="factoryNo" label="销售厂号" width="110" show-overflow-tooltip></el-table-column>
             <el-table-column label="分配箱数" width="120">
               <template slot-scope="scope">
                 <el-input-number v-model="scope.row.allocatedBoxes" :disabled="contentReadonly" :controls="false" :min="0" :precision="0" size="mini" style="width: 100%;"></el-input-number>
@@ -1868,13 +1887,13 @@ export default {
       const saleSummary = {}
       const sourceSummary = {}
       items.forEach(item => {
-        const key = String(item.productId)
+        const key = this.saleItemFactoryKey(item)
         if (!saleSummary[key]) saleSummary[key] = { boxes: 0, weight: 0 }
         saleSummary[key].boxes += Number(item.boxes || 0)
         saleSummary[key].weight += Number(item.contractQuantityKg || 0)
       })
       sources.forEach(item => {
-        const key = String(item.productId)
+        const key = this.saleItemFactoryKey(item)
         if (!sourceSummary[key]) sourceSummary[key] = { boxes: 0, weight: 0 }
         sourceSummary[key].boxes += Number(item.allocatedBoxes || 0)
         sourceSummary[key].weight += Number(item.allocatedWeightKg || 0)
@@ -2194,6 +2213,7 @@ export default {
         salePriceKg: null,
         contractQuantityKg: null,
         contractFactoryNo: '',
+        _lastFactoryNo: '',
         contractPortCold: '',
         sourcePresaleOrderId: '',
         sourcePresaleOrderNo: '',
@@ -2259,6 +2279,7 @@ export default {
         productCode: '',
         productName: '',
         marketCirculationName: '',
+        factoryNo: '',
         allocatedBoxes: 0,
         allocatedWeightKg: null,
         presaleOrderId: '',
@@ -2270,6 +2291,7 @@ export default {
         sourceStage: 'PRESALE',
         availableBoxes: 0,
         availableWeightKg: 0,
+        _saleItemKey: '',
         _sourceKey: '',
         _sourceKeyword: '',
         _sourceLoading: false,
@@ -2580,6 +2602,7 @@ export default {
       }
       result.itemList = (source.itemList || []).map(item => {
         const row = Object.assign(this.defaultItemRow(), item)
+        row._lastFactoryNo = row.contractFactoryNo || ''
         row._productOptions = row.productId ? [{
           id: row.productId,
           productCode: row.productCode,
@@ -2600,6 +2623,15 @@ export default {
       })
       result.sourceAllocationList = (source.sourceAllocationList || []).map(item => {
         const row = Object.assign(this.defaultFuturesSourceRow(), item)
+        const matchingItems = result.itemList.filter(saleItem => String(saleItem.productId) === String(row.productId))
+        if (!row.factoryNo && matchingItems.length === 1) {
+          row.factoryNo = matchingItems[0].contractFactoryNo || 'PPCS'
+        }
+        row._saleItemKey = this.saleItemFactoryKey({
+          productId: row.productId,
+          productCode: row.productCode,
+          contractFactoryNo: row.factoryNo
+        })
         row._sourceKey = this.futuresSourceKey(row)
         row._sourceOptions = [Object.assign({}, row, {
           availableBoxes: Number(row.availableBoxes || row.allocatedBoxes || 0),
@@ -2875,7 +2907,7 @@ export default {
         this.dataForm.itemList.push(this.defaultItemRow())
       }
       if (this.isSpotSale && removed && removed.productId) {
-        this.dataForm.allocationItemList = (this.dataForm.allocationItemList || []).filter(item => String(item.productId) !== String(removed.productId))
+        this.dataForm.allocationItemList = (this.dataForm.allocationItemList || []).filter(item => !this.spotProductMatches(item, removed))
       }
     },
     spotTopRowChange () {
@@ -2886,7 +2918,7 @@ export default {
     spotSalePriceChange (row) {
       if (!this.isSpotSale) return
       ;(this.dataForm.allocationItemList || []).forEach(item => {
-        if (String(item.productId) === String(row.productId)) {
+        if (this.spotProductMatches(item, row)) {
           item.salePriceKg = row.salePriceKg
         }
       })
@@ -3028,11 +3060,54 @@ export default {
       if (!row) return '-'
       return row.marketCirculationName || row.productName || row.productNameEn || '-'
     },
+    normalizeFactoryNo (value) {
+      return String(value || '').replace(/\s+/g, '').toUpperCase()
+    },
+    saleItemFactoryKey (item) {
+      if (!item || !item.productId) return ''
+      return `${item.productId}|${this.normalizeFactoryNo(item.contractFactoryNo || item.factoryNo)}`
+    },
+    futuresFactoryOptions (row) {
+      const values = ['PPCS']
+      const append = value => {
+        value = String(value || '').trim()
+        if (value && !values.some(item => this.normalizeFactoryNo(item) === this.normalizeFactoryNo(value))) {
+          values.push(value)
+        }
+      }
+      append(row && row.contractFactoryNo)
+      ;(this.dataForm.sourceAllocationList || []).forEach(source => {
+        if (!row || String(source.productId) === String(row.productId)) append(source.factoryNo)
+        ;(source._sourceOptions || []).forEach(option => {
+          if (!row || String(option.productId) === String(row.productId)) append(option.factoryNo)
+        })
+      })
+      return values
+    },
+    futuresItemFactoryChange (row, value) {
+      const previousFactoryNo = row._lastFactoryNo || ''
+      const previousKey = this.saleItemFactoryKey({
+        productId: row.productId,
+        contractFactoryNo: previousFactoryNo
+      })
+      const nextFactoryNo = String(value || '').trim()
+      this.$set(row, 'contractFactoryNo', nextFactoryNo)
+      const nextKey = this.saleItemFactoryKey(row)
+      ;(this.dataForm.sourceAllocationList || []).forEach(source => {
+        const sourceMatchesPrevious = source._saleItemKey === previousKey ||
+          (String(source.productId) === String(row.productId) &&
+            this.normalizeFactoryNo(source.factoryNo) === this.normalizeFactoryNo(previousFactoryNo))
+        if (!sourceMatchesPrevious) return
+        this.$set(source, 'factoryNo', nextFactoryNo)
+        this.$set(source, '_saleItemKey', nextKey)
+      })
+      this.$set(row, '_lastFactoryNo', nextFactoryNo)
+    },
     addFuturesSourceRow () {
       const row = this.defaultFuturesSourceRow()
       if ((this.dataForm.itemList || []).length === 1 && this.dataForm.itemList[0].productId) {
-        row.productId = this.dataForm.itemList[0].productId
-        this.futuresSourceProductChange(row, row.productId)
+        row._saleItemKey = this.saleItemFactoryKey(this.dataForm.itemList[0])
+        this.futuresSourceProductChange(row, row._saleItemKey)
       }
       this.dataForm.sourceAllocationList.push(row)
     },
@@ -3040,11 +3115,13 @@ export default {
       this.dataForm.sourceAllocationList.splice(index, 1)
     },
     futuresSourceProductChange (row, value) {
-      const product = (this.dataForm.itemList || []).find(item => String(item.productId) === String(value))
+      const product = (this.dataForm.itemList || []).find(item => this.saleItemFactoryKey(item) === String(value || ''))
       row.productId = product ? product.productId : ''
       row.productCode = product ? product.productCode : ''
       row.productName = product ? product.productName : ''
       row.marketCirculationName = product ? product.marketCirculationName : ''
+      row.factoryNo = product ? product.contractFactoryNo : ''
+      row._saleItemKey = product ? this.saleItemFactoryKey(product) : ''
       row.presaleOrderId = ''
       row.presaleOrderNo = ''
       row.presaleOrderItemId = ''
@@ -3062,7 +3139,8 @@ export default {
     futuresSourceLabel (item) {
       if (!item) return ''
       const confirm = item.confirmContractNo || '待确认函落位'
-      return `${item.presaleOrderNo || '-'} / ${confirm}`
+      const factory = item.factoryNo && this.normalizeFactoryNo(item.factoryNo) !== 'PPCS' ? ` / 厂号${item.factoryNo}` : ''
+      return `${item.presaleOrderNo || '-'} / ${confirm}${factory}`
     },
     futuresSourceVisibleChange (row, visible) {
       if (!visible || this.contentReadonly || !row.productId || (row._sourceOptions || []).length > 1) return
@@ -3100,11 +3178,13 @@ export default {
     futuresSourceChange (row, value) {
       const source = (row._sourceOptions || []).find(item => this.futuresSourceKey(item) === value)
       if (!source) {
-        this.futuresSourceProductChange(row, row.productId)
+        this.futuresSourceProductChange(row, row._saleItemKey)
         return
       }
       const keepBoxes = Number(row.allocatedBoxes || 0)
       const keepWeight = Number(row.allocatedWeightKg || 0)
+      const assignedFactoryNo = row.factoryNo
+      const saleItemKey = row._saleItemKey
       Object.assign(row, {
         productId: source.productId,
         productCode: source.productCode,
@@ -3121,6 +3201,8 @@ export default {
         availableWeightKg: Number(source.availableWeightKg || 0),
         allocatedBoxes: keepBoxes || Number(source.availableBoxes || 0),
         allocatedWeightKg: keepWeight || Number(source.availableWeightKg || 0),
+        factoryNo: assignedFactoryNo,
+        _saleItemKey: saleItemKey,
         _sourceKey: value
       })
     },
@@ -3297,8 +3379,12 @@ export default {
     },
     spotProductMatches (left, right) {
       if (!left || !right) return false
-      if (left.productId && right.productId) return String(left.productId) === String(right.productId)
-      return String(left.productCode || '') === String(right.productCode || '')
+      const sameProduct = left.productId && right.productId
+        ? String(left.productId) === String(right.productId)
+        : String(left.productCode || '') === String(right.productCode || '')
+      return sameProduct &&
+        this.normalizeFactoryNo(left.contractFactoryNo || left.factoryNo) ===
+        this.normalizeFactoryNo(right.contractFactoryNo || right.factoryNo)
     },
     spotCandidateUnitWeight (lot) {
       const availableBoxes = Number((lot && lot.availableBoxes) || 0)
@@ -3450,10 +3536,7 @@ export default {
         this.spotPricingDialogVisible = false
         return
       }
-      const product = rows[0]
-      ;(this.dataForm.allocationItemList || []).forEach(item => {
-        if (this.spotProductMatches(item, product)) item.salePriceKg = salePrice
-      })
+      rows.forEach(item => { item.salePriceKg = salePrice })
       this.distributeSpotWeight(rows, expectedWeight)
       this.$set(this.dataForm, 'allocationItemList', (this.dataForm.allocationItemList || []).slice())
       this.spotAllocationTableVersion++
@@ -3511,12 +3594,12 @@ export default {
     rebuildSpotProductSummary () {
       const previous = {}
       ;(this.dataForm.itemList || []).forEach(item => {
-        const key = item.productId ? `id:${item.productId}` : `code:${item.productCode || ''}`
+        const key = `${item.productId ? `id:${item.productId}` : `code:${item.productCode || ''}`}|factory:${this.normalizeFactoryNo(item.contractFactoryNo)}`
         previous[key] = item
       })
       const grouped = {}
       ;(this.dataForm.allocationItemList || []).forEach(allocation => {
-        const key = allocation.productId ? `id:${allocation.productId}` : `code:${allocation.productCode || ''}`
+        const key = `${allocation.productId ? `id:${allocation.productId}` : `code:${allocation.productCode || ''}`}|factory:${this.normalizeFactoryNo(allocation.contractFactoryNo || allocation.factoryNo)}`
         if (!grouped[key]) grouped[key] = []
         grouped[key].push(allocation)
       })
@@ -3537,6 +3620,8 @@ export default {
           boxes,
           salePriceKg: first.salePriceKg,
           contractQuantityKg: Number(estimatedWeight.toFixed(2)),
+          contractFactoryNo: first.contractFactoryNo || first.factoryNo || '',
+          contractPortCold: first.contractPortCold || first.warehouseName || '',
           remark: old.remark || ''
         })
         allocations.forEach(item => { item.salePriceKg = row.salePriceKg })
@@ -3664,8 +3749,9 @@ export default {
         if (item.salePriceKg === null || item.salePriceKg === '' || Number(item.salePriceKg) <= 0) {
           return `现货单第${index + 1}行销售价（元/千克）必须大于0`
         }
-        if (productIds[item.productId]) return '现货单不支持重复录入同一产品，请合并箱数后再生成分配明细'
-        productIds[item.productId] = true
+        const productFactoryKey = this.saleItemFactoryKey(item)
+        if (productIds[productFactoryKey]) return '同一产品、同一厂号请合并箱数后再生成分配明细'
+        productIds[productFactoryKey] = true
       }
       return ''
     },
@@ -3705,10 +3791,10 @@ export default {
         if (item.salePriceKg === null || item.salePriceKg === '' || Number(item.salePriceKg) <= 0) {
           return `产品${item.productCode || index + 1}的销售价（元/千克）必须大于0，请在已选库存明细中调整`
         }
-        if (this.isSpotSale) {
-          if (productIds[item.productId]) return '现货单不支持重复录入同一产品，请合并箱数'
-          productIds[item.productId] = true
-        } else {
+        const productFactoryKey = this.saleItemFactoryKey(item)
+        if (productIds[productFactoryKey]) return '同一产品、同一厂号请合并为一行'
+        productIds[productFactoryKey] = true
+        if (!this.isSpotSale) {
           if (item.contractQuantityKg === null || item.contractQuantityKg === '' || Number(item.contractQuantityKg) <= 0) {
             return `第${index + 1}行数量/千克必须大于0`
           }
@@ -3738,7 +3824,7 @@ export default {
         const saleSummary = {}
         const sourceSummary = {}
         itemList.forEach(item => {
-          const key = String(item.productId)
+          const key = this.saleItemFactoryKey(item)
           if (!saleSummary[key]) saleSummary[key] = { boxes: 0, weight: 0, code: item.productCode }
           saleSummary[key].boxes += Number(item.boxes || 0)
           saleSummary[key].weight += Number(item.contractQuantityKg || 0)
@@ -3746,7 +3832,7 @@ export default {
         const sourceKeys = {}
         for (let index = 0; index < sources.length; index++) {
           const row = sources[index]
-          if (!row.productId || !row.presaleOrderId || !row.presaleOrderItemId || !row._sourceKey) {
+          if (!row.productId || !row.factoryNo || !row.presaleOrderId || !row.presaleOrderItemId || !row._sourceKey) {
             return `期货货源第${index + 1}行来源合同未选择完整`
           }
           if (!row.allocatedBoxes || Number(row.allocatedBoxes) <= 0) return `期货货源第${index + 1}行分配箱数必须大于0`
@@ -3757,10 +3843,11 @@ export default {
           if (Number(row.availableWeightKg || 0) > 0 && Number(row.allocatedWeightKg) - Number(row.availableWeightKg) > 0.01) {
             return `期货货源第${index + 1}行分配重量不能超过可用重量${this.formatNumber(row.availableWeightKg, 2)}KG`
           }
-          const uniqueKey = `${row.productId}|${row._sourceKey}`
+          const saleItemKey = this.saleItemFactoryKey(row)
+          const uniqueKey = `${saleItemKey}|${row._sourceKey}`
           if (sourceKeys[uniqueKey]) return `期货货源第${index + 1}行来源重复，请合并箱数和重量`
           sourceKeys[uniqueKey] = true
-          const key = String(row.productId)
+          const key = saleItemKey
           if (!sourceSummary[key]) sourceSummary[key] = { boxes: 0, weight: 0 }
           sourceSummary[key].boxes += Number(row.allocatedBoxes || 0)
           sourceSummary[key].weight += Number(row.allocatedWeightKg || 0)
@@ -3787,6 +3874,7 @@ export default {
           productCode: item.productCode,
           productName: item.productName,
           marketCirculationName: item.marketCirculationName,
+          factoryNo: item.factoryNo,
           allocatedBoxes: item.allocatedBoxes,
           allocatedWeightKg: item.allocatedWeightKg,
           presaleOrderId: item.presaleOrderId,
