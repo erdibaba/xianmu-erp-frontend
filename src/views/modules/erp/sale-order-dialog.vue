@@ -3832,7 +3832,8 @@ export default {
         const sourceKeys = {}
         for (let index = 0; index < sources.length; index++) {
           const row = sources[index]
-          if (!row.productId || !row.factoryNo || !row.presaleOrderId || !row.presaleOrderItemId || !row._sourceKey) {
+          if (!row.productId || !row.factoryNo || !row.presaleOrderId ||
+            (!row.confirmId && !row.presaleOrderItemId) || !row._sourceKey) {
             return `期货货源第${index + 1}行来源合同未选择完整`
           }
           if (!row.allocatedBoxes || Number(row.allocatedBoxes) <= 0) return `期货货源第${index + 1}行分配箱数必须大于0`
