@@ -3061,7 +3061,8 @@ export default {
       return row.marketCirculationName || row.productName || row.productNameEn || '-'
     },
     normalizeFactoryNo (value) {
-      return String(value || '').replace(/\s+/g, '').toUpperCase()
+      const normalized = String(value || '').replace(/[^A-Z0-9]/gi, '').toUpperCase()
+      return /^ME\d+$/.test(normalized) ? normalized.substring(2) : normalized
     },
     saleItemFactoryKey (item) {
       if (!item || !item.productId) return ''
@@ -3134,7 +3135,13 @@ export default {
     },
     futuresSourceKey (item) {
       if (!item || !item.presaleOrderId) return ''
-      return [item.presaleOrderId, item.presaleOrderItemId || 0, item.confirmId || 0, item.confirmItemId || 0].join('|')
+      return [
+        item.presaleOrderId,
+        item.presaleOrderItemId || 0,
+        item.confirmId || 0,
+        item.confirmItemId || 0,
+        this.normalizeFactoryNo(item.factoryNo)
+      ].join('|')
     },
     futuresSourceLabel (item) {
       if (!item) return ''
@@ -3183,8 +3190,12 @@ export default {
       }
       const keepBoxes = Number(row.allocatedBoxes || 0)
       const keepWeight = Number(row.allocatedWeightKg || 0)
-      const assignedFactoryNo = row.factoryNo
-      const saleItemKey = row._saleItemKey
+      const assignedFactoryNo = source.factoryNo || row.factoryNo
+      const saleItem = (this.dataForm.itemList || []).find(item => this.saleItemFactoryKey(item) === row._saleItemKey)
+      if (saleItem && assignedFactoryNo) {
+        this.futuresItemFactoryChange(saleItem, assignedFactoryNo)
+      }
+      const saleItemKey = saleItem ? this.saleItemFactoryKey(saleItem) : row._saleItemKey
       Object.assign(row, {
         productId: source.productId,
         productCode: source.productCode,
