@@ -96,6 +96,13 @@
           </el-tag>
         </template>
       </el-table-column>
+      <el-table-column label="定金记录" width="110" align="center" show-overflow-tooltip>
+        <template slot-scope="scope">
+          <el-tag size="small" :type="Number(scope.row.depositUploaded || 0) === 1 ? 'success' : 'info'">
+            {{ Number(scope.row.depositUploaded || 0) === 1 ? '已记录' : '未记录' }}
+          </el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="合同页面" width="250" show-overflow-tooltip>
         <template slot-scope="scope">
           <el-button

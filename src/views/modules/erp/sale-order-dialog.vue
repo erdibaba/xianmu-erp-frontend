@@ -617,6 +617,16 @@
             全款付款详情
           </el-button>
         </div>
+        <div v-if="dataForm.id" class="full-payment-summary deposit-summary">
+          <div>
+            <strong>销售合同定金：</strong>
+            <el-tag size="mini" :type="depositUploaded ? 'success' : 'info'">
+              {{ depositUploaded ? '已记录' : '未记录（非必填）' }}
+            </el-tag>
+            <span class="summary-tip">仅作水单识别与原件存档，不参与库存、出库和财务计算。</span>
+          </div>
+          <el-button size="mini" type="primary" plain @click="openDepositDialog">定金详情</el-button>
+        </div>
         <el-tabs v-if="dataForm.id" value="signedContract">
           <el-tab-pane label="盖章合同" name="signedContract">
             <div class="attachment-toolbar">
@@ -1747,6 +1757,78 @@
         <el-button @click="fullPaymentDialogVisible = false">关闭</el-button>
       </span>
     </el-dialog>
+    <el-dialog
+      title="销售合同定金详情"
+      :visible.sync="depositDialogVisible"
+      width="700px"
+      append-to-body
+      custom-class="bank-slip-detail-dialog">
+      <div class="bank-slip-detail">
+        <div class="bank-slip-detail-header">
+          <span>销售单号：{{ dataForm.orderNo || '-' }}</span>
+          <span>定金为非必填记录</span>
+        </div>
+        <el-alert
+          title="本记录仅用于定金水单OCR识别和原件归档，不影响销售单状态、库存锁定、出库流程及财务计算。"
+          type="info"
+          :closable="false"
+          show-icon>
+        </el-alert>
+        <div class="bank-slip-card deposit-card">
+          <div class="bank-slip-card-title">确认结果</div>
+          <el-form label-width="100px" size="mini">
+            <el-form-item label="定金金额">
+              <el-input
+                v-model="dataForm.depositAmountModified"
+                :disabled="readonly"
+                placeholder="可粘贴155,794.12">
+              </el-input>
+            </el-form-item>
+            <el-form-item label="打款日期">
+              <el-date-picker
+                v-model="dataForm.depositDateModified"
+                type="date"
+                value-format="yyyy-MM-dd"
+                :disabled="readonly"
+                placeholder="选择打款日期"
+                style="width: 100%;">
+              </el-date-picker>
+            </el-form-item>
+          </el-form>
+          <div class="summary-tip">{{ bankVoucherSupportTip }}</div>
+        </div>
+        <div class="bank-slip-detail-actions">
+          <el-button
+            v-if="!readonly"
+            size="mini"
+            type="primary"
+            plain
+            :loading="uploadLoading && currentUploadType === 'SALE_DEPOSIT_VOUCHER'"
+            @click="triggerDepositUpload">
+            {{ depositUploaded ? '重新上传识别' : '上传定金水单识别' }}
+          </el-button>
+          <el-button
+            v-if="!readonly && depositUploaded"
+            size="mini"
+            type="primary"
+            plain
+            :loading="depositSaving"
+            @click="saveDepositVoucher">
+            保存确认结果
+          </el-button>
+          <el-button v-if="dataForm.depositFile" size="mini" type="primary" plain @click="previewFile(dataForm.depositFile)">
+            预览水单原件
+          </el-button>
+          <el-button v-if="dataForm.depositFile" size="mini" type="primary" plain @click="downloadFile(dataForm.depositFile)">
+            下载水单原件
+          </el-button>
+        </div>
+        <input ref="depositUploadInput" type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" @change="depositUploadChangeHandle">
+      </div>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="depositDialogVisible = false">关闭</el-button>
+      </span>
+    </el-dialog>
     <sale-outbound-batch-dialog
       v-if="outboundBatchDialogVisible"
       ref="outboundBatchDialog"
@@ -1779,6 +1861,8 @@ export default {
       bankSlipDetailBatch: null,
       fullPaymentDialogVisible: false,
       fullPaymentSaving: false,
+      depositDialogVisible: false,
+      depositSaving: false,
       globalLoadingCount: 0,
       currentUploadType: '',
       currentConfirmType: '',
@@ -1921,6 +2005,9 @@ export default {
     },
     fullPaymentUploaded () {
       return !!(this.dataForm.fullPaymentFileId || this.dataForm.fullPaymentFile)
+    },
+    depositUploaded () {
+      return !!(this.dataForm.depositFileId || this.dataForm.depositFile)
     },
     fullPaymentAmountDiffVisible () {
       return Math.abs(this.parseAmountValue(this.dataForm.fullPaymentAmountDiff)) >= 0.01
@@ -2182,6 +2269,15 @@ export default {
         fullPaymentRawText: '',
         fullPaymentFile: null,
         fullPaymentUploaded: 0,
+        depositFileId: '',
+        depositVoucherTemplate: '',
+        depositAmountRecognized: null,
+        depositAmountModified: null,
+        depositDateRecognized: '',
+        depositDateModified: '',
+        depositRawText: '',
+        depositFile: null,
+        depositUploaded: 0,
         outboundBatchCount: 0,
         outboundReceiptConfirmed: 0,
         allocationStatus: '',
@@ -2551,6 +2647,83 @@ export default {
         this.fullPaymentSaving = false
       }).catch(() => {
         this.fullPaymentSaving = false
+      })
+    },
+    openDepositDialog () {
+      this.depositDialogVisible = true
+    },
+    triggerDepositUpload () {
+      if (!this.dataForm.id) {
+        this.$message.error('请先保存销售单')
+        return
+      }
+      this.currentUploadType = 'SALE_DEPOSIT_VOUCHER'
+      this.$nextTick(() => {
+        if (this.$refs.depositUploadInput) {
+          this.$refs.depositUploadInput.value = ''
+          this.$refs.depositUploadInput.click()
+        }
+      })
+    },
+    depositUploadChangeHandle (event) {
+      const files = Array.from((event.target && event.target.files) || [])
+      if (!files.length || !this.dataForm.id) return
+      const formData = new FormData()
+      formData.append('saleOrderId', this.dataForm.id)
+      formData.append('file', files[0])
+      this.uploadLoading = true
+      this.withGlobalLoading(this.$http({
+        url: this.$http.adornUrl('/erp/saleorder/deposit/upload'),
+        method: 'post',
+        data: formData,
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 1000 * 60 * 15
+      })).then(({ data }) => {
+        if (data && data.code === 0) {
+          this.$message.success('定金水单识别成功')
+          this.dataForm = this.normalizeForm(data.saleOrder || this.dataForm)
+          this.$emit('refreshDataList')
+        } else {
+          this.$message.error((data && data.msg) || '定金水单识别失败')
+        }
+        this.uploadLoading = false
+        this.currentUploadType = ''
+      }).catch(() => {
+        this.uploadLoading = false
+        this.currentUploadType = ''
+      })
+    },
+    saveDepositVoucher () {
+      if (!this.dataForm.id) return
+      const amount = this.parseAmountValue(this.dataForm.depositAmountModified)
+      if (!(amount > 0)) {
+        this.$message.error('定金金额必须大于0')
+        return
+      }
+      if (!this.dataForm.depositDateModified) {
+        this.$message.error('请选择定金打款日期')
+        return
+      }
+      this.depositSaving = true
+      this.withGlobalLoading(this.$http({
+        url: this.$http.adornUrl('/erp/saleorder/deposit/save'),
+        method: 'post',
+        data: this.$http.adornData({
+          id: this.dataForm.id,
+          depositAmountModified: amount,
+          depositDateModified: this.dataForm.depositDateModified
+        })
+      })).then(({ data }) => {
+        if (data && data.code === 0) {
+          this.$message.success('定金确认结果已保存')
+          this.dataForm = this.normalizeForm(data.saleOrder || this.dataForm)
+          this.$emit('refreshDataList')
+        } else {
+          this.$message.error((data && data.msg) || '保存失败')
+        }
+        this.depositSaving = false
+      }).catch(() => {
+        this.depositSaving = false
       })
     },
     fetchDetail (id) {
@@ -4918,6 +5091,30 @@ export default {
 .bank-slip-detail-actions {
   margin-top: 10px;
   text-align: right;
+}
+
+.full-payment-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 12px;
+  border: 1px solid #e6edf5;
+  border-radius: 4px;
+  background: #f8fbff;
+}
+
+.deposit-summary {
+  margin-top: 8px;
+  background: #fbfcfe;
+}
+
+.deposit-summary .summary-tip {
+  margin-left: 10px;
+}
+
+.deposit-card {
+  margin-top: 12px;
 }
 
 .summary-tip {
