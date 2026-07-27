@@ -52,6 +52,11 @@
               type="text"
               size="small"
               @click="uploadHandle(scope.row)">上传入库单</el-button>
+            <el-button
+              v-if="isAuth('erp:tradeorder:update') && scope.row.uploadStatus"
+              type="text"
+              size="small"
+              @click="replaceUploadHandle(scope.row)">重新上传入库单</el-button>
           </div>
         </template>
       </el-table-column>
@@ -78,6 +83,7 @@
       ref="uploadDialog"
       :presale-order-id="currentPresaleOrderId"
       :confirm-id="currentConfirmId"
+      :replace-mode="currentReplaceMode"
       @recognized="recognizedHandle">
     </inbound-upload-dialog>
   </div>
@@ -105,7 +111,9 @@ export default {
       dialogVisible: false,
       uploadVisible: false,
       currentPresaleOrderId: 0,
-      currentConfirmId: 0
+      currentConfirmId: 0,
+      currentInboundOrderId: 0,
+      currentReplaceMode: false
     }
   },
   activated () {
@@ -154,10 +162,32 @@ export default {
     uploadHandle (row) {
       this.currentPresaleOrderId = row.presaleOrderId
       this.currentConfirmId = row.confirmId || 0
+      this.currentInboundOrderId = 0
+      this.currentReplaceMode = false
       this.uploadVisible = true
       this.$nextTick(() => {
         this.$refs.uploadDialog.init()
       })
+    },
+    replaceUploadHandle (row) {
+      this.$confirm(
+        '重新上传后，新归档附件和SKU明细将在最终保存时覆盖原数据；取消编辑不会影响原入库单。是否继续？',
+        '重新上传入库单',
+        {
+          confirmButtonText: '继续上传',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
+      ).then(() => {
+        this.currentPresaleOrderId = row.presaleOrderId
+        this.currentConfirmId = row.confirmId || 0
+        this.currentInboundOrderId = row.id || 0
+        this.currentReplaceMode = true
+        this.uploadVisible = true
+        this.$nextTick(() => {
+          this.$refs.uploadDialog.init()
+        })
+      }).catch(() => {})
     },
     recognizedHandle (result) {
       const recognizedResult = JSON.parse(JSON.stringify(result || {}))
@@ -167,7 +197,12 @@ export default {
         this.dialogVisible = true
         this.$nextTick(() => {
           if (this.$refs.dialog) {
-            this.$refs.dialog.initFromRecognizedResult(this.currentPresaleOrderId, this.currentConfirmId, recognizedResult)
+            this.$refs.dialog.initFromRecognizedResult(
+              this.currentPresaleOrderId,
+              this.currentConfirmId,
+              recognizedResult,
+              this.currentInboundOrderId
+            )
           }
         })
       })

@@ -1,13 +1,15 @@
 <template>
   <el-dialog
-    title="上传识别入库单"
+    :title="replaceMode ? '重新上传识别入库单' : '上传识别入库单'"
     :close-on-click-modal="false"
     :visible.sync="visible"
     width="900px">
     <div class="inbound-upload-dialog">
       <el-alert
-        title="支持多文件上传识别。系统会自动归档原件，并汇总识别司机信息、WMS订单号、客户订单号和SKU明细。"
-        type="info"
+        :title="replaceMode
+          ? '重新上传后，请先核对识别结果；只有在维护窗口点击保存，才会覆盖原归档附件和SKU明细。'
+          : '支持多文件上传识别。系统会自动归档原件，并汇总识别司机信息、WMS订单号、客户订单号和SKU明细。'"
+        :type="replaceMode ? 'warning' : 'info'"
         :closable="false"
         show-icon>
       </el-alert>
@@ -31,7 +33,7 @@
       </el-upload>
 
       <div class="action-bar">
-        <el-button type="primary" :loading="loading" @click="submitUpload()">识别入库单</el-button>
+        <el-button type="primary" :loading="loading" @click="submitUpload()">{{ replaceMode ? '重新识别入库单' : '识别入库单' }}</el-button>
         <el-button @click="visible = false">关闭</el-button>
       </div>
 
@@ -71,7 +73,7 @@
     </div>
     <span slot="footer" class="dialog-footer">
       <el-button @click="visible = false">取消</el-button>
-      <el-button type="primary" :disabled="!resultData" @click="confirmHandle()">带入编辑</el-button>
+      <el-button type="primary" :disabled="!resultData" @click="confirmHandle()">{{ replaceMode ? '带入覆盖编辑' : '带入编辑' }}</el-button>
     </span>
   </el-dialog>
 </template>
@@ -86,6 +88,10 @@ export default {
     confirmId: {
       type: [Number, String],
       default: 0
+    },
+    replaceMode: {
+      type: Boolean,
+      default: false
     }
   },
   data () {

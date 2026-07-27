@@ -532,7 +532,7 @@ export default {
         this.$nextTick(this.updateSkuTableHeight)
       })
     },
-    initFromRecognizedResult (presaleOrderId, confirmId, result) {
+    initFromRecognizedResult (presaleOrderId, confirmId, result, inboundOrderId) {
       if (result === undefined) {
         result = confirmId
         confirmId = 0
@@ -549,6 +549,7 @@ export default {
       this.detailLoading = true
       const draft = recognizedResult.inboundDraft || {}
       this.dataForm = this.normalizeForm(Object.assign({}, draft, {
+        id: inboundOrderId || draft.id || 0,
         presaleOrderId: presaleOrderId,
         confirmId: confirmId || draft.confirmId || 0
       }))
