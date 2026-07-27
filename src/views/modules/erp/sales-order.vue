@@ -39,6 +39,7 @@
       <el-form-item>
         <el-button type="primary" @click="getDataList()">查询</el-button>
         <el-button v-if="isAuth('erp:tradeorder:save')" type="success" @click="addHandle()">新增销售单</el-button>
+        <el-button type="success" plain @click="exportFuturesOrders()">导出期货单</el-button>
       </el-form-item>
     </el-form>
 
@@ -346,6 +347,36 @@ export default {
         this.dataListLoading = false
       }).catch(() => {
         this.dataListLoading = false
+      })
+    },
+    exportFuturesOrders () {
+      const loading = this.$loading({
+        lock: true,
+        text: '正在生成期货销售单，请稍候...',
+        spinner: 'el-icon-loading',
+        background: 'rgba(0, 0, 0, 0.35)'
+      })
+      this.$http({
+        url: this.$http.adornUrl('/erp/saleorder/futures/export'),
+        method: 'get',
+        params: this.$http.adornParams({
+          keyword: this.queryForm.keyword,
+          status: this.queryForm.status
+        }),
+        responseType: 'blob'
+      }).then(({ data }) => {
+        const blob = data instanceof Blob ? data : new Blob([data])
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = '期货销售单.xlsx'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(link.href)
+      }).catch(() => {
+        this.$message.error('导出期货销售单失败')
+      }).finally(() => {
+        loading.close()
       })
     },
     getSaleTypeLabel (value) {

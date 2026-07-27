@@ -381,6 +381,7 @@
           <el-form-item>
             <el-button type="primary" @click="getFuturesList()">查询</el-button>
             <el-button @click="resetFuturesQuery()">重置</el-button>
+            <el-button type="success" @click="exportFuturesInventory()">导出Excel</el-button>
           </el-form-item>
         </el-form>
 
@@ -897,6 +898,12 @@
         })
         this.exportInventoryDetails('/erp/inventory/spot/by-container-product/export', params, '柜号产品库存明细.xlsx')
       },
+      exportFuturesInventory () {
+        const params = Object.assign({}, this.futuresQuery, {
+          containerNos: (this.futuresQuery.containerNos || []).join(',')
+        })
+        this.exportInventoryDetails('/erp/inventory/futures/export', params, '期货库存.xlsx')
+      },
       exportInventoryDetails (url, params, fileName) {
         const loading = this.$loading({
           lock: true,
@@ -1144,8 +1151,8 @@
       },
       formatContractNos (row) {
         if (!row) return '-'
-        if (row.contractNo) return row.contractNo
         if (row.contractNos) return row.contractNos
+        if (row.contractNo) return row.contractNo
         return '-'
       },
       formatWeight (value) {

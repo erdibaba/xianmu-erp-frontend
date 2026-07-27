@@ -18,7 +18,10 @@
           <el-option label="已结清" value="settled"></el-option>
         </el-select>
       </el-form-item>
-      <el-form-item><el-button type="primary" @click="getDataList()">查询</el-button></el-form-item>
+      <el-form-item>
+        <el-button type="primary" @click="getDataList()">查询</el-button>
+        <el-button type="success" @click="exportLoans()">导出Excel</el-button>
+      </el-form-item>
       <el-form-item>
       </el-form-item>
       <el-form-item>
@@ -745,6 +748,36 @@ export default {
           this.$message.error((data && data.msg) || '获取贷款明细失败')
         }
       }).catch(() => { this.dataListLoading = false })
+    },
+    exportLoans () {
+      const loading = this.$loading({
+        lock: true,
+        text: '正在生成资方贷款明细，请稍候...',
+        spinner: 'el-icon-loading',
+        background: 'rgba(0, 0, 0, 0.35)'
+      })
+      this.$http({
+        url: this.$http.adornUrl('/erp/funder-finance/loan/export'),
+        method: 'get',
+        params: this.$http.adornParams(this.queryForm),
+        responseType: 'blob'
+      }).then(({ data }) => {
+        this.downloadExportBlob(data, '资方贷款明细.xlsx')
+      }).catch(() => {
+        this.$message.error('导出资方贷款明细失败')
+      }).finally(() => {
+        loading.close()
+      })
+    },
+    downloadExportBlob (data, fileName) {
+      const blob = data instanceof Blob ? data : new Blob([data])
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = fileName
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(link.href)
     },
     sizeChangeHandle (value) { this.pageSize = value; this.pageIndex = 1; this.getDataList() },
     currentChangeHandle (value) { this.pageIndex = value; this.getDataList() },
