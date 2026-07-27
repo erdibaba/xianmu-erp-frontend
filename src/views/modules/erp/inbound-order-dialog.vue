@@ -153,7 +153,16 @@
 
         <div class="sku-title-row">
           <div class="sub-title">SKU明细</div>
-          <el-button v-if="!readonly" size="mini" type="primary" @click="addItemRow()">新增明细</el-button>
+          <div v-if="!readonly">
+            <el-button
+              size="mini"
+              type="success"
+              :loading="packingDraftLoading"
+              @click="applyPackingDraft()">
+              按装箱单数据带入
+            </el-button>
+            <el-button size="mini" type="primary" @click="addItemRow()">新增明细</el-button>
+          </div>
         </div>
         <el-table ref="skuTable" :data="dataForm.itemList" border size="mini" :height="skuTableHeight" :fit="false" class="item-table">
           <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
@@ -435,6 +444,7 @@ export default {
       damageDialogVisible: false,
       detailLoading: false,
       saveLoading: false,
+      packingDraftLoading: false,
       damageSaving: false,
       skuTableHeight: 300,
       packingBoxMap: {},
@@ -900,6 +910,61 @@ export default {
         this.$set(this.dataForm, 'itemList', [])
       }
       this.dataForm.itemList.push(this.defaultItemRow())
+    },
+    applyPackingDraft () {
+      if (this.readonly || this.packingDraftLoading) {
+        return
+      }
+      const hasItems = (this.dataForm.itemList || []).length > 0
+      const confirmPromise = hasItems
+        ? this.$confirm(
+          '按装箱单数据带入将覆盖当前SKU明细，已上传的入库单原件和表头信息会保留，是否继续？',
+          '覆盖确认',
+          {
+            confirmButtonText: '确认带入',
+            cancelButtonText: '取消',
+            type: 'warning'
+          })
+        : Promise.resolve()
+      confirmPromise.then(() => {
+        this.packingDraftLoading = true
+        const loading = this.$loading({ lock: true, text: '正在读取装箱单明细...' })
+        this.$http({
+          url: this.$http.adornUrl(`/erp/inbound/packing-draft/${this.dataForm.presaleOrderId}`),
+          method: 'get',
+          params: this.$http.adornParams({
+            confirmId: this.dataForm.confirmId || 0
+          })
+        }).then(({ data }) => {
+          if (!data || data.code !== 0) {
+            this.$message.error((data && data.msg) || '装箱单数据带入失败')
+            return
+          }
+          const draft = data.inboundDraft || {}
+          const rows = this.normalizeForm({ itemList: draft.itemList || [] }).itemList
+          if (!rows.length) {
+            this.$message.warning('当前装箱单没有可带入的产品明细')
+            return
+          }
+          this.$set(this.dataForm, 'itemList', rows)
+          if (!this.dataForm.containerNo && draft.containerNo) {
+            this.dataForm.containerNo = draft.containerNo
+          }
+          this.$message.success(`已按装箱单带入${rows.length}条产品明细，请核对后保存`)
+          this.$nextTick(() => {
+            this.updateSkuTableHeight()
+            if (this.$refs.skuTable) {
+              this.$refs.skuTable.doLayout()
+            }
+          })
+        }).catch(error => {
+          const responseMsg = (((error || {}).response || {}).data || {}).msg
+          this.$message.error(responseMsg || '读取装箱单数据失败')
+        }).finally(() => {
+          this.packingDraftLoading = false
+          loading.close()
+        })
+      }).catch(() => {})
     },
     removeItemRow (index) {
       if (this.readonly || !this.dataForm.itemList) {
