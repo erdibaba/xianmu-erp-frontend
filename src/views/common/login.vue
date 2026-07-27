@@ -1,5 +1,6 @@
 <template>
   <div class="site-wrapper site-page--login">
+    <test-environment-watermark v-if="testEnvironment" />
     <div class="site-content__wrapper">
       <div class="site-content">
         <div class="brand-info">
@@ -16,6 +17,10 @@
           </div>
         </div>
         <div class="login-main">
+          <div v-if="testEnvironment" class="login-environment-badge">
+            <strong>测试环境</strong>
+            <span>当前数据仅用于测试</span>
+          </div>
           <h3 class="login-title">管理员登录</h3>
           <el-form :model="dataForm" :rules="dataRule" ref="dataForm" @keyup.enter.native="dataFormSubmit()" status-icon>
             <el-form-item prop="userName">
@@ -51,7 +56,12 @@
 
 <script>
   import { getUUID } from '@/utils'
+  import { getRuntimeEnvironment } from '@/utils/runtimeEnvironment'
+  import TestEnvironmentWatermark from '@/components/test-environment-watermark'
   export default {
+    components: {
+      TestEnvironmentWatermark
+    },
     data () {
       return {
         dataForm: {
@@ -72,14 +82,21 @@
           ]
         },
         captchaPath: '',
-        mobileLogin: false
+        mobileLogin: false,
+        testEnvironment: false
       }
     },
     created () {
       this.mobileLogin = this.getDefaultMobileLogin()
+      this.loadRuntimeEnvironment()
       this.getCaptcha()
     },
     methods: {
+      loadRuntimeEnvironment () {
+        getRuntimeEnvironment().then(environment => {
+          this.testEnvironment = environment.testEnvironment
+        })
+      },
       // 提交表单
       dataFormSubmit () {
         this.$refs['dataForm'].validate((valid) => {
@@ -282,6 +299,28 @@
       font-size: 22px;
       font-weight: 700;
     }
+    .login-environment-badge {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 13px 16px;
+      margin: 0 0 24px;
+      color: #a42d1b;
+      border: 1px solid rgba(220, 74, 45, .34);
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(255, 236, 229, .96), rgba(255, 248, 224, .96));
+      box-shadow: 0 10px 26px rgba(180, 58, 36, .12);
+
+      strong {
+        font-size: 20px;
+        letter-spacing: 2px;
+      }
+
+      span {
+        color: #b85a40;
+        font-size: 12px;
+      }
+    }
     .el-input__inner {
       height: 44px;
       line-height: 44px;
@@ -418,6 +457,9 @@
         margin-bottom: 22px;
         font-size: 20px;
         text-align: center;
+      }
+      .login-environment-badge {
+        margin-bottom: 18px;
       }
       .el-form-item {
         margin-bottom: 18px;

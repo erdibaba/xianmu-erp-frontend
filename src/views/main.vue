@@ -4,8 +4,9 @@
     :class="{ 'site-sidebar--fold': sidebarFold }"
     v-loading.fullscreen.lock="loading"
     element-loading-text="拼命加载中">
+    <test-environment-watermark v-if="testEnvironment" />
     <template v-if="!loading">
-      <main-navbar />
+      <main-navbar :test-environment="testEnvironment" />
       <main-sidebar />
       <div class="site-content__wrapper" :style="{ 'min-height': documentClientHeight + 'px' }">
         <main-content v-if="!$store.state.common.contentIsNeedRefresh" />
@@ -18,6 +19,8 @@
   import MainNavbar from './main-navbar'
   import MainSidebar from './main-sidebar'
   import MainContent from './main-content'
+  import TestEnvironmentWatermark from '@/components/test-environment-watermark'
+  import { getRuntimeEnvironment } from '@/utils/runtimeEnvironment'
   export default {
     provide () {
       return {
@@ -32,13 +35,15 @@
     },
     data () {
       return {
-        loading: true
+        loading: true,
+        testEnvironment: false
       }
     },
     components: {
       MainNavbar,
       MainSidebar,
-      MainContent
+      MainContent,
+      TestEnvironmentWatermark
     },
     computed: {
       documentClientHeight: {
@@ -58,12 +63,18 @@
       }
     },
     created () {
+      this.loadRuntimeEnvironment()
       this.getUserInfo()
     },
     mounted () {
       this.resetDocumentClientHeight()
     },
     methods: {
+      loadRuntimeEnvironment () {
+        getRuntimeEnvironment().then(environment => {
+          this.testEnvironment = environment.testEnvironment
+        })
+      },
       // 重置窗口可视高度
       resetDocumentClientHeight () {
         this.documentClientHeight = document.documentElement['clientHeight']

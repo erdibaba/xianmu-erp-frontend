@@ -18,6 +18,10 @@
           <icon-svg name="zhedie"></icon-svg>
         </el-menu-item>
       </el-menu>
+      <div v-if="testEnvironment" class="site-navbar__environment">
+        <span>测试环境</span>
+        <small>当前数据仅用于测试</small>
+      </div>
       <el-menu
         class="site-navbar__menu site-navbar__menu--right"
         mode="horizontal">
@@ -50,6 +54,12 @@
   import UpdatePassword from './main-navbar-update-password'
   import { clearLoginInfo } from '@/utils'
   export default {
+    props: {
+      testEnvironment: {
+        type: Boolean,
+        default: false
+      }
+    },
     data () {
       return {
         updatePassowrdVisible: false
@@ -104,3 +114,47 @@
     }
   }
 </script>
+
+<style lang="scss" scoped>
+  .site-navbar__environment {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    padding: 5px 12px;
+    color: #9f2d1d;
+    border: 1px solid rgba(220, 74, 45, .42);
+    border-radius: 16px;
+    background: linear-gradient(135deg, #ffe7df, #fff3ca);
+    box-shadow: 0 5px 14px rgba(150, 46, 29, .14);
+    transform: translateX(-50%);
+    pointer-events: none;
+
+    span {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 2px;
+    }
+
+    small {
+      padding-left: 9px;
+      margin-left: 9px;
+      color: #b76043;
+      font-size: 11px;
+      border-left: 1px solid rgba(180, 77, 50, .28);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .site-navbar__environment {
+      left: 53%;
+      padding: 5px 10px;
+
+      small {
+        display: none;
+      }
+    }
+  }
+</style>
