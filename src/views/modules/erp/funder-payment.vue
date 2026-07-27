@@ -556,11 +556,49 @@
         <el-table-column v-if="detailData.paymentType === 2" label="定金日期" width="120" align="center">
           <template slot-scope="scope">{{ scope.row.xianmuDepositDate || '-' }}</template>
         </el-table-column>
+        <el-table-column v-if="detailData.paymentType === 2" label="定金凭证" width="120" align="center">
+          <template slot-scope="scope">
+            <el-button
+              v-if="scope.row.xianmuDepositFileName"
+              type="text"
+              size="small"
+              @click="previewInstallmentVoucher(scope.row.id, 'deposit')">
+              预览
+            </el-button>
+            <el-button
+              v-if="scope.row.xianmuDepositFileName"
+              type="text"
+              size="small"
+              @click="downloadInstallmentVoucher(scope.row.id, 'deposit', scope.row.xianmuDepositFileName)">
+              下载
+            </el-button>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
         <el-table-column v-if="detailData.paymentType === 2" label="尾款" width="130" align="right">
           <template slot-scope="scope">{{ money(scope.row.xianmuBalanceModifiedAmount) }}</template>
         </el-table-column>
         <el-table-column v-if="detailData.paymentType === 2" label="尾款日期" width="120" align="center">
           <template slot-scope="scope">{{ scope.row.xianmuBalanceDate || '-' }}</template>
+        </el-table-column>
+        <el-table-column v-if="detailData.paymentType === 2" label="尾款凭证" width="120" align="center">
+          <template slot-scope="scope">
+            <el-button
+              v-if="scope.row.xianmuBalanceFileName"
+              type="text"
+              size="small"
+              @click="previewInstallmentVoucher(scope.row.id, 'balance')">
+              预览
+            </el-button>
+            <el-button
+              v-if="scope.row.xianmuBalanceFileName"
+              type="text"
+              size="small"
+              @click="downloadInstallmentVoucher(scope.row.id, 'balance', scope.row.xianmuBalanceFileName)">
+              下载
+            </el-button>
+            <span v-else>-</span>
+          </template>
         </el-table-column>
         <el-table-column v-if="detailData.paymentType === 2" label="待付金额" width="130" align="right">
           <template slot-scope="scope">{{ money(xianmuRemainAmount(scope.row)) }}</template>
@@ -1328,6 +1366,26 @@ export default {
     previewContributionVoucher (allocationId) {
       const token = this.$cookie.get('token') || ''
       window.open(this.$http.adornUrl(`/erp/funder-finance/allocation/download/contribution/${allocationId}?preview=1&token=${encodeURIComponent(token)}`), '_blank')
+    },
+    downloadInstallmentVoucher (allocationId, kind, fileName) {
+      const label = kind === 'deposit' ? '定金' : '尾款'
+      const loading = this.$loading({ lock: true, text: `正在下载${label}凭证...` })
+      this.$http({
+        url: this.$http.adornUrl(`/erp/funder-finance/allocation/download/${kind}/${allocationId}`),
+        method: 'get',
+        responseType: 'blob'
+      }).then(response => {
+        const url = URL.createObjectURL(response.data)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = fileName || `${label}凭证`
+        link.click()
+        URL.revokeObjectURL(url)
+      }).finally(() => loading.close())
+    },
+    previewInstallmentVoucher (allocationId, kind) {
+      const token = this.$cookie.get('token') || ''
+      window.open(this.$http.adornUrl(`/erp/funder-finance/allocation/download/${kind}/${allocationId}?preview=1&token=${encodeURIComponent(token)}`), '_blank')
     }
   }
 }
