@@ -10,6 +10,14 @@
         </el-input>
       </el-form-item>
       <el-form-item>
+        <el-input
+          v-model="queryForm.contractNo"
+          clearable
+          placeholder="合同号"
+          @keyup.enter.native="getDataList()">
+        </el-input>
+      </el-form-item>
+      <el-form-item>
         <el-select v-model="queryForm.paymentType" clearable placeholder="付款类型" style="width: 150px" @change="getDataList()">
           <el-option label="资方全款" :value="1"></el-option>
           <el-option label="内部主体全款" :value="2"></el-option>
@@ -636,7 +644,7 @@ const emptyPayment = (paymentType = PAYMENT_TYPE_FUNDER) => ({
 export default {
   data () {
     return {
-      queryForm: { keyword: '', paymentType: '' },
+      queryForm: { keyword: '', contractNo: '', paymentType: '' },
       dataList: [],
       pageIndex: 1,
       pageSize: 10,
@@ -773,6 +781,7 @@ export default {
           page: this.pageIndex,
           limit: this.pageSize,
           keyword: this.queryForm.keyword,
+          contractNo: this.queryForm.contractNo,
           paymentType: this.queryForm.paymentType || undefined
         })
       }).then(({ data }) => {
