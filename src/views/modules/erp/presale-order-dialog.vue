@@ -1607,7 +1607,7 @@ export default {
       const packing = Object.assign(defaultPackingInfo(), basePacking || {})
       const confirmItems = ((confirmInfo || {}).itemList || []).map(item => Object.assign({}, item))
       const usedConfirmIndexes = new Set()
-      packing.contractNo = draft.contractNo || packing.contractNo
+      packing.contractNo = (confirmInfo && confirmInfo.contractNo) || draft.contractNo || packing.contractNo
       packing.containerNo = draft.containerNo || packing.containerNo
       packing.shelfLifeDays = this.toNumber(draft.shelfLifeDays)
       packing.totalBoxes = this.toNumber(draft.totalBoxes)
