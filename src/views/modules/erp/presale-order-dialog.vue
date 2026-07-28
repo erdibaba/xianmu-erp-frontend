@@ -1809,11 +1809,22 @@ export default {
             normalizedValue.indexOf(normalizedRowName) !== -1 ||
             normalizedRowName.indexOf(normalizedValue) !== -1)
       }
-      const matchIndex = confirmItems.findIndex((item, index) =>
+      let matchIndex = confirmItems.findIndex((item, index) =>
         !usedConfirmIndexes.has(index) &&
         isSameWeight(item.quantity) &&
         (isNameMatch(item.productNameEn) || isNameMatch(item.productName))
       )
+      if (matchIndex === -1) {
+        const weightMatches = confirmItems
+          .map((item, index) => ({ item, index }))
+          .filter(candidate =>
+            !usedConfirmIndexes.has(candidate.index) &&
+            isSameWeight(candidate.item.quantity)
+          )
+        if (weightMatches.length === 1) {
+          matchIndex = weightMatches[0].index
+        }
+      }
       if (matchIndex === -1) return
       const matchedItem = confirmItems[matchIndex]
       usedConfirmIndexes.add(matchIndex)
