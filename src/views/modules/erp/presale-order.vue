@@ -463,9 +463,7 @@ export default {
       if (!value) return ''
       return String(value)
         .replace(/^(SYB[-\s]+)/i, '')
-        .replace(/[^A-Za-z0-9]+/g, ' ')
-        .trim()
-        .replace(/\s+/g, ' ')
+        .replace(/[^A-Za-z0-9]+/g, '')
         .toUpperCase()
     },
     findProductByEnglishName (name) {
