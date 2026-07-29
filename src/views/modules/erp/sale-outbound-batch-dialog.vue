@@ -8,10 +8,18 @@
     <div class="batch-dialog" v-loading="loading">
       <el-form :model="form" ref="form" :rules="rules" label-width="90px">
         <el-row :gutter="16">
-          <el-col :span="7">
+          <el-col :span="5">
             <el-form-item label="货权" prop="ownershipName">
               <el-select v-model="form.ownershipName" placeholder="请选择货权" style="width: 100%;" @change="ownershipChange">
                 <el-option v-for="item in ownershipOptions" :key="item" :label="item" :value="item"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="5">
+            <el-form-item label="提货方式" prop="pickupMethod">
+              <el-select v-model="form.pickupMethod" placeholder="请选择提货方式" style="width: 100%;">
+                <el-option label="我方安排运输" value="ARRANGED_TRANSPORT"></el-option>
+                <el-option label="二批自提" value="SECONDARY_SELF_PICKUP"></el-option>
               </el-select>
             </el-form-item>
           </el-col>
@@ -26,7 +34,7 @@
               </el-date-picker>
             </el-form-item>
           </el-col>
-          <el-col :span="8">
+          <el-col :span="7">
             <el-form-item label="司机" prop="driverId">
               <el-select
                 v-model="form.driverId"
@@ -46,7 +54,7 @@
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :span="4">
+          <el-col :span="2">
             <el-button type="primary" plain @click="quickDriverVisible = true">新增司机</el-button>
           </el-col>
         </el-row>
@@ -162,6 +170,7 @@ export default {
       form: {
         driverId: '',
         ownershipName: '',
+        pickupMethod: 'ARRANGED_TRANSPORT',
         outboundDate: '',
         remark: ''
       },
@@ -172,6 +181,7 @@ export default {
       },
       rules: {
         ownershipName: [{ required: true, message: '请选择货权', trigger: 'change' }],
+        pickupMethod: [{ required: true, message: '请选择提货方式', trigger: 'change' }],
         outboundDate: [{ required: true, message: '请选择出库时间', trigger: 'change' }],
         driverId: [{ required: true, message: '请选择司机', trigger: 'change' }]
       },
@@ -202,7 +212,13 @@ export default {
     init (saleOrder) {
       this.visible = true
       this.saleOrder = saleOrder || {}
-      this.form = { driverId: '', ownershipName: '', outboundDate: this.todayDate(), remark: '' }
+      this.form = {
+        driverId: '',
+        ownershipName: '',
+        pickupMethod: 'ARRANGED_TRANSPORT',
+        outboundDate: this.todayDate(),
+        remark: ''
+      }
       this.driverOptions = []
       this.buildCandidates()
       if (this.ownershipOptions.length === 1) {
@@ -316,6 +332,7 @@ export default {
           saleOrderId: this.saleOrder.id,
           driverId: this.form.driverId,
           ownershipName: this.form.ownershipName,
+          pickupMethod: this.form.pickupMethod,
           outboundDate: this.form.outboundDate,
           remark: this.form.remark,
           planItemList: selected.map(row => ({

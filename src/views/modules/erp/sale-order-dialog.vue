@@ -841,6 +841,15 @@
                     {{ outboundBankSlipUploadLabel }}
                   </el-button>
                   <el-button
+                    v-if="attachmentEditable && currentOutboundBatchIsSelfPickup && currentOutboundBatchEditable"
+                    size="mini"
+                    type="warning"
+                    plain
+                    :loading="uploadLoading && currentUploadType === 'SELF_PICKUP_DISCLAIMER'"
+                    @click="triggerUpload('SELF_PICKUP_DISCLAIMER')">
+                    {{ currentOutboundDisclaimerFile ? '重新上传自提免责证明' : '上传自提免责证明' }}
+                  </el-button>
+                  <el-button
                     v-if="attachmentEditable && currentOutboundBatch && currentOutboundBatchEditable"
                     size="mini"
                     type="primary"
@@ -883,6 +892,7 @@
                 </div>
                 <div class="open-batch-meta">
                   <span>{{ batch.ownershipName || '-' }}</span>
+                  <span>{{ pickupMethodText(batch.pickupMethod) }}</span>
                   <span>出库：{{ formatDateOnly(batch.outboundDate) || '-' }}</span>
                   <span>{{ batch.driverName || '-' }}</span>
                   <span>{{ formatInteger(batch.shippedTotalBoxes) }}箱 / {{ formatNumber(batch.shippedTotalWeight, 3) }}KG</span>
@@ -891,11 +901,39 @@
             </div>
             <div v-if="currentOutboundBatch" class="outbound-batch-info">
               <span><strong>货权：</strong>{{ currentOutboundBatch.ownershipName || '-' }}</span>
+              <span><strong>提货方式：</strong>{{ pickupMethodText(currentOutboundBatch.pickupMethod) }}</span>
               <span><strong>出库时间：</strong>{{ formatDateOnly(currentOutboundBatch.outboundDate) || '-' }}</span>
               <span><strong>司机：</strong>{{ currentOutboundBatch.driverName || '-' }}</span>
               <span><strong>车牌号：</strong>{{ currentOutboundBatch.plateNo || '-' }}</span>
               <span><strong>手机号：</strong>{{ currentOutboundBatch.driverMobile || '-' }}</span>
               <span><strong>备注：</strong>{{ currentOutboundBatch.remark || '-' }}</span>
+              <template v-if="currentOutboundBatchIsSelfPickup">
+                <el-tag size="mini" :type="currentOutboundDisclaimerFile ? 'success' : 'danger'">
+                  免责证明{{ currentOutboundDisclaimerFile ? '已上传' : '未上传' }}
+                </el-tag>
+                <el-button
+                  v-if="currentOutboundDisclaimerFile"
+                  size="mini"
+                  type="text"
+                  @click="previewFile(currentOutboundDisclaimerFile)">
+                  预览免责证明
+                </el-button>
+                <el-button
+                  v-if="currentOutboundDisclaimerFile"
+                  size="mini"
+                  type="text"
+                  @click="downloadFile(currentOutboundDisclaimerFile)">
+                  下载免责证明
+                </el-button>
+                <el-button
+                  v-if="currentOutboundDisclaimerFile && attachmentEditable && currentOutboundBatchEditable"
+                  size="mini"
+                  type="text"
+                  class="danger-text-button"
+                  @click="deleteFile(currentOutboundDisclaimerFile)">
+                  删除免责证明
+                </el-button>
+              </template>
               <el-button size="mini" type="primary" plain @click="downloadPickupDetail(currentOutboundBatch)">下载提货明细</el-button>
             </div>
             <div v-if="currentOutboundBatch && currentOutboundBatch.planItemList && currentOutboundBatch.planItemList.length" class="outbound-section-title">
@@ -1224,6 +1262,9 @@
                 <template slot-scope="scope">{{ formatDateOnly(scope.row.outboundDate) }}</template>
               </el-table-column>
               <el-table-column prop="ownershipName" label="货权" min-width="130" show-overflow-tooltip></el-table-column>
+              <el-table-column label="提货方式" width="110" align="center">
+                <template slot-scope="scope">{{ pickupMethodText(scope.row.pickupMethod) }}</template>
+              </el-table-column>
               <el-table-column prop="driverName" label="司机" width="100" show-overflow-tooltip></el-table-column>
               <el-table-column prop="plateNo" label="车牌号" width="110" show-overflow-tooltip></el-table-column>
               <el-table-column label="明细行数" width="90" align="right">
@@ -1289,6 +1330,28 @@
                   <el-button v-if="scope.row.bankSlipFile" type="text" size="small" @click="previewFile(scope.row.bankSlipFile)">预览水单</el-button>
                   <el-button v-if="scope.row.bankSlipFile" type="text" size="small" @click="downloadFile(scope.row.bankSlipFile)">下载水单</el-button>
                   <span v-else class="sub-title-tip">无</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="免责证明" min-width="135">
+                <template slot-scope="scope">
+                  <template v-if="scope.row.pickupMethod === 'SECONDARY_SELF_PICKUP'">
+                    <el-button
+                      v-if="scope.row.selfPickupDisclaimerFile"
+                      type="text"
+                      size="small"
+                      @click="previewFile(scope.row.selfPickupDisclaimerFile)">
+                      预览
+                    </el-button>
+                    <el-button
+                      v-if="scope.row.selfPickupDisclaimerFile"
+                      type="text"
+                      size="small"
+                      @click="downloadFile(scope.row.selfPickupDisclaimerFile)">
+                      下载
+                    </el-button>
+                    <span v-if="!scope.row.selfPickupDisclaimerFile" class="sub-title-tip">未上传</span>
+                  </template>
+                  <span v-else class="sub-title-tip">不需要</span>
                 </template>
               </el-table-column>
               <el-table-column label="操作" width="135" align="center">
@@ -1508,7 +1571,12 @@
           </el-tab-pane>
         </el-tabs>
 
-        <input ref="uploadInput" type="file" multiple style="display:none;" @change="uploadFileChangeHandle">
+        <input
+          ref="uploadInput"
+          type="file"
+          :multiple="currentUploadType !== 'SELF_PICKUP_DISCLAIMER'"
+          style="display:none;"
+          @change="uploadFileChangeHandle">
       </el-form>
     </div>
 
@@ -2041,6 +2109,7 @@ export default {
       if (!this.currentOutboundBatch) return '先新增一个出库批次，再按步骤上传单据。'
       if (!this.currentOutboundHasReceiptFile) return '当前批次已创建，下一步上传出库回单。'
       if (!this.currentOutboundBankSlipVisible) return this.isFullPaymentMode ? '出库回单已上传，下一步上传仓储费水单。' : '出库回单已上传，下一步上传二批来款水单。'
+      if (this.currentOutboundBatchIsSelfPickup && !this.currentOutboundDisclaimerFile) return '当前为二批自提，请上传自提免责证明后再确认批次。'
       if (this.canConfirmOutboundBatch) return '单据已齐全，可以确认当前批次完成。'
       return '请先保存并核对当前批次明细，再确认批次完成。'
     },
@@ -2087,6 +2156,13 @@ export default {
       const batch = this.currentOutboundBatch
       if (!batch || !batch.bankSlipFile) return []
       return [batch.bankSlipFile]
+    },
+    currentOutboundBatchIsSelfPickup () {
+      return !!(this.currentOutboundBatch && this.currentOutboundBatch.pickupMethod === 'SECONDARY_SELF_PICKUP')
+    },
+    currentOutboundDisclaimerFile () {
+      const batch = this.currentOutboundBatch
+      return batch ? (batch.selfPickupDisclaimerFile || null) : null
     },
     currentOutboundBankSlipVisible () {
       const batch = this.currentOutboundBatch
@@ -2197,7 +2273,10 @@ export default {
       const receipt = this.dataForm.outboundReceipt
       const hasReceipt = !!(receipt && receipt.itemList && receipt.itemList.length)
       const hasBankSlip = !!batch.bankSlipFileId || !!batch.bankSlipFile
-      return hasReceipt && hasBankSlip && this.currentOutboundHasReceiptFile
+      const hasDisclaimer = batch.pickupMethod !== 'SECONDARY_SELF_PICKUP' ||
+        !!batch.selfPickupDisclaimerFileId ||
+        !!batch.selfPickupDisclaimerFile
+      return hasReceipt && hasBankSlip && hasDisclaimer && this.currentOutboundHasReceiptFile
     }
   },
   watch: {
@@ -2853,6 +2932,8 @@ export default {
         plateNo: '',
         driverMobile: '',
         ownershipName: '',
+        pickupMethod: 'ARRANGED_TRANSPORT',
+        selfPickupDisclaimerFileId: '',
         remark: '',
         planItemList: [],
         bankSlipFileId: '',
@@ -2880,6 +2961,7 @@ export default {
         secondaryFeeRemark: '',
         receipt: null,
         bankSlipFile: null,
+        selfPickupDisclaimerFile: null,
         scan: null,
         scanList: [],
         receiptFileList: [],
@@ -4191,6 +4273,11 @@ export default {
       if (fileType === 'OUTBOUND_BATCH_BANK_SLIP') {
         return !!this.currentOutboundBatch && this.currentOutboundBatchEditable
       }
+      if (fileType === 'SELF_PICKUP_DISCLAIMER') {
+        return !!this.currentOutboundBatch &&
+          this.currentOutboundBatchEditable &&
+          this.currentOutboundBatch.pickupMethod === 'SECONDARY_SELF_PICKUP'
+      }
       if (fileType === 'OUTBOUND_ATTACHMENT') return true
       return false
     },
@@ -4211,6 +4298,7 @@ export default {
       if (fileType === 'FUNDER_PAYMENT_PROOF') return '请先上传并确认二批来款水单'
       if (fileType === 'OUTBOUND_RECEIPT') return '请先选择未完成的出库批次'
       if (fileType === 'OUTBOUND_BATCH_BANK_SLIP') return '当前批次不可上传二批来款水单'
+      if (fileType === 'SELF_PICKUP_DISCLAIMER') return '只有未完成的二批自提批次可以上传免责证明'
       return '当前节点暂不可上传'
     },
     bindOutboundScanLink () {
@@ -4338,7 +4426,7 @@ export default {
     deleteOutboundBatch (batchOrRow) {
       const batch = batchOrRow && batchOrRow._batch ? batchOrRow._batch : batchOrRow
       if (!batch || !batch.id) return
-      this.$confirm(`确认删除出库批次 ${batch.batchNo || ''}？删除后会同步删除该批次出库回单、二批来款水单和识别明细。`, '提示', {
+      this.$confirm(`确认删除出库批次 ${batch.batchNo || ''}？删除后会同步删除该批次出库回单、二批来款水单、自提免责证明和识别明细。`, '提示', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
@@ -4590,33 +4678,40 @@ export default {
       if (!files.length || !this.currentUploadType || !this.dataForm.id) return
       const formData = new FormData()
       formData.append('saleOrderId', this.dataForm.id)
-      if (this.currentUploadType === 'OUTBOUND_RECEIPT' || this.currentUploadType === 'OUTBOUND_BATCH_BANK_SLIP') {
+      if (['OUTBOUND_RECEIPT', 'OUTBOUND_BATCH_BANK_SLIP', 'SELF_PICKUP_DISCLAIMER'].includes(this.currentUploadType)) {
         if (!this.currentOutboundBatch) {
           this.$message.error('请先选择出库批次')
           return
         }
         formData.append('batchId', this.currentOutboundBatch.id)
       }
-      if (this.currentUploadType !== 'OUTBOUND_RECEIPT' && this.currentUploadType !== 'OUTBOUND_BATCH_BANK_SLIP') {
+      if (!['OUTBOUND_RECEIPT', 'OUTBOUND_BATCH_BANK_SLIP', 'SELF_PICKUP_DISCLAIMER'].includes(this.currentUploadType)) {
         formData.append('fileType', this.currentUploadType)
       }
       files.forEach(file => formData.append('files', file))
       this.uploadLoading = true
       const url = this.currentUploadType === 'OUTBOUND_RECEIPT'
         ? '/erp/saleorder/outbound/receipt/recognize'
-        : (this.currentUploadType === 'OUTBOUND_BATCH_BANK_SLIP' ? '/erp/saleorder/outbound/batch/bank-slip/upload' : '/erp/saleorder/upload')
+        : (this.currentUploadType === 'OUTBOUND_BATCH_BANK_SLIP'
+            ? '/erp/saleorder/outbound/batch/bank-slip/upload'
+            : (this.currentUploadType === 'SELF_PICKUP_DISCLAIMER'
+                ? '/erp/saleorder/outbound/batch/self-pickup-disclaimer/upload'
+                : '/erp/saleorder/upload'))
       this.withGlobalLoading(this.$http({
         url: this.$http.adornUrl(url),
         method: 'post',
         data: formData,
         headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: ['OUTBOUND_RECEIPT', 'OUTBOUND_BATCH_BANK_SLIP'].includes(this.currentUploadType) ? 1000 * 60 * 15 : undefined
+        timeout: ['OUTBOUND_RECEIPT', 'OUTBOUND_BATCH_BANK_SLIP', 'SELF_PICKUP_DISCLAIMER'].includes(this.currentUploadType) ? 1000 * 60 * 15 : undefined
       })).then(({ data }) => {
         if (data && data.code === 0) {
           if (this.currentUploadType === 'OUTBOUND_RECEIPT') {
             this.dataForm.outboundReceipt = this.normalizeOutboundReceipt(data.receipt || this.dataForm.outboundReceipt)
           }
           if (this.currentUploadType === 'OUTBOUND_BATCH_BANK_SLIP' && data.batch) {
+            this.activeOutboundBatchId = data.batch.id
+          }
+          if (this.currentUploadType === 'SELF_PICKUP_DISCLAIMER' && data.batch) {
             this.activeOutboundBatchId = data.batch.id
           }
           this.$message.success('上传成功')
@@ -4687,6 +4782,9 @@ export default {
     formatDateOnly (value) {
       return value ? String(value).slice(0, 10) : ''
     },
+    pickupMethodText (value) {
+      return value === 'SECONDARY_SELF_PICKUP' ? '二批自提' : '我方安排运输'
+    },
     normalizeDateValue (value) {
       if (!value) return ''
       return String(value).slice(0, 10)
@@ -4751,6 +4849,15 @@ export default {
 
 .attachment-toolbar {
   margin-bottom: 8px;
+}
+
+.danger-text-button {
+  color: #f56c6c;
+}
+
+.danger-text-button:hover,
+.danger-text-button:focus {
+  color: #f78989;
 }
 
 .spot-search-title {
