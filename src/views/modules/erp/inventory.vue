@@ -49,14 +49,14 @@
             <el-checkbox v-model="spotQuery.onlyAvailable" true-label="1" false-label="0">只看可售库存</el-checkbox>
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" @click="getSpotList()">查询</el-button>
+            <el-button type="primary" @click="queryInventoryPage('spot')">查询</el-button>
             <el-button @click="resetSpotQuery()">重置</el-button>
             <el-button type="success" icon="el-icon-download" @click="exportSpotDetails()">导出明细</el-button>
           </el-form-item>
         </el-form>
 
         <el-table :data="spotList" border stripe v-loading="spotLoading" height="620">
-          <el-table-column type="index" label="序号" width="60" align="center" header-align="center"></el-table-column>
+          <el-table-column type="index" :index="index => pagedRowIndex('spot', index)" label="序号" width="60" align="center" header-align="center"></el-table-column>
           <el-table-column prop="productCode" label="产品编码" min-width="110" align="center" header-align="center"></el-table-column>
           <el-table-column prop="productName" label="中文名称" min-width="170" show-overflow-tooltip></el-table-column>
           <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
@@ -112,6 +112,16 @@
             </template>
           </el-table-column>
         </el-table>
+        <el-pagination
+          class="inventory-pagination"
+          :current-page="spotPage.pageIndex"
+          :page-size="spotPage.pageSize"
+          :page-sizes="[20, 50, 100]"
+          :total="spotPage.total"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="size => inventoryPageSizeChange('spot', size)"
+          @current-change="page => inventoryCurrentPageChange('spot', page)">
+        </el-pagination>
       </el-tab-pane>
 
       <el-tab-pane label="柜号产品库存" name="spotContainerProduct">
@@ -167,21 +177,21 @@
               range-separator="至"
               start-placeholder="入库开始"
               end-placeholder="入库结束"
-              @change="getSpotContainerProductList()">
+              @change="queryInventoryPage('spotContainerProduct')">
             </el-date-picker>
           </el-form-item>
           <el-form-item>
             <el-checkbox v-model="spotContainerProductQuery.onlyAvailable" true-label="1" false-label="0">只看可售库存</el-checkbox>
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" @click="getSpotContainerProductList()">查询</el-button>
+            <el-button type="primary" @click="queryInventoryPage('spotContainerProduct')">查询</el-button>
             <el-button @click="resetSpotContainerProductQuery()">重置</el-button>
             <el-button type="success" icon="el-icon-download" @click="exportSpotContainerProductDetails()">导出明细</el-button>
           </el-form-item>
         </el-form>
 
         <el-table :data="spotContainerProductList" border stripe v-loading="spotContainerProductLoading" height="620">
-          <el-table-column type="index" label="序号" width="60" align="center" header-align="center"></el-table-column>
+          <el-table-column type="index" :index="index => pagedRowIndex('spotContainerProduct', index)" label="序号" width="60" align="center" header-align="center"></el-table-column>
           <el-table-column prop="warehouseName" label="仓库" min-width="140" show-overflow-tooltip></el-table-column>
           <el-table-column label="确认函合同号" min-width="170" show-overflow-tooltip>
             <template slot-scope="scope">{{ formatContractNos(scope.row) }}</template>
@@ -238,6 +248,16 @@
             </template>
           </el-table-column>
         </el-table>
+        <el-pagination
+          class="inventory-pagination"
+          :current-page="spotContainerProductPage.pageIndex"
+          :page-size="spotContainerProductPage.pageSize"
+          :page-sizes="[20, 50, 100]"
+          :total="spotContainerProductPage.total"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="size => inventoryPageSizeChange('spotContainerProduct', size)"
+          @current-change="page => inventoryCurrentPageChange('spotContainerProduct', page)">
+        </el-pagination>
       </el-tab-pane>
 
       <el-tab-pane label="加权单价报告" name="weightedCost">
@@ -293,17 +313,17 @@
               range-separator="至"
               start-placeholder="入库开始"
               end-placeholder="入库结束"
-              @change="getWeightedCostList()">
+              @change="queryInventoryPage('weightedCost')">
             </el-date-picker>
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" @click="getWeightedCostList()">查询</el-button>
+            <el-button type="primary" @click="queryInventoryPage('weightedCost')">查询</el-button>
             <el-button @click="resetWeightedCostQuery()">重置</el-button>
           </el-form-item>
         </el-form>
 
         <el-table :data="weightedCostList" border stripe v-loading="weightedCostLoading" height="620">
-          <el-table-column type="index" label="序号" width="60" align="center" header-align="center"></el-table-column>
+          <el-table-column type="index" :index="index => pagedRowIndex('weightedCost', index)" label="序号" width="60" align="center" header-align="center"></el-table-column>
           <el-table-column prop="productCode" label="产品编码" min-width="110" align="center" header-align="center"></el-table-column>
           <el-table-column prop="productName" label="中文名称" min-width="170" show-overflow-tooltip></el-table-column>
           <el-table-column prop="marketCirculationName" label="市场流通名称" min-width="180" show-overflow-tooltip></el-table-column>
@@ -329,6 +349,16 @@
             </template>
           </el-table-column>
         </el-table>
+        <el-pagination
+          class="inventory-pagination"
+          :current-page="weightedCostPage.pageIndex"
+          :page-size="weightedCostPage.pageSize"
+          :page-sizes="[20, 50, 100]"
+          :total="weightedCostPage.total"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="size => inventoryPageSizeChange('weightedCost', size)"
+          @current-change="page => inventoryCurrentPageChange('weightedCost', page)">
+        </el-pagination>
       </el-tab-pane>
 
       <el-tab-pane label="期货库存" name="futures">
@@ -379,14 +409,14 @@
             <el-checkbox v-model="futuresQuery.onlyAvailable" true-label="1" false-label="0">只看期货可售</el-checkbox>
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" @click="getFuturesList()">查询</el-button>
+            <el-button type="primary" @click="queryInventoryPage('futures')">查询</el-button>
             <el-button @click="resetFuturesQuery()">重置</el-button>
             <el-button type="success" @click="exportFuturesInventory()">导出Excel</el-button>
           </el-form-item>
         </el-form>
 
         <el-table :data="futuresList" border stripe v-loading="futuresLoading" height="620">
-          <el-table-column type="index" label="序号" width="60" align="center" header-align="center"></el-table-column>
+          <el-table-column type="index" :index="index => pagedRowIndex('futures', index)" label="序号" width="60" align="center" header-align="center"></el-table-column>
           <el-table-column prop="productCode" label="产品编码" min-width="110" align="center" header-align="center"></el-table-column>
           <el-table-column prop="productName" label="中文名称" min-width="170" show-overflow-tooltip></el-table-column>
           <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
@@ -416,6 +446,16 @@
             </template>
           </el-table-column>
         </el-table>
+        <el-pagination
+          class="inventory-pagination"
+          :current-page="futuresPage.pageIndex"
+          :page-size="futuresPage.pageSize"
+          :page-sizes="[20, 50, 100]"
+          :total="futuresPage.total"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="size => inventoryPageSizeChange('futures', size)"
+          @current-change="page => inventoryCurrentPageChange('futures', page)">
+        </el-pagination>
       </el-tab-pane>
 
       <el-tab-pane label="预售单库存" name="presale">
@@ -481,13 +521,13 @@
             </el-select>
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" @click="getRecordList()">查询</el-button>
+            <el-button type="primary" @click="queryInventoryPage('records')">查询</el-button>
             <el-button @click="resetRecordQuery()">重置</el-button>
           </el-form-item>
         </el-form>
 
         <el-table :data="recordList" border stripe v-loading="recordLoading" height="620">
-          <el-table-column type="index" label="序号" width="60" align="center" header-align="center"></el-table-column>
+          <el-table-column type="index" :index="index => pagedRowIndex('records', index)" label="序号" width="60" align="center" header-align="center"></el-table-column>
           <el-table-column label="类型" width="90" align="center" header-align="center">
             <template slot-scope="scope">
               <el-tag :type="scope.row.recordType === 'INBOUND' ? 'success' : 'warning'" size="small">{{ scope.row.recordTypeName }}</el-tag>
@@ -510,6 +550,16 @@
           <el-table-column prop="unit" label="单位" width="80" align="center" header-align="center"></el-table-column>
           <el-table-column prop="sourceRemark" label="来源" width="100" align="center" header-align="center"></el-table-column>
         </el-table>
+        <el-pagination
+          class="inventory-pagination"
+          :current-page="recordPage.pageIndex"
+          :page-size="recordPage.pageSize"
+          :page-sizes="[20, 50, 100]"
+          :total="recordPage.total"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="size => inventoryPageSizeChange('records', size)"
+          @current-change="page => inventoryCurrentPageChange('records', page)">
+        </el-pagination>
       </el-tab-pane>
     </el-tabs>
 
@@ -698,6 +748,31 @@
           containerNo: '',
           factoryNo: ''
         },
+        spotPage: {
+          pageIndex: 1,
+          pageSize: 20,
+          total: 0
+        },
+        spotContainerProductPage: {
+          pageIndex: 1,
+          pageSize: 20,
+          total: 0
+        },
+        weightedCostPage: {
+          pageIndex: 1,
+          pageSize: 20,
+          total: 0
+        },
+        futuresPage: {
+          pageIndex: 1,
+          pageSize: 20,
+          total: 0
+        },
+        recordPage: {
+          pageIndex: 1,
+          pageSize: 20,
+          total: 0
+        },
         spotList: [],
         spotContainerProductList: [],
         weightedCostList: [],
@@ -838,10 +913,67 @@
           this.getSpotList()
         }
       },
+      inventoryPageState (scope) {
+        const pageMap = {
+          spot: this.spotPage,
+          spotContainerProduct: this.spotContainerProductPage,
+          weightedCost: this.weightedCostPage,
+          futures: this.futuresPage,
+          records: this.recordPage
+        }
+        return pageMap[scope]
+      },
+      loadInventoryPage (scope) {
+        const loaderMap = {
+          spot: this.getSpotList,
+          spotContainerProduct: this.getSpotContainerProductList,
+          weightedCost: this.getWeightedCostList,
+          futures: this.getFuturesList,
+          records: this.getRecordList
+        }
+        const loader = loaderMap[scope]
+        if (loader) loader.call(this)
+      },
+      queryInventoryPage (scope) {
+        const pageState = this.inventoryPageState(scope)
+        if (pageState) pageState.pageIndex = 1
+        this.loadInventoryPage(scope)
+      },
+      inventoryPageSizeChange (scope, pageSize) {
+        const pageState = this.inventoryPageState(scope)
+        if (!pageState) return
+        pageState.pageSize = pageSize
+        pageState.pageIndex = 1
+        this.loadInventoryPage(scope)
+      },
+      inventoryCurrentPageChange (scope, pageIndex) {
+        const pageState = this.inventoryPageState(scope)
+        if (!pageState) return
+        pageState.pageIndex = pageIndex
+        this.loadInventoryPage(scope)
+      },
+      applyInventoryPage (scope, data) {
+        const pageState = this.inventoryPageState(scope)
+        if (!pageState) return
+        pageState.total = Number(data && data.total) || 0
+        pageState.pageIndex = Number(data && data.page) || pageState.pageIndex
+        pageState.pageSize = Number(data && data.limit) || pageState.pageSize
+      },
+      clearInventoryPage (scope) {
+        const pageState = this.inventoryPageState(scope)
+        if (pageState) pageState.total = 0
+      },
+      pagedRowIndex (scope, index) {
+        const pageState = this.inventoryPageState(scope)
+        if (!pageState) return index + 1
+        return (pageState.pageIndex - 1) * pageState.pageSize + index + 1
+      },
       getSpotList () {
         this.spotLoading = true
         const params = Object.assign({}, this.spotQuery, {
-          containerNos: this.spotQuery.containerNos.join(',')
+          containerNos: this.spotQuery.containerNos.join(','),
+          page: this.spotPage.pageIndex,
+          limit: this.spotPage.pageSize
         })
         this.$http({
           url: this.$http.adornUrl('/erp/inventory/spot'),
@@ -850,12 +982,16 @@
         }).then(({data}) => {
           if (data && data.code === 0) {
             this.spotList = data.list || []
+            this.applyInventoryPage('spot', data)
           } else {
             this.spotList = []
+            this.clearInventoryPage('spot')
             this.$message.error((data && data.msg) || '获取现货库存失败')
           }
           this.spotLoading = false
         }).catch(() => {
+          this.spotList = []
+          this.clearInventoryPage('spot')
           this.spotLoading = false
         })
       },
@@ -865,7 +1001,9 @@
         const params = Object.assign({}, this.spotContainerProductQuery, {
           containerNos: this.spotContainerProductQuery.containerNos.join(','),
           inboundDateStart: inboundRange[0] || '',
-          inboundDateEnd: inboundRange[1] || ''
+          inboundDateEnd: inboundRange[1] || '',
+          page: this.spotContainerProductPage.pageIndex,
+          limit: this.spotContainerProductPage.pageSize
         })
         this.$http({
           url: this.$http.adornUrl('/erp/inventory/spot/by-container-product'),
@@ -874,12 +1012,16 @@
         }).then(({data}) => {
           if (data && data.code === 0) {
             this.spotContainerProductList = data.list || []
+            this.applyInventoryPage('spotContainerProduct', data)
           } else {
             this.spotContainerProductList = []
+            this.clearInventoryPage('spotContainerProduct')
             this.$message.error((data && data.msg) || '获取柜号产品库存失败')
           }
           this.spotContainerProductLoading = false
         }).catch(() => {
+          this.spotContainerProductList = []
+          this.clearInventoryPage('spotContainerProduct')
           this.spotContainerProductLoading = false
         })
       },
@@ -937,7 +1079,9 @@
         const params = Object.assign({}, this.weightedCostQuery, {
           containerNos: this.weightedCostQuery.containerNos.join(','),
           inboundDateStart: inboundRange[0] || '',
-          inboundDateEnd: inboundRange[1] || ''
+          inboundDateEnd: inboundRange[1] || '',
+          page: this.weightedCostPage.pageIndex,
+          limit: this.weightedCostPage.pageSize
         })
         this.$http({
           url: this.$http.adornUrl('/erp/inventory/weighted-cost'),
@@ -946,19 +1090,25 @@
         }).then(({data}) => {
           if (data && data.code === 0) {
             this.weightedCostList = data.list || []
+            this.applyInventoryPage('weightedCost', data)
           } else {
             this.weightedCostList = []
+            this.clearInventoryPage('weightedCost')
             this.$message.error((data && data.msg) || '获取加权单价报告失败')
           }
           this.weightedCostLoading = false
         }).catch(() => {
+          this.weightedCostList = []
+          this.clearInventoryPage('weightedCost')
           this.weightedCostLoading = false
         })
       },
       getFuturesList () {
         this.futuresLoading = true
         const params = Object.assign({}, this.futuresQuery, {
-          containerNos: this.futuresQuery.containerNos.join(',')
+          containerNos: this.futuresQuery.containerNos.join(','),
+          page: this.futuresPage.pageIndex,
+          limit: this.futuresPage.pageSize
         })
         this.$http({
           url: this.$http.adornUrl('/erp/inventory/futures'),
@@ -967,30 +1117,42 @@
         }).then(({data}) => {
           if (data && data.code === 0) {
             this.futuresList = data.list || []
+            this.applyInventoryPage('futures', data)
           } else {
             this.futuresList = []
+            this.clearInventoryPage('futures')
             this.$message.error((data && data.msg) || '获取期货库存失败')
           }
           this.futuresLoading = false
         }).catch(() => {
+          this.futuresList = []
+          this.clearInventoryPage('futures')
           this.futuresLoading = false
         })
       },
       getRecordList () {
         this.recordLoading = true
+        const params = Object.assign({}, this.recordQuery, {
+          page: this.recordPage.pageIndex,
+          limit: this.recordPage.pageSize
+        })
         this.$http({
           url: this.$http.adornUrl('/erp/inventory/records'),
           method: 'get',
-          params: this.$http.adornParams(this.recordQuery)
+          params: this.$http.adornParams(params)
         }).then(({data}) => {
           if (data && data.code === 0) {
             this.recordList = data.list || []
+            this.applyInventoryPage('records', data)
           } else {
             this.recordList = []
+            this.clearInventoryPage('records')
             this.$message.error((data && data.msg) || '获取出入库记录失败')
           }
           this.recordLoading = false
         }).catch(() => {
+          this.recordList = []
+          this.clearInventoryPage('records')
           this.recordLoading = false
         })
       },
@@ -1090,7 +1252,7 @@
         }
         this.spotContainerOptions = []
         this.spotList = []
-        this.getSpotList()
+        this.queryInventoryPage('spot')
       },
       resetSpotContainerProductQuery () {
         this.spotContainerProductQuery = {
@@ -1104,7 +1266,7 @@
         this.spotContainerProductInboundDateRange = []
         this.spotContainerProductContainerOptions = []
         this.spotContainerProductList = []
-        this.getSpotContainerProductList()
+        this.queryInventoryPage('spotContainerProduct')
       },
       resetWeightedCostQuery () {
         this.weightedCostQuery = {
@@ -1117,7 +1279,7 @@
         this.weightedCostInboundDateRange = []
         this.weightedCostContainerOptions = []
         this.weightedCostList = []
-        this.getWeightedCostList()
+        this.queryInventoryPage('weightedCost')
       },
       resetFuturesQuery () {
         this.futuresQuery = {
@@ -1130,7 +1292,7 @@
         }
         this.futuresContainerOptions = []
         this.futuresList = []
-        this.getFuturesList()
+        this.queryInventoryPage('futures')
       },
       resetRecordQuery () {
         this.recordQuery = {
@@ -1143,7 +1305,7 @@
           containerNo: '',
           factoryNo: ''
         }
-        this.getRecordList()
+        this.queryInventoryPage('records')
       },
       recordWarehouseChange () {
         this.recordQuery.containerNo = ''
@@ -1181,25 +1343,25 @@
       spotWarehouseChange () {
         this.spotQuery.containerNos = []
         this.spotContainerOptions = []
-        this.spotList = []
+        this.clearInventoryPage('spot')
         this.remoteSearchSpotContainers('')
       },
       spotContainerProductWarehouseChange () {
         this.spotContainerProductQuery.containerNos = []
         this.spotContainerProductContainerOptions = []
-        this.spotContainerProductList = []
+        this.clearInventoryPage('spotContainerProduct')
         this.remoteSearchSpotContainerProductContainers('')
       },
       weightedCostWarehouseChange () {
         this.weightedCostQuery.containerNos = []
         this.weightedCostContainerOptions = []
-        this.weightedCostList = []
+        this.clearInventoryPage('weightedCost')
         this.remoteSearchWeightedCostContainers('')
       },
       futuresWarehouseChange () {
         this.futuresQuery.containerNos = []
         this.futuresContainerOptions = []
-        this.futuresList = []
+        this.clearInventoryPage('futures')
         this.remoteSearchFuturesContainers('')
       },
       remoteSearchSpotContainers (keyword) {
@@ -1319,6 +1481,11 @@
 
   .inventory-date-range {
     width: 340px;
+  }
+
+  .inventory-pagination {
+    margin-top: 14px;
+    text-align: right;
   }
 
   /deep/ .inventory-date-range .el-range-separator {
