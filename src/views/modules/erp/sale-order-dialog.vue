@@ -247,18 +247,21 @@
           <el-table-column prop="productSpec" label="规格" width="90"></el-table-column>
           <el-table-column prop="unit" label="单位" width="80"></el-table-column>
 
-          <el-table-column label="箱数" width="100">
+          <el-table-column label="箱数" :width="isFuturesSale ? 145 : 100">
             <template slot-scope="scope">
-              <el-input-number
-                v-model="scope.row.boxes"
-                :disabled="contentReadonly"
-                :controls="false"
-                :precision="0"
-                :min="0"
-                size="mini"
-                style="width: 100%;"
-                @change="spotTopRowChange(scope.row)">
-              </el-input-number>
+              <div class="sale-box-editor">
+                <el-input-number
+                  v-model="scope.row.boxes"
+                  :disabled="contentReadonly"
+                  :controls="false"
+                  :precision="0"
+                  :min="0"
+                  size="mini"
+                  :style="{ width: isFuturesSale ? '76px' : '100%' }"
+                  @change="spotTopRowChange(scope.row)">
+                </el-input-number>
+                <span v-if="isFuturesSale && Number(scope.row.boxes || 0) === 0" class="futures-box-pending">待确认</span>
+              </div>
             </template>
           </el-table-column>
 
@@ -4053,7 +4056,12 @@ export default {
       for (let index = 0; index < itemList.length; index++) {
         const item = itemList[index]
         if (!item.productId) return `第${index + 1}行产品未选择`
-        if (!item.boxes || Number(item.boxes) <= 0) return `第${index + 1}行箱数必须大于0`
+        if (item.boxes === null || item.boxes === '' || Number(item.boxes) < 0) {
+          return this.isFuturesSale
+            ? `期货单第${index + 1}行箱数不能小于0`
+            : `第${index + 1}行箱数必须大于0`
+        }
+        if (this.isSpotSale && Number(item.boxes) <= 0) return `第${index + 1}行箱数必须大于0`
         if (item.salePriceKg === null || item.salePriceKg === '' || Number(item.salePriceKg) <= 0) {
           return `产品${item.productCode || index + 1}的销售价（元/千克）必须大于0，请在已选库存明细中调整`
         }
@@ -5267,6 +5275,18 @@ export default {
 
 .futures-source-table {
   margin-bottom: 12px;
+}
+
+.sale-box-editor {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.futures-box-pending {
+  color: #e6a23c;
+  font-size: 12px;
+  white-space: nowrap;
 }
 </style>
 
