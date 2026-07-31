@@ -301,11 +301,9 @@
                 v-model="scope.row.contractFactoryNo"
                 :disabled="contentReadonly"
                 filterable
-                allow-create
-                default-first-option
                 size="mini"
                 style="width: 100%;"
-                placeholder="选择或输入厂号"
+                placeholder="请选择厂号"
                 @change="value => futuresItemFactoryChange(scope.row, value)">
                 <el-option
                   v-for="factoryNo in futuresFactoryOptions(scope.row)"
@@ -2857,6 +2855,7 @@ export default {
       }
       result.itemList = (source.itemList || []).map(item => {
         const row = Object.assign(this.defaultItemRow(), item)
+        row.contractFactoryNo = this.canonicalFactoryNo(row.contractFactoryNo)
         row._lastFactoryNo = row.contractFactoryNo || ''
         row._productOptions = row.productId ? [{
           id: row.productId,
@@ -2878,6 +2877,7 @@ export default {
       })
       result.sourceAllocationList = (source.sourceAllocationList || []).map(item => {
         const row = Object.assign(this.defaultFuturesSourceRow(), item)
+        row.factoryNo = this.canonicalFactoryNo(row.factoryNo)
         const matchingItems = result.itemList.filter(saleItem => String(saleItem.productId) === String(row.productId))
         if (!row.factoryNo && matchingItems.length === 1) {
           row.factoryNo = matchingItems[0].contractFactoryNo || 'PPCS'
@@ -3322,6 +3322,10 @@ export default {
       const normalized = String(value || '').replace(/[^A-Z0-9]/gi, '').toUpperCase()
       return /^ME\d+$/.test(normalized) ? normalized.substring(2) : normalized
     },
+    canonicalFactoryNo (value) {
+      const normalized = String(value || '').replace(/[^A-Z0-9]/gi, '').toUpperCase()
+      return /^\d+$/.test(normalized) ? `ME${normalized}` : normalized
+    },
     saleItemFactoryKey (item) {
       if (!item || !item.productId) return ''
       return `${item.productId}|${this.normalizeFactoryNo(item.contractFactoryNo || item.factoryNo)}`
@@ -3329,7 +3333,7 @@ export default {
     futuresFactoryOptions (row) {
       const values = ['PPCS']
       const append = value => {
-        value = String(value || '').trim()
+        value = this.canonicalFactoryNo(value)
         if (value && !values.some(item => this.normalizeFactoryNo(item) === this.normalizeFactoryNo(value))) {
           values.push(value)
         }
@@ -3349,7 +3353,7 @@ export default {
         productId: row.productId,
         contractFactoryNo: previousFactoryNo
       })
-      const nextFactoryNo = String(value || '').trim()
+      const nextFactoryNo = this.canonicalFactoryNo(value)
       this.$set(row, 'contractFactoryNo', nextFactoryNo)
       const nextKey = this.saleItemFactoryKey(row)
       ;(this.dataForm.sourceAllocationList || []).forEach(source => {

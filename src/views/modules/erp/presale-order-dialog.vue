@@ -511,7 +511,11 @@
                     </el-col>
                     <el-col :span="8">
                       <el-form-item label="保质期天数" prop="shelfLifeDays">
-                        <el-input v-model.number="dataForm.packingInfo.shelfLifeDays" :disabled="readonly"></el-input>
+                        <el-input
+                          v-model.number="dataForm.packingInfo.shelfLifeDays"
+                          :disabled="readonly"
+                          @change="handlePackingShelfLifeDaysChange">
+                        </el-input>
                       </el-form-item>
                     </el-col>
                     <el-col :span="12">
@@ -565,6 +569,7 @@
                             format="yyyy-MM-dd"
                             value-format="yyyy-MM-dd 00:00:00"
                             :disabled="readonly"
+                            @change="value => handlePackingProductionDateChange(scope.row, batchScope.row, value)"
                             style="width: 100%;">
                           </el-date-picker>
                         </template>
@@ -1849,6 +1854,36 @@ export default {
     handlePackingBatchChange (row) {
       this.sortPackingBatchList(row)
       this.recalculatePackingItemFromBatches(row)
+    },
+    handlePackingShelfLifeDaysChange (value) {
+      const shelfLifeDays = this.toNumber(value)
+      ;(this.dataForm.packingInfo.itemList || []).forEach(item => {
+        this.$set(item, 'shelfLifeDays', shelfLifeDays)
+        ;(item.batchList || []).forEach(batch => {
+          this.recalculatePackingBatchExpiry(batch, shelfLifeDays)
+        })
+        this.sortPackingBatchList(item)
+      })
+    },
+    handlePackingProductionDateChange (item, batch, value) {
+      this.$set(batch, 'productionDate', value || '')
+      const shelfLifeDays = this.toNumber(
+        item.shelfLifeDays || this.dataForm.packingInfo.shelfLifeDays
+      )
+      this.recalculatePackingBatchExpiry(batch, shelfLifeDays)
+      this.handlePackingBatchChange(item)
+    },
+    recalculatePackingBatchExpiry (batch, shelfLifeDays) {
+      const productionDate = String(batch.productionDate || '').slice(0, 10)
+      const matched = productionDate.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+      const days = Number(shelfLifeDays || 0)
+      if (!matched || !Number.isFinite(days) || days <= 0) return
+      const date = new Date(Number(matched[1]), Number(matched[2]) - 1, Number(matched[3]))
+      date.setDate(date.getDate() + Math.max(Math.trunc(days) - 1, 0))
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      this.$set(batch, 'expiryDate', `${year}-${month}-${day} 00:00:00`)
     },
     addPackingItemRow () {
       const itemList = this.dataForm.packingInfo.itemList || (this.dataForm.packingInfo.itemList = [])
