@@ -9,7 +9,7 @@
 
     <el-form :inline="true" :model="queryForm" size="small" class="query-form">
       <el-form-item>
-        <el-input v-model="queryForm.keyword" placeholder="产品编码/中文名/英文名" clearable @keyup.enter.native="getDataList"></el-input>
+        <el-input v-model="queryForm.keyword" placeholder="产品编码/中文名/英文名" clearable @keyup.enter.native="queryDataList"></el-input>
       </el-form-item>
       <el-form-item>
         <el-select v-model="queryForm.warehouseId" filterable clearable placeholder="请选择仓库" style="width: 190px;" @change="warehouseChange">
@@ -33,13 +33,13 @@
         </el-select>
       </el-form-item>
       <el-form-item>
-        <el-input v-model="queryForm.factoryNo" placeholder="厂号" clearable @keyup.enter.native="getDataList"></el-input>
+        <el-input v-model="queryForm.factoryNo" placeholder="厂号" clearable @keyup.enter.native="queryDataList"></el-input>
       </el-form-item>
       <el-form-item>
         <el-checkbox v-model="queryForm.onlyAvailable" true-label="1" false-label="0">只看可售库存</el-checkbox>
       </el-form-item>
       <el-form-item>
-        <el-button type="primary" @click="getDataList">查询</el-button>
+        <el-button type="primary" @click="queryDataList">查询</el-button>
         <el-button @click="resetQuery">重置</el-button>
         <el-button type="success" :loading="exportLoading" @click="exportSuggestionTemplate">导出建议销售价模板</el-button>
         <el-upload
@@ -54,7 +54,7 @@
     </el-form>
 
     <el-table :data="dataList" border stripe v-loading="dataListLoading" height="640">
-      <el-table-column type="index" label="序号" width="60" align="center" header-align="center"></el-table-column>
+      <el-table-column type="index" :index="dataRowIndex" label="序号" width="60" align="center" header-align="center"></el-table-column>
       <el-table-column prop="productCode" label="产品编码" min-width="110" align="center" header-align="center"></el-table-column>
       <el-table-column prop="contractNo" label="确认函合同号" min-width="150" show-overflow-tooltip></el-table-column>
       <el-table-column prop="productName" label="中文名称" min-width="170" show-overflow-tooltip></el-table-column>
@@ -93,6 +93,16 @@
         </template>
       </el-table-column>
     </el-table>
+    <el-pagination
+      class="inventory-cost-pagination"
+      :current-page="pageIndex"
+      :page-size="pageSize"
+      :page-sizes="[20, 50, 100]"
+      :total="totalPage"
+      layout="total, sizes, prev, pager, next, jumper"
+      @size-change="pageSizeChangeHandle"
+      @current-change="currentPageChangeHandle">
+    </el-pagination>
 
     <el-dialog
       title="成本费用明细"
@@ -176,6 +186,9 @@
         },
         dataList: [],
         dataListLoading: false,
+        pageIndex: 1,
+        pageSize: 20,
+        totalPage: 0,
         exportLoading: false,
         importLoading: false,
         detailDialogVisible: false,
@@ -200,10 +213,16 @@
       this.getDataList()
     },
     methods: {
+      queryDataList () {
+        this.pageIndex = 1
+        this.getDataList()
+      },
       getDataList () {
         this.dataListLoading = true
         const params = Object.assign({}, this.queryForm, {
-          containerNos: (this.queryForm.containerNos || []).join(',')
+          containerNos: (this.queryForm.containerNos || []).join(','),
+          page: this.pageIndex,
+          limit: this.pageSize
         })
         this.$http({
           url: this.$http.adornUrl('/erp/inventory-cost/spot'),
@@ -211,14 +230,31 @@
           params: this.$http.adornParams(params)
         }).then(({data}) => {
           if (data && data.code === 0) {
-            this.dataList = data.list || []
+            const page = data.page || {}
+            this.dataList = page.list || []
+            this.totalPage = Number(page.totalCount || 0)
+            this.pageIndex = Number(page.currPage || this.pageIndex)
+            this.pageSize = Number(page.pageSize || this.pageSize)
           } else {
             this.dataList = []
+            this.totalPage = 0
             this.$message.error((data && data.msg) || '获取库存成本失败')
           }
         }).finally(() => {
           this.dataListLoading = false
         })
+      },
+      pageSizeChangeHandle (value) {
+        this.pageSize = value
+        this.pageIndex = 1
+        this.getDataList()
+      },
+      currentPageChangeHandle (value) {
+        this.pageIndex = value
+        this.getDataList()
+      },
+      dataRowIndex (index) {
+        return (this.pageIndex - 1) * this.pageSize + index + 1
       },
       openDetailDialog (row) {
         this.currentRow = row
@@ -264,6 +300,7 @@
           factoryNo: '',
           onlyAvailable: '1'
         }
+        this.pageIndex = 1
         this.containerOptions = []
         this.getDataList()
       },
@@ -398,6 +435,11 @@
     display: inline-block;
     margin-left: 10px;
     vertical-align: middle;
+  }
+
+  .inventory-cost-pagination {
+    margin-top: 14px;
+    text-align: right;
   }
 
   .cost-price {
