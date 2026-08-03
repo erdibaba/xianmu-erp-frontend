@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>鲜牧 ERP · BI 数据驾驶舱原型</title>
+  <link rel="stylesheet" href="./prototype.css">
+</head>
+<body>
+  <div class="prototype-banner">交互原型 · 演示数据 · 不连接业务数据库</div>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark"><span>鲜</span></div>
+        <div class="brand-copy">
+          <strong>鲜牧 ERP</strong>
+          <small>DATA INTELLIGENCE</small>
+        </div>
+      </div>
+
+      <nav class="side-nav" aria-label="BI模块导航">
+        <button class="nav-item active" data-view="overview">
+          <span class="nav-icon">⌂</span><span>经营驾驶舱</span>
+        </button>
+        <button class="nav-item" data-view="inventory">
+          <span class="nav-icon">▦</span><span>进销存分析</span>
+        </button>
+        <button class="nav-item" data-view="finance">
+          <span class="nav-icon">¥</span><span>融资与财务</span>
+        </button>
+        <button class="nav-item" data-view="builder">
+          <span class="nav-icon">＋</span><span>自助报表设计</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-section">
+        <p>我的模板</p>
+        <button class="template-link" data-template="产品进销存月报"><i class="dot blue"></i>产品进销存月报</button>
+        <button class="template-link" data-template="资方贷款追踪"><i class="dot gold"></i>资方贷款追踪</button>
+        <button class="template-link" data-template="合同成本日报"><i class="dot green"></i>合同成本日报</button>
+      </div>
+
+      <div class="sidebar-foot">
+        <div class="avatar">管</div>
+        <div><strong>管理员</strong><small>数据权限：全部主体</small></div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">BI ANALYTICS</p>
+          <h1 id="pageTitle">经营驾驶舱</h1>
+        </div>
+        <div class="top-actions">
+          <button class="icon-button" id="refreshButton" title="刷新演示数据">↻</button>
+          <button class="primary-button" id="openBuilder">＋ 新建分析</button>
+        </div>
+      </header>
+
+      <section class="filter-bar" id="globalFilters">
+        <label>统计期间
+          <select id="periodFilter">
+            <option>近30天</option><option>本季度</option><option>本年度</option><option>自定义</option>
+          </select>
+        </label>
+        <label>业务主体
+          <select><option>全部主体</option><option>天津鲜牧</option><option>程远贸易</option><option>天津鲜食</option></select>
+        </label>
+        <label>仓库
+          <select><option>全部仓库</option><option>厦门万翔</option><option>上海万纬</option><option>天津中联兴</option></select>
+        </label>
+        <label>产品
+          <select><option>全部产品</option><option>27944 · 金钱腱</option><option>24314 · 去骨牛板腱</option><option>59254 · 羔羊前四</option></select>
+        </label>
+        <button class="filter-button" id="applyFilters">应用筛选</button>
+      </section>
+
+      <section class="view active" id="view-overview">
+        <div class="section-heading">
+          <div><h2>经营概览</h2><p>从采购、库存、销售到资金占用的一体化观察</p></div>
+          <span class="update-time">数据更新于 10:30</span>
+        </div>
+
+        <div class="kpi-grid">
+          <article class="kpi-card blue-card">
+            <div class="kpi-top"><span>采购入库重量</span><i>入</i></div>
+            <strong data-value="1286.4">1,286.4 <small>吨</small></strong>
+            <p><b>↑ 12.6%</b> 较上期</p>
+            <div class="sparkline" data-points="18,28,23,36,39,52,61"></div>
+          </article>
+          <article class="kpi-card green-card">
+            <div class="kpi-top"><span>累计销售重量</span><i>销</i></div>
+            <strong data-value="873.8">873.8 <small>吨</small></strong>
+            <p><b>↑ 8.4%</b> 较上期</p>
+            <div class="sparkline" data-points="14,22,30,27,41,49,56"></div>
+          </article>
+          <article class="kpi-card gold-card">
+            <div class="kpi-top"><span>当前可售库存</span><i>库</i></div>
+            <strong data-value="412.6">412.6 <small>吨</small></strong>
+            <p><b>4,286</b> 箱 · 38个合同</p>
+            <div class="sparkline" data-points="62,57,59,48,45,39,34"></div>
+          </article>
+          <article class="kpi-card ink-card">
+            <div class="kpi-top"><span>资方贷款余额</span><i>贷</i></div>
+            <strong data-value="2864">2,864 <small>万元</small></strong>
+            <p><b>68.7%</b> 资金使用率</p>
+            <div class="progress"><span style="width:68.7%"></span></div>
+          </article>
+        </div>
+
+        <div class="dashboard-grid two-one">
+          <article class="panel product-flow-panel">
+            <header class="panel-header">
+              <div><h3>产品进销存趋势</h3><p>重量口径 · 吨</p></div>
+              <div class="segmented chart-switch" data-target="flowChart">
+                <button class="active" data-chart="bar">柱状</button><button data-chart="line">折线</button>
+              </div>
+            </header>
+            <div class="legend"><span><i class="legend-dot purchase"></i>采购入库</span><span><i class="legend-dot sale"></i>销售出库</span><span><i class="legend-dot stock"></i>期末库存</span></div>
+            <div class="chart-box" id="flowChart" aria-label="产品进销存趋势图"></div>
+          </article>
+
+          <article class="panel stock-structure-panel">
+            <header class="panel-header"><div><h3>库存结构</h3><p>按货权分布</p></div><button class="text-button" data-action="detail">查看明细</button></header>
+            <div class="donut-wrap">
+              <div class="donut-chart" id="ownershipDonut"><div><strong>4,286</strong><span>可售箱数</span></div></div>
+              <div class="donut-legend">
+                <button><i style="background:#1e6bd6"></i><span>鲜牧货权</span><b>42%</b></button>
+                <button><i style="background:#0ea57a"></i><span>厦门万翔</span><b>33%</b></button>
+                <button><i style="background:#f0a43c"></i><span>其他资方</span><b>25%</b></button>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <div class="dashboard-grid equal">
+          <article class="panel">
+            <header class="panel-header"><div><h3>重点产品经营表现</h3><p>按销售重量排序</p></div><button class="text-button" data-action="export">导出</button></header>
+            <div class="rank-table">
+              <div class="rank-head"><span>产品</span><span>采购</span><span>销售</span><span>库存</span></div>
+              <button class="rank-row"><b>01</b><span><strong>27944 金钱腱</strong><small>B231510/1 等3个合同</small></span><em>126.4t</em><em>92.8t</em><em>33.6t</em></button>
+              <button class="rank-row"><b>02</b><span><strong>24314 去骨牛板腱</strong><small>B227327/1 等2个合同</small></span><em>98.7t</em><em>71.2t</em><em>27.5t</em></button>
+              <button class="rank-row"><b>03</b><span><strong>59254 羔羊前四</strong><small>L81300/6 等4个合同</small></span><em>86.2t</em><em>64.9t</em><em>21.3t</em></button>
+            </div>
+          </article>
+
+          <article class="panel">
+            <header class="panel-header"><div><h3>资金占用与回款</h3><p>单位：万元</p></div><span class="status-chip">实时</span></header>
+            <div class="waterfall" id="fundWaterfall"></div>
+            <div class="mini-summary"><span>累计融资 <b>4,168万</b></span><span>累计归还 <b>1,304万</b></span><span>累计利息 <b>86.7万</b></span></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="view" id="view-inventory">
+        <div class="section-heading">
+          <div><h2>进销存分析</h2><p>按产品、合同、仓库、货权和时间自由下钻</p></div>
+          <button class="outline-button" data-action="export">导出当前视图</button>
+        </div>
+        <div class="analysis-toolbar">
+          <div><span>当前分析维度</span><button class="dimension-chip active">产品</button><button class="dimension-chip">确认函合同</button><button class="dimension-chip">仓库</button><button class="dimension-chip">货权</button></div>
+          <div class="segmented chart-switch" data-target="inventoryMainChart"><button class="active" data-chart="bar">柱状</button><button data-chart="line">折线</button><button data-chart="pie">环形</button><button data-chart="table">表格</button></div>
+        </div>
+        <article class="panel large-panel">
+          <header class="panel-header"><div><h3>各产品采购、销售与库存对比</h3><p>点击图形可查看合同与批次明细</p></div><span class="status-chip neutral">12个产品</span></header>
+          <div class="chart-box tall" id="inventoryMainChart"></div>
+        </article>
+        <div class="dashboard-grid equal">
+          <article class="panel"><header class="panel-header"><div><h3>库存库龄分布</h3><p>按剩余重量</p></div></header><div class="age-bars" id="ageBars"></div></article>
+          <article class="panel"><header class="panel-header"><div><h3>库存预警</h3><p>保质期与资金账期</p></div><button class="text-button" data-action="detail">全部预警</button></header>
+            <div class="alert-list">
+              <button><i class="alert-dot danger"></i><span><strong>保质期不足15天</strong><small>27944 金钱腱 · 3个批次</small></span><b>126箱</b></button>
+              <button><i class="alert-dot warn"></i><span><strong>资方账期即将到期</strong><small>厦门万翔 · B231510/1</small></span><b>12天</b></button>
+              <button><i class="alert-dot info"></i><span><strong>安全库存不足</strong><small>24314 去骨牛板腱</small></span><b>18箱</b></button>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="view" id="view-finance">
+        <div class="section-heading"><div><h2>融资与财务分析</h2><p>看清楚贷了多少、还了多少、还剩多少以及资金成本</p></div><button class="outline-button" data-action="export">导出财务简报</button></div>
+        <div class="kpi-grid finance-kpis">
+          <article class="mini-kpi"><span>累计贷款</span><strong>4,168.00万</strong><small>涉及 26 个确认函合同</small></article>
+          <article class="mini-kpi"><span>累计归还本金</span><strong>1,304.20万</strong><small class="positive">还款进度 31.3%</small></article>
+          <article class="mini-kpi"><span>贷款余额</span><strong>2,863.80万</strong><small>其中14笔即将到期</small></article>
+          <article class="mini-kpi"><span>累计利息</span><strong>86.72万</strong><small>综合资金成本 6.83%</small></article>
+        </div>
+        <div class="dashboard-grid two-one finance-grid">
+          <article class="panel"><header class="panel-header"><div><h3>贷款、还款与余额趋势</h3><p>按月 · 万元</p></div><div class="segmented chart-switch" data-target="loanChart"><button class="active" data-chart="bar">组合</button><button data-chart="line">趋势</button></div></header><div class="chart-box" id="loanChart"></div></article>
+          <article class="panel"><header class="panel-header"><div><h3>贷款余额构成</h3><p>按资方</p></div></header><div class="donut-wrap compact"><div class="donut-chart finance-donut"><div><strong>2,864</strong><span>万元</span></div></div><div class="donut-legend"><button><i style="background:#1e6bd6"></i><span>厦门万翔</span><b>54%</b></button><button><i style="background:#0ea57a"></i><span>上海万呈</span><b>28%</b></button><button><i style="background:#f0a43c"></i><span>光明食品</span><b>18%</b></button></div></div></article>
+        </div>
+        <article class="panel">
+          <header class="panel-header"><div><h3>资方经营明细</h3><p>点击资方查看贷款合同和还款批次</p></div><button class="text-button" data-action="detail">查看全部</button></header>
+          <div class="finance-table">
+            <div class="finance-head"><span>资方</span><span>贷款金额</span><span>已还本金</span><span>余额</span><span>累计利息</span><span>近期到期</span><span>状态</span></div>
+            <button><span><b class="funder-icon blue">万</b>厦门万翔</span><strong>2,251.00万</strong><span>704.80万</span><span>1,546.20万</span><span>48.62万</span><span>8笔</span><em class="warn-text">需关注</em></button>
+            <button><span><b class="funder-icon green">呈</b>上海万呈</span><strong>1,167.00万</strong><span>366.40万</span><span>800.60万</span><span>26.35万</span><span>4笔</span><em class="normal-text">正常</em></button>
+            <button><span><b class="funder-icon gold">光</b>光明食品</span><strong>750.00万</strong><span>233.00万</span><span>517.00万</span><span>11.75万</span><span>2笔</span><em class="normal-text">正常</em></button>
+          </div>
+        </article>
+      </section>
+
+      <section class="view" id="view-builder">
+        <div class="builder-page-head"><div><p class="eyebrow">SELF-SERVICE ANALYTICS</p><h2>自助报表设计器</h2><p>从业务数据集中选择字段，组合成你需要的图表和报表模板。</p></div><button class="primary-button" id="newBlankReport">＋ 新建空白报表</button></div>
+        <div class="template-gallery">
+          <button class="template-card featured" data-start-template="inventory"><i>推荐</i><div class="template-visual bars"><span></span><span></span><span></span><span></span></div><strong>产品进销存分析</strong><p>采购、销售、库存三项指标对比</p><small>9个字段 · 柱状图</small></button>
+          <button class="template-card" data-start-template="finance"><div class="template-visual ring"></div><strong>融资还款分析</strong><p>贷款、还本、利息和余额趋势</p><small>7个字段 · 组合图</small></button>
+          <button class="template-card" data-start-template="cost"><div class="template-visual lines"><span></span><span></span><span></span></div><strong>合同成本趋势</strong><p>采购价、分摊费用和动态成本</p><small>8个字段 · 折线图</small></button>
+          <button class="template-card blank" id="blankTemplate"><b>＋</b><strong>从空白开始</strong><p>自由选择数据集与字段</p></button>
+        </div>
+        <div class="saved-reports">
+          <div class="section-heading compact-heading"><div><h2>已保存模板</h2><p>团队可复用、可再次编辑</p></div><div class="segmented"><button class="active">全部</button><button>我创建的</button></div></div>
+          <div class="report-list" id="savedReportList">
+            <button data-template="产品进销存月报"><span class="report-icon blue-bg">▥</span><span><strong>产品进销存月报</strong><small>产品 × 月份 · 采购/销售/库存重量</small></span><em>柱状图</em><time>今天 09:20</time><b>···</b></button>
+            <button data-template="资方贷款追踪"><span class="report-icon green-bg">¥</span><span><strong>资方贷款追踪</strong><small>资方 × 月份 · 贷款/还款/利息</small></span><em>组合图</em><time>昨天 17:42</time><b>···</b></button>
+            <button data-template="合同成本日报"><span class="report-icon gold-bg">⌁</span><span><strong>合同成本日报</strong><small>确认函合同 × 日期 · 动态成本</small></span><em>折线图</em><time>08-01 14:15</time><b>···</b></button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="builderModal" aria-hidden="true">
+    <div class="builder-modal">
+      <header><div><p class="eyebrow">REPORT BUILDER</p><h2>新建自助分析</h2></div><button class="close-button" id="closeBuilder">×</button></header>
+      <div class="builder-body">
+        <aside class="field-panel">
+          <label class="builder-label">数据集</label>
+          <select id="datasetSelect"><option value="inventory">进销存明细</option><option value="finance">融资还款明细</option><option value="cost">合同成本日报</option><option value="sales">销售与客户</option></select>
+          <div class="field-search"><span>⌕</span><input id="fieldSearch" placeholder="搜索字段"></div>
+          <p class="field-group-title">可用字段</p>
+          <div class="field-list" id="fieldList"></div>
+        </aside>
+        <section class="canvas-panel">
+          <div class="canvas-toolbar">
+            <input id="reportName" value="未命名分析" aria-label="报表名称">
+            <div class="chart-picker" id="chartPicker">
+              <button class="active" data-chart="bar" title="柱状图">▥</button>
+              <button data-chart="line" title="折线图">⌁</button>
+              <button data-chart="pie" title="环形图">◉</button>
+              <button data-chart="table" title="数据表">▦</button>
+              <button data-chart="kpi" title="指标卡">123</button>
+            </div>
+          </div>
+          <div class="drop-zones">
+            <div><span>维度</span><div class="drop-zone" id="dimensionZone"></div></div>
+            <div><span>指标</span><div class="drop-zone" id="metricZone"></div></div>
+          </div>
+          <div class="preview-card">
+            <header><div><h3 id="previewTitle">未命名分析</h3><p id="previewSubtitle">请选择维度和指标</p></div><span class="status-chip neutral">预览</span></header>
+            <div id="builderPreview" class="builder-preview"></div>
+          </div>
+        </section>
+        <aside class="style-panel">
+          <h3>图表设置</h3>
+          <label>数据标签 <input type="checkbox" id="showLabel" checked><span class="toggle"></span></label>
+          <label>显示图例 <input type="checkbox" id="showLegend" checked><span class="toggle"></span></label>
+          <label>按值排序 <input type="checkbox" id="sortValue"><span class="toggle"></span></label>
+          <div class="style-block"><span>主题色</span><div class="color-options"><button class="active" style="--color:#1e6bd6"></button><button style="--color:#0ea57a"></button><button style="--color:#f0a43c"></button><button style="--color:#26344c"></button></div></div>
+          <div class="style-block"><span>数值单位</span><select><option>自动</option><option>吨</option><option>箱</option><option>万元</option><option>元</option></select></div>
+          <div class="insight-card"><b>智能提示</b><p>当前选择适合使用分组柱状图，可直观看出各产品的采购、销售和库存差异。</p></div>
+        </aside>
+      </div>
+      <footer><button class="outline-button" id="cancelBuilder">取消</button><button class="outline-button" id="previewFull">全屏预览</button><button class="primary-button" id="saveTemplate">保存为模板</button></footer>
+    </div>
+  </div>
+
+  <div class="detail-drawer" id="detailDrawer" aria-hidden="true">
+    <header><div><p class="eyebrow">DRILL DOWN</p><h2>数据明细</h2></div><button class="close-button" id="closeDrawer">×</button></header>
+    <div class="drawer-kpis"><div><span>当前指标</span><strong>412.6吨</strong></div><div><span>涉及合同</span><strong>38个</strong></div></div>
+    <div class="drawer-list"><button><span>B231510/1</span><b>27944 金钱腱</b><em>33.6吨</em></button><button><span>B227327/1</span><b>24314 去骨牛板腱</b><em>27.5吨</em></button><button><span>L81300/6</span><b>59254 羔羊前四</b><em>21.3吨</em></button></div>
+  </div>
+  <div class="toast" id="toast"><span>✓</span><p></p></div>
+  <script src="./prototype.js"></script>
+</body>
+</html>
