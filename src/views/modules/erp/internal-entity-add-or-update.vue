@@ -55,9 +55,24 @@
 <script>
 function defaultForm () {
   return {
-    id: 0, entityCode: '', entityName: '', shortName: '', partnerId: '', defaultFlag: 0,
-    contractTemplatePath: '', stampFilePath: '', bankAccountName: '', bankName: '', bankAccount: '',
-    taxNo: '', invoiceTitle: '', address: '', contactName: '', contactPhone: '', remark: '', status: 1
+    id: 0,
+    entityCode: '',
+    entityName: '',
+    shortName: '',
+    partnerId: '',
+    defaultFlag: 0,
+    contractTemplatePath: '',
+    stampFilePath: '',
+    bankAccountName: '',
+    bankName: '',
+    bankAccount: '',
+    taxNo: '',
+    invoiceTitle: '',
+    address: '',
+    contactName: '',
+    contactPhone: '',
+    remark: '',
+    status: 1
   }
 }
 
