@@ -126,7 +126,8 @@
                 v-model="paymentForm.paymentDate"
                 type="date"
                 value-format="yyyy-MM-dd"
-                placeholder="请选择打款日期"
+                placeholder="由凭证明细汇总"
+                disabled
                 style="width: 100%">
               </el-date-picker>
             </el-form-item>
@@ -138,6 +139,7 @@
                 :min="0"
                 :precision="2"
                 :controls="false"
+                disabled
                 style="width: 100%"
                 @change="recalculateLastAllocation">
               </el-input-number>
@@ -145,10 +147,16 @@
           </el-col>
           <el-col v-if="isFunderPayment" :span="24">
             <el-form-item label="打款凭证" prop="filePath">
-              <el-upload action="#" :show-file-list="false" :http-request="recognizePaymentVoucher" accept=".jpg,.jpeg,.png,.jfif,.bmp,.pdf">
-                <el-button type="primary" plain :loading="recognizeLoading">上传并识别凭证</el-button>
+              <el-upload action="#" multiple :show-file-list="false" :http-request="recognizePaymentVoucher" accept=".jpg,.jpeg,.png,.jfif,.bmp,.pdf">
+                <el-button type="primary" plain :loading="recognizeLoading">上传多张并识别</el-button>
               </el-upload>
-              <span class="file-name">{{ paymentForm.fileName || '尚未上传' }}</span>
+              <span class="file-name">已上传 {{ (paymentForm.voucherList || []).length }} 张，确认金额合计 {{ money(voucherTotal(paymentForm, 'voucherList')) }}</span>
+              <el-button
+                v-if="(paymentForm.voucherList || []).length"
+                type="text"
+                @click="openVoucherManager(paymentForm, 'voucherList', '', '资方全款打款凭证核对')">
+                核对凭证
+              </el-button>
               <div class="bank-voucher-tip">{{ bankVoucherSupportTip }}</div>
             </el-form-item>
           </el-col>
@@ -265,6 +273,7 @@
                   action="#"
                   :show-file-list="false"
                   :http-request="request => recognizeXianmuContribution(request, scope.$index)"
+                  multiple
                   accept=".jpg,.jpeg,.png,.jfif,.bmp,.pdf">
                   <el-button
                     type="primary"
@@ -274,37 +283,27 @@
                     上传并识别
                   </el-button>
                 </el-upload>
-                <div class="row-file-name">{{ scope.row.xianmuContributionFileName || '未上传' }}</div>
+                <div class="row-file-name">已上传 {{ (scope.row.contributionVoucherList || []).length }} 张</div>
+                <el-button
+                  v-if="(scope.row.contributionVoucherList || []).length"
+                  type="text"
+                  size="mini"
+                  @click="openVoucherManager(scope.row, 'contributionVoucherList', 'xianmuContribution', '内部主体出资款凭证核对')">
+                  核对凭证
+                </el-button>
                 <div class="row-support-tip">支持浦发/建行/工行/兴业/农发行样本</div>
               </template>
               <span v-else class="row-support-tip">内部主体不出资，无需上传</span>
             </template>
           </el-table-column>
-          <el-table-column v-if="isFunderPayment" label="出资识别金额" width="150" align="right">
-            <template slot-scope="scope">{{ hasXianmuContribution(scope.row) ? money(scope.row.xianmuContributionRecognizedAmount) : '-' }}</template>
-          </el-table-column>
           <el-table-column v-if="isFunderPayment" label="出资确认金额" width="160">
             <template slot-scope="scope">
-              <el-input-number
-                v-model="scope.row.xianmuContributionModifiedAmount"
-                :min="0"
-                :precision="2"
-                :controls="false"
-                :disabled="!hasXianmuContribution(scope.row)"
-                style="width: 135px">
-              </el-input-number>
+              {{ hasXianmuContribution(scope.row) ? money(scope.row.xianmuContributionModifiedAmount) : '-' }}
             </template>
           </el-table-column>
           <el-table-column v-if="isFunderPayment" label="出资日期" width="180">
             <template slot-scope="scope">
-              <el-date-picker
-                v-model="scope.row.xianmuContributionDate"
-                type="date"
-                value-format="yyyy-MM-dd"
-                placeholder="选择日期"
-                :disabled="!hasXianmuContribution(scope.row)"
-                style="width: 155px">
-              </el-date-picker>
+              {{ hasXianmuContribution(scope.row) ? (scope.row.xianmuContributionDate || '-') : '-' }}
             </template>
           </el-table-column>
           <el-table-column v-if="isFunderPayment" label="贷款本金" width="130" align="right">
@@ -426,17 +425,18 @@
                 <el-card shadow="never">
                   <div slot="header"><strong>定金凭证</strong></div>
                   <el-form-item label="定金凭证">
-                    <el-upload action="#" :show-file-list="false" :http-request="request => recognizeXianmuInstallment(request, 0, 'deposit')" accept=".jpg,.jpeg,.png,.jfif,.bmp,.pdf">
-                      <el-button type="primary" plain :loading="xianmuInstallmentLoadingKey === installmentLoadingKey(0, 'deposit')">上传并识别定金</el-button>
+                    <el-upload action="#" multiple :show-file-list="false" :http-request="request => recognizeXianmuInstallment(request, 0, 'deposit')" accept=".jpg,.jpeg,.png,.jfif,.bmp,.pdf">
+                      <el-button type="primary" plain :loading="xianmuInstallmentLoadingKey === installmentLoadingKey(0, 'deposit')">上传多张并识别定金</el-button>
                     </el-upload>
-                    <span class="file-name">{{ xianmuAllocation.xianmuDepositFileName || '未上传' }}</span>
+                    <span class="file-name">已上传 {{ (xianmuAllocation.depositVoucherList || []).length }} 张</span>
+                    <el-button v-if="(xianmuAllocation.depositVoucherList || []).length" type="text" @click="openVoucherManager(xianmuAllocation, 'depositVoucherList', 'xianmuDeposit', '内部主体定金凭证核对')">核对凭证</el-button>
                     <div class="bank-voucher-tip">{{ bankVoucherSupportTip }}</div>
                   </el-form-item>
                   <el-form-item label="定金金额">
-                    <el-input-number v-model="xianmuAllocation.xianmuDepositModifiedAmount" :min="0" :precision="2" :controls="false" style="width: 100%"></el-input-number>
+                    <el-input-number v-model="xianmuAllocation.xianmuDepositModifiedAmount" :min="0" :precision="2" :controls="false" disabled style="width: 100%"></el-input-number>
                   </el-form-item>
                   <el-form-item label="定金日期">
-                    <el-date-picker v-model="xianmuAllocation.xianmuDepositDate" type="date" value-format="yyyy-MM-dd" placeholder="选择日期" style="width: 100%"></el-date-picker>
+                    <el-date-picker v-model="xianmuAllocation.xianmuDepositDate" type="date" value-format="yyyy-MM-dd" disabled placeholder="由凭证明细汇总" style="width: 100%"></el-date-picker>
                   </el-form-item>
                 </el-card>
               </el-col>
@@ -444,17 +444,18 @@
                 <el-card shadow="never">
                   <div slot="header"><strong>尾款/全款凭证</strong></div>
                   <el-form-item label="尾款/全款凭证">
-                    <el-upload action="#" :show-file-list="false" :http-request="request => recognizeXianmuInstallment(request, 0, 'balance')" accept=".jpg,.jpeg,.png,.jfif,.bmp,.pdf">
-                      <el-button type="warning" plain :loading="xianmuInstallmentLoadingKey === installmentLoadingKey(0, 'balance')">上传并识别尾款/全款</el-button>
+                    <el-upload action="#" multiple :show-file-list="false" :http-request="request => recognizeXianmuInstallment(request, 0, 'balance')" accept=".jpg,.jpeg,.png,.jfif,.bmp,.pdf">
+                      <el-button type="warning" plain :loading="xianmuInstallmentLoadingKey === installmentLoadingKey(0, 'balance')">上传多张并识别尾款/全款</el-button>
                     </el-upload>
-                    <span class="file-name">{{ xianmuAllocation.xianmuBalanceFileName || '未上传' }}</span>
+                    <span class="file-name">已上传 {{ (xianmuAllocation.balanceVoucherList || []).length }} 张</span>
+                    <el-button v-if="(xianmuAllocation.balanceVoucherList || []).length" type="text" @click="openVoucherManager(xianmuAllocation, 'balanceVoucherList', 'xianmuBalance', '内部主体尾款/全款凭证核对')">核对凭证</el-button>
                     <div class="bank-voucher-tip">{{ bankVoucherSupportTip }}</div>
                   </el-form-item>
                   <el-form-item label="尾款/全款金额">
-                    <el-input-number v-model="xianmuAllocation.xianmuBalanceModifiedAmount" :min="0" :precision="2" :controls="false" style="width: 100%"></el-input-number>
+                    <el-input-number v-model="xianmuAllocation.xianmuBalanceModifiedAmount" :min="0" :precision="2" :controls="false" disabled style="width: 100%"></el-input-number>
                   </el-form-item>
                   <el-form-item label="尾款/全款日期">
-                    <el-date-picker v-model="xianmuAllocation.xianmuBalanceDate" type="date" value-format="yyyy-MM-dd" placeholder="选择日期" style="width: 100%"></el-date-picker>
+                    <el-date-picker v-model="xianmuAllocation.xianmuBalanceDate" type="date" value-format="yyyy-MM-dd" disabled placeholder="由凭证明细汇总" style="width: 100%"></el-date-picker>
                   </el-form-item>
                 </el-card>
               </el-col>
@@ -465,6 +466,65 @@
       <span slot="footer">
         <el-button @click="createVisible = false">取消</el-button>
         <el-button type="primary" :loading="submitLoading" @click="confirmPayment()">{{ confirmButtonText }}</el-button>
+      </span>
+    </el-dialog>
+
+    <el-dialog
+      :title="voucherManageTitle"
+      :visible.sync="voucherManageVisible"
+      width="820px"
+      append-to-body
+      :close-on-click-modal="false"
+      @close="closeVoucherManager">
+      <el-alert
+        v-if="!voucherManageReadonly"
+        title="OCR识别金额已保存但不展示；请逐张核对确认金额和打款日期，汇总金额将参与原业务校验。"
+        type="info"
+        :closable="false"
+        style="margin-bottom: 12px">
+      </el-alert>
+      <el-table :data="voucherManageList" border max-height="420">
+        <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
+        <el-table-column prop="fileName" label="凭证文件" min-width="230" show-overflow-tooltip></el-table-column>
+        <el-table-column label="确认金额" width="180">
+          <template slot-scope="scope">
+            <el-input-number
+              v-if="!voucherManageReadonly"
+              v-model="scope.row.modifiedAmount"
+              :min="0"
+              :precision="2"
+              :controls="false"
+              style="width: 150px">
+            </el-input-number>
+            <span v-else>{{ money(scope.row.modifiedAmount) }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="打款日期" width="180">
+          <template slot-scope="scope">
+            <el-date-picker
+              v-if="!voucherManageReadonly"
+              v-model="scope.row.paymentDate"
+              type="date"
+              value-format="yyyy-MM-dd"
+              placeholder="请选择日期"
+              style="width: 155px">
+            </el-date-picker>
+            <span v-else>{{ scope.row.paymentDate || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="130" align="center">
+          <template slot-scope="scope">
+            <template v-if="voucherManageReadonly && scope.row.id">
+              <el-button type="text" size="small" @click="downloadVoucherDetail(scope.row, true)">预览</el-button>
+              <el-button type="text" size="small" @click="downloadVoucherDetail(scope.row, false)">下载</el-button>
+            </template>
+            <el-button v-else type="text" size="small" class="danger-text" @click="removeManagedVoucher(scope.$index)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <div class="voucher-total">确认金额合计：<strong>{{ money(voucherManageList.reduce((sum, item) => sum + Number(item.modifiedAmount || 0), 0)) }}</strong></div>
+      <span slot="footer">
+        <el-button type="primary" @click="closeVoucherManager">{{ voucherManageReadonly ? '关闭' : '完成核对' }}</el-button>
       </span>
     </el-dialog>
 
@@ -483,8 +543,13 @@
         <el-descriptions-item label="确认金额">{{ money(detailData.modifiedAmount) }}</el-descriptions-item>
         <el-descriptions-item label="状态">{{ paymentStatusName(detailData.status) }}</el-descriptions-item>
         <el-descriptions-item label="归档原件">
-          <el-button type="text" @click="previewVoucher(detailData.id)">预览凭证</el-button>
-          <el-button type="text" @click="downloadVoucher(detailData.id, detailData.fileName)">下载凭证</el-button>
+          <el-button
+            v-if="(detailData.voucherList || []).length"
+            type="text"
+            @click="openVoucherManager(detailData, 'voucherList', '', '资方全款打款凭证', true)">
+            查看凭证（{{ detailData.voucherList.length }}张）
+          </el-button>
+          <span v-else>-</span>
         </el-descriptions-item>
         <el-descriptions-item v-if="detailData.paymentType === 1" label="合同归档">
           <template v-if="detailData.contractFileName">
@@ -527,9 +592,6 @@
         <el-table-column v-if="detailData.paymentType === 1" prop="contributionEntityName" label="内部出资主体" width="180" show-overflow-tooltip>
           <template slot-scope="scope">{{ hasXianmuContribution(scope.row) ? (scope.row.contributionEntityName || '-') : '-' }}</template>
         </el-table-column>
-        <el-table-column v-if="detailData.paymentType === 1" label="出资识别金额" width="150" align="right">
-          <template slot-scope="scope">{{ money(scope.row.xianmuContributionRecognizedAmount) }}</template>
-        </el-table-column>
         <el-table-column v-if="detailData.paymentType === 1" label="内部主体出资款" width="150" align="right">
           <template slot-scope="scope">{{ money(scope.row.xianmuContributionModifiedAmount) }}</template>
         </el-table-column>
@@ -542,18 +604,11 @@
         <el-table-column v-if="detailData.paymentType === 1" label="出资凭证" width="120" align="center">
           <template slot-scope="scope">
             <el-button
-              v-if="scope.row.xianmuContributionFileName"
+              v-if="(scope.row.contributionVoucherList || []).length"
               type="text"
               size="small"
-              @click="previewContributionVoucher(scope.row.id)">
-              预览
-            </el-button>
-            <el-button
-              v-if="scope.row.xianmuContributionFileName"
-              type="text"
-              size="small"
-              @click="downloadContributionVoucher(scope.row.id, scope.row.xianmuContributionFileName)">
-              下载
+              @click="openVoucherManager(scope.row, 'contributionVoucherList', 'xianmuContribution', '内部主体出资款凭证', true)">
+              查看（{{ scope.row.contributionVoucherList.length }}）
             </el-button>
             <span v-else>-</span>
           </template>
@@ -567,18 +622,11 @@
         <el-table-column v-if="detailData.paymentType === 2" label="定金凭证" width="120" align="center">
           <template slot-scope="scope">
             <el-button
-              v-if="scope.row.xianmuDepositFileName"
+              v-if="(scope.row.depositVoucherList || []).length"
               type="text"
               size="small"
-              @click="previewInstallmentVoucher(scope.row.id, 'deposit')">
-              预览
-            </el-button>
-            <el-button
-              v-if="scope.row.xianmuDepositFileName"
-              type="text"
-              size="small"
-              @click="downloadInstallmentVoucher(scope.row.id, 'deposit', scope.row.xianmuDepositFileName)">
-              下载
+              @click="openVoucherManager(scope.row, 'depositVoucherList', 'xianmuDeposit', '内部主体定金凭证', true)">
+              查看（{{ scope.row.depositVoucherList.length }}）
             </el-button>
             <span v-else>-</span>
           </template>
@@ -592,18 +640,11 @@
         <el-table-column v-if="detailData.paymentType === 2" label="尾款凭证" width="120" align="center">
           <template slot-scope="scope">
             <el-button
-              v-if="scope.row.xianmuBalanceFileName"
+              v-if="(scope.row.balanceVoucherList || []).length"
               type="text"
               size="small"
-              @click="previewInstallmentVoucher(scope.row.id, 'balance')">
-              预览
-            </el-button>
-            <el-button
-              v-if="scope.row.xianmuBalanceFileName"
-              type="text"
-              size="small"
-              @click="downloadInstallmentVoucher(scope.row.id, 'balance', scope.row.xianmuBalanceFileName)">
-              下载
+              @click="openVoucherManager(scope.row, 'balanceVoucherList', 'xianmuBalance', '内部主体尾款/全款凭证', true)">
+              查看（{{ scope.row.balanceVoucherList.length }}）
             </el-button>
             <span v-else>-</span>
           </template>
@@ -636,6 +677,7 @@ const emptyPayment = (paymentType = PAYMENT_TYPE_FUNDER) => ({
   contractFileName: '',
   rawText: '',
   recognizedReceipt: {},
+  voucherList: [],
   selectedConfirmId: null,
   selectedConfirmIds: [],
   allocationList: []
@@ -653,6 +695,10 @@ export default {
       createVisible: false,
       detailVisible: false,
       detailData: {},
+      voucherManageVisible: false,
+      voucherManageTitle: '',
+      voucherManageTarget: null,
+      voucherManageReadonly: false,
       paymentForm: emptyPayment(),
       bankVoucherSupportTip: '支持浦发银行、建设银行、工商银行、兴业银行、农发行电子回单样本，支持 PDF / JPG / PNG，识别后请核对金额和日期。',
       funderOptions: [],
@@ -709,6 +755,10 @@ export default {
     allocationMessage () {
       if (this.allocationExceeded) return '前面行分摊金额合计已超过修改金额，请核对'
       return this.allocationMatched ? '与修改金额一致' : '分摊合计必须与修改金额完全一致'
+    },
+    voucherManageList () {
+      if (!this.voucherManageTarget) return []
+      return this.voucherManageTarget.owner[this.voucherManageTarget.listKey] || []
     }
   },
   activated () {
@@ -743,6 +793,7 @@ export default {
       this.$set(row, 'xianmuContributionFilePath', '')
       this.$set(row, 'xianmuContributionFileName', '')
       this.$set(row, 'xianmuContributionRawText', '')
+      this.$set(row, 'contributionVoucherList', [])
     },
     paymentTypeName (value) {
       return Number(value || PAYMENT_TYPE_FUNDER) === PAYMENT_TYPE_XIANMU ? '内部主体全款' : '资方全款'
@@ -894,18 +945,21 @@ export default {
           xianmuContributionFilePath: '',
           xianmuContributionFileName: '',
           xianmuContributionRawText: '',
+          contributionVoucherList: [],
           xianmuDepositRecognizedAmount: 0,
           xianmuDepositModifiedAmount: 0,
           xianmuDepositDate: '',
           xianmuDepositFilePath: '',
           xianmuDepositFileName: '',
           xianmuDepositRawText: '',
+          depositVoucherList: [],
           xianmuBalanceRecognizedAmount: 0,
           xianmuBalanceModifiedAmount: 0,
           xianmuBalanceDate: '',
           xianmuBalanceFilePath: '',
           xianmuBalanceFileName: '',
-          xianmuBalanceRawText: ''
+          xianmuBalanceRawText: '',
+          balanceVoucherList: []
         }
       })
     },
@@ -940,12 +994,14 @@ export default {
         xianmuDepositFilePath: '',
         xianmuDepositFileName: '',
         xianmuDepositRawText: '',
+        depositVoucherList: [],
         xianmuBalanceRecognizedAmount: 0,
         xianmuBalanceModifiedAmount: 0,
         xianmuBalanceDate: '',
         xianmuBalanceFilePath: '',
         xianmuBalanceFileName: '',
-        xianmuBalanceRawText: ''
+        xianmuBalanceRawText: '',
+        balanceVoucherList: []
       }]
     },
     allocationAmountInput (index, value) {
@@ -973,6 +1029,101 @@ export default {
       const remainder = this.roundMoney(Number(this.paymentForm.modifiedAmount || 0) - this.previousAllocationTotal)
       this.$set(rows[rows.length - 1], 'allocationAmount', Math.max(0, remainder))
     },
+    voucherItem (voucher, fallbackName) {
+      return {
+        id: null,
+        recognizedAmount: Number(voucher.recognizedAmount || 0),
+        modifiedAmount: Number(voucher.recognizedAmount || 0),
+        paymentDate: voucher.paymentDate || '',
+        filePath: voucher.filePath || '',
+        fileName: voucher.fileName || fallbackName || '银行打款凭证',
+        rawText: voucher.rawText || ''
+      }
+    },
+    voucherTotal (owner, listKey) {
+      const list = (owner && owner[listKey]) || []
+      return this.roundMoney(list.reduce((sum, item) => sum + Number(item.modifiedAmount || 0), 0))
+    },
+    syncVoucherAggregate (owner, listKey, prefix) {
+      if (!owner) return
+      const list = owner[listKey] || []
+      const recognizedAmount = this.roundMoney(list.reduce((sum, item) => sum + Number(item.recognizedAmount || 0), 0))
+      const modifiedAmount = this.roundMoney(list.reduce((sum, item) => sum + Number(item.modifiedAmount || 0), 0))
+      const dated = list.filter(item => item.paymentDate).slice().sort((a, b) => String(b.paymentDate).localeCompare(String(a.paymentDate)))
+      const first = list[0] || {}
+      const paymentDate = dated.length ? dated[0].paymentDate : ''
+      const rawText = list.map(item => item.rawText || '').filter(Boolean).join('\n\n')
+      if (!prefix) {
+        this.$set(owner, 'recognizedAmount', recognizedAmount)
+        this.$set(owner, 'modifiedAmount', modifiedAmount)
+        this.$set(owner, 'paymentDate', paymentDate)
+        this.$set(owner, 'filePath', first.filePath || '')
+        this.$set(owner, 'fileName', first.fileName || '')
+        this.$set(owner, 'rawText', rawText)
+        this.$nextTick(() => this.recalculateLastAllocation())
+        return
+      }
+      this.$set(owner, `${prefix}RecognizedAmount`, recognizedAmount)
+      this.$set(owner, `${prefix}ModifiedAmount`, modifiedAmount)
+      this.$set(owner, `${prefix}Date`, paymentDate)
+      this.$set(owner, `${prefix}FilePath`, first.filePath || '')
+      this.$set(owner, `${prefix}FileName`, first.fileName || '')
+      this.$set(owner, `${prefix}RawText`, rawText)
+    },
+    appendVoucher (owner, listKey, prefix, voucher, fallbackName) {
+      const list = (owner[listKey] || []).slice()
+      list.push(this.voucherItem(voucher, fallbackName))
+      this.$set(owner, listKey, list)
+      this.syncVoucherAggregate(owner, listKey, prefix)
+    },
+    normalizeVoucherPayload (list) {
+      return (list || []).map(item => Object.assign({}, item, {
+        recognizedAmount: this.roundMoney(item.recognizedAmount),
+        modifiedAmount: this.roundMoney(item.modifiedAmount)
+      }))
+    },
+    openVoucherManager (owner, listKey, prefix, title, readonly = false) {
+      if (!owner) return
+      if (!owner[listKey]) this.$set(owner, listKey, [])
+      this.voucherManageTarget = { owner, listKey, prefix }
+      this.voucherManageTitle = title
+      this.voucherManageReadonly = readonly
+      this.voucherManageVisible = true
+    },
+    removeManagedVoucher (index) {
+      if (!this.voucherManageTarget || this.voucherManageReadonly) return
+      this.voucherManageList.splice(index, 1)
+      const target = this.voucherManageTarget
+      this.syncVoucherAggregate(target.owner, target.listKey, target.prefix)
+    },
+    closeVoucherManager () {
+      if (this.voucherManageTarget && !this.voucherManageReadonly) {
+        const target = this.voucherManageTarget
+        this.syncVoucherAggregate(target.owner, target.listKey, target.prefix)
+      }
+      this.voucherManageVisible = false
+    },
+    downloadVoucherDetail (voucher, preview) {
+      if (!voucher || !voucher.id) return
+      if (preview) {
+        const token = this.$cookie.get('token') || ''
+        window.open(this.$http.adornUrl(`/erp/funder-finance/voucher/download/${voucher.id}?preview=1&token=${encodeURIComponent(token)}`), '_blank')
+        return
+      }
+      const loading = this.$loading({ lock: true, text: '正在下载归档凭证...' })
+      this.$http({
+        url: this.$http.adornUrl(`/erp/funder-finance/voucher/download/${voucher.id}`),
+        method: 'get',
+        responseType: 'blob'
+      }).then(response => {
+        const url = URL.createObjectURL(response.data)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = voucher.fileName || '银行打款凭证'
+        link.click()
+        URL.revokeObjectURL(url)
+      }).finally(() => loading.close())
+    },
     recognizePaymentVoucher (request) {
       const formData = new FormData()
       formData.append('file', request.file)
@@ -987,15 +1138,9 @@ export default {
       }).then(({ data }) => {
         if (data && data.code === 0) {
           const voucher = data.voucher || {}
-          this.paymentForm.recognizedAmount = Number(voucher.recognizedAmount || 0)
-          this.paymentForm.modifiedAmount = Number(voucher.recognizedAmount || 0)
-          this.paymentForm.paymentDate = voucher.paymentDate || ''
-          this.paymentForm.filePath = voucher.filePath || ''
-          this.paymentForm.fileName = voucher.fileName || request.file.name
-          this.paymentForm.rawText = voucher.rawText || ''
+          this.appendVoucher(this.paymentForm, 'voucherList', '', voucher, request.file.name)
           this.paymentForm.recognizedReceipt = voucher
-          this.$nextTick(() => this.recalculateLastAllocation())
-          this.$message.success('凭证识别完成，请核对金额和日期')
+          this.$message.success(`凭证识别完成，当前已上传${this.paymentForm.voucherList.length}张，请核对金额和日期`)
         } else {
           this.$message.error((data && data.msg) || '凭证识别失败')
         }
@@ -1046,13 +1191,8 @@ export default {
         if (data && data.code === 0) {
           const voucher = data.voucher || {}
           const row = rows[index]
-          this.$set(row, 'xianmuContributionRecognizedAmount', Number(voucher.recognizedAmount || 0))
-          this.$set(row, 'xianmuContributionModifiedAmount', Number(voucher.recognizedAmount || 0))
-          this.$set(row, 'xianmuContributionDate', voucher.paymentDate || '')
-          this.$set(row, 'xianmuContributionFilePath', voucher.filePath || '')
-          this.$set(row, 'xianmuContributionFileName', voucher.fileName || request.file.name)
-          this.$set(row, 'xianmuContributionRawText', voucher.rawText || '')
-          this.$message.success('业务主体出资款凭证识别完成，请核对金额和日期')
+          this.appendVoucher(row, 'contributionVoucherList', 'xianmuContribution', voucher, request.file.name)
+          this.$message.success(`业务主体出资款凭证识别完成，当前已上传${row.contributionVoucherList.length}张`)
         } else {
           this.$message.error((data && data.msg) || '业务主体出资款凭证识别失败')
         }
@@ -1081,13 +1221,9 @@ export default {
           const voucher = data.voucher || {}
           const row = rows[index]
           const prefix = kind === 'deposit' ? 'xianmuDeposit' : 'xianmuBalance'
-          this.$set(row, `${prefix}RecognizedAmount`, Number(voucher.recognizedAmount || 0))
-          this.$set(row, `${prefix}ModifiedAmount`, Number(voucher.recognizedAmount || 0))
-          this.$set(row, `${prefix}Date`, voucher.paymentDate || '')
-          this.$set(row, `${prefix}FilePath`, voucher.filePath || '')
-          this.$set(row, `${prefix}FileName`, voucher.fileName || request.file.name)
-          this.$set(row, `${prefix}RawText`, voucher.rawText || '')
-          this.$message.success(`内部主体全款${name}凭证识别完成，请核对金额和日期`)
+          const listKey = kind === 'deposit' ? 'depositVoucherList' : 'balanceVoucherList'
+          this.appendVoucher(row, listKey, prefix, voucher, request.file.name)
+          this.$message.success(`内部主体全款${name}凭证识别完成，当前已上传${row[listKey].length}张`)
         } else {
           this.$message.error((data && data.msg) || `内部主体全款${name}凭证识别失败`)
         }
@@ -1161,6 +1297,15 @@ export default {
       return true
     },
     confirmPayment () {
+      if (this.isFunderPayment) {
+        this.syncVoucherAggregate(this.paymentForm, 'voucherList', '')
+      }
+      const allocationRows = this.paymentForm.allocationList || []
+      allocationRows.forEach(row => {
+        this.syncVoucherAggregate(row, 'contributionVoucherList', 'xianmuContribution')
+        this.syncVoucherAggregate(row, 'depositVoucherList', 'xianmuDeposit')
+        this.syncVoucherAggregate(row, 'balanceVoucherList', 'xianmuBalance')
+      })
       if (!this.isFunderPayment && !this.prepareXianmuPaymentForm()) {
         return
       }
@@ -1204,6 +1349,7 @@ export default {
         const loading = this.$loading({ lock: true, text: loadingText })
         const payload = Object.assign({}, this.paymentForm)
         delete payload.recognizedReceipt
+        payload.voucherList = this.normalizeVoucherPayload(this.paymentForm.voucherList)
         if (this.isFunderPayment) {
           payload.payerId = null
         } else {
@@ -1217,7 +1363,10 @@ export default {
           xianmuDepositRecognizedAmount: this.roundMoney(item.xianmuDepositRecognizedAmount),
           xianmuDepositModifiedAmount: this.roundMoney(item.xianmuDepositModifiedAmount),
           xianmuBalanceRecognizedAmount: this.roundMoney(item.xianmuBalanceRecognizedAmount),
-          xianmuBalanceModifiedAmount: this.roundMoney(item.xianmuBalanceModifiedAmount)
+          xianmuBalanceModifiedAmount: this.roundMoney(item.xianmuBalanceModifiedAmount),
+          contributionVoucherList: this.normalizeVoucherPayload(item.contributionVoucherList),
+          depositVoucherList: this.normalizeVoucherPayload(item.depositVoucherList),
+          balanceVoucherList: this.normalizeVoucherPayload(item.balanceVoucherList)
         }))
         this.$http({
           url: this.$http.adornUrl('/erp/funder-finance/payment/confirm'),
@@ -1446,5 +1595,13 @@ export default {
 .mismatch {
   color: #d93025;
   font-weight: 700;
+}
+.voucher-total {
+  margin-top: 14px;
+  text-align: right;
+  color: #303133;
+}
+.danger-text {
+  color: #f56c6c;
 }
 </style>
