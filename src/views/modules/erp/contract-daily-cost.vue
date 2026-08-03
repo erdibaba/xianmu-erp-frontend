@@ -1,7 +1,7 @@
 <template>
   <div class="mod-contract-daily-cost">
     <el-alert
-      title="按确认函合同号归档每天产生的资金利息、仓储费等成本。查询时会自动补齐缺失快照；如基础数据补录或调整，可点击重新生成覆盖当前日期范围。"
+      title="按确认函合同号归档每天产生的资金利息、仓储费等成本。系统每天凌晨2点生成前一日成本日报；如基础数据补录或调整，可点击重新生成覆盖当前日期范围。"
       type="info"
       :closable="false"
       show-icon>
@@ -119,14 +119,15 @@
 <script>
   export default {
     data () {
-      const today = new Date()
-      const year = today.getFullYear()
+      const reportDate = new Date()
+      reportDate.setDate(reportDate.getDate() - 1)
+      const year = reportDate.getFullYear()
       const pad = value => {
         value = String(value)
         return value.length >= 2 ? value : `0${value}`
       }
-      const month = pad(today.getMonth() + 1)
-      const day = pad(today.getDate())
+      const month = pad(reportDate.getMonth() + 1)
+      const day = pad(reportDate.getDate())
       return {
         queryForm: {
           contractNo: ''
