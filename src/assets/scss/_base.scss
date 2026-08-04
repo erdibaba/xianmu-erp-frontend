@@ -400,3 +400,14 @@ img {
   vertical-align: middle;
   margin-right: 5px;
 }
+
+/* Prevent iOS Safari from zooming the page when a form control receives focus. */
+@media screen and (max-width: 768px) {
+  input,
+  select,
+  textarea,
+  .el-input__inner,
+  .el-textarea__inner {
+    font-size: 16px !important;
+  }
+}
