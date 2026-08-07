@@ -21,7 +21,7 @@
         <el-table-column prop="boxes" label="应分配箱数" width="110" align="right"></el-table-column>
         <el-table-column label="已选箱数" width="110" align="right">
           <template slot-scope="scope">
-            <span :class="{ 'count-error': selectedBoxes(scope.row.productId) !== Number(scope.row.boxes || 0) }">
+            <span :class="{ 'count-error': !sameBoxes(selectedBoxes(scope.row.productId), scope.row.boxes) }">
               {{ selectedBoxes(scope.row.productId) }}
             </span>
           </template>
@@ -79,7 +79,7 @@
         <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
         <el-table-column prop="productCode" label="产品编码" width="110"></el-table-column>
         <el-table-column prop="marketCirculationName" label="市场流通名称" min-width="170"></el-table-column>
-        <el-table-column label="分配箱数" width="110"><template slot-scope="scope"><el-input-number v-model="scope.row.boxes" :controls="false" :min="1" :max="scope.row.availableBoxes" :precision="0" size="mini" style="width:100%;"></el-input-number></template></el-table-column>
+        <el-table-column label="分配箱数" width="120"><template slot-scope="scope"><el-input-number v-model="scope.row.boxes" :controls="false" :min="0.001" :max="scope.row.availableBoxes" :precision="3" :step="0.125" size="mini" style="width:100%;"></el-input-number></template></el-table-column>
         <el-table-column prop="confirmContractNo" label="确认函合同号" min-width="145"></el-table-column>
         <el-table-column prop="sourceContainerNo" label="柜号" min-width="125"></el-table-column>
         <el-table-column prop="warehouseName" label="仓库" min-width="135"></el-table-column>
@@ -196,6 +196,9 @@ export default {
     selectedBoxes (productId) {
       return this.allocationList.filter(item => String(item.productId) === String(productId)).reduce((sum, item) => sum + Number(item.boxes || 0), 0)
     },
+    sameBoxes (left, right) {
+      return Math.abs(Number(left || 0) - Number(right || 0)) < 0.0005
+    },
     dateOnly (value) {
       if (!value) return '-'
       return String(value).substring(0, 10)
@@ -205,7 +208,7 @@ export default {
         this.$message.error('请先选择实际库存')
         return
       }
-      const mismatch = this.productList.find(item => this.selectedBoxes(item.productId) !== Number(item.boxes || 0))
+      const mismatch = this.productList.find(item => !this.sameBoxes(this.selectedBoxes(item.productId), item.boxes))
       if (mismatch) {
         this.$message.error(`产品${mismatch.productCode}应分配${mismatch.boxes}箱，当前已选${this.selectedBoxes(mismatch.productId)}箱`)
         return

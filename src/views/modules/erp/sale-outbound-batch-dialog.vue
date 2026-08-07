@@ -100,9 +100,10 @@
               v-model="scope.row.plannedBoxes"
               :disabled="!scope.row._selected"
               :controls="false"
-              :min="1"
+              :min="0.001"
               :max="scope.row.remainingBoxes"
-              :precision="0"
+              :precision="3"
+              :step="0.125"
               size="mini"
               style="width: 100%;"
               @change="plannedBoxesChange(scope.row)">
@@ -118,7 +119,8 @@
               :min="0.001"
               :precision="3"
               size="mini"
-              style="width: 100%;">
+              style="width: 100%;"
+              @change="plannedWeightChange(scope.row)">
             </el-input-number>
           </template>
         </el-table-column>
@@ -272,6 +274,14 @@ export default {
     },
     plannedBoxesChange (row) {
       row.plannedWeight = this.proportionalWeight(row, Number(row.plannedBoxes || 0))
+    },
+    plannedWeightChange (row) {
+      const totalBoxes = Number(row.boxes || 0)
+      const totalWeight = Number(row.contractQuantityKg || 0)
+      const plannedWeight = Number(row.plannedWeight || 0)
+      if (totalBoxes <= 0 || totalWeight <= 0 || plannedWeight <= 0) return
+      const unitWeight = totalWeight / totalBoxes
+      row.plannedBoxes = Number(Math.min(Number(row.remainingBoxes || 0), plannedWeight / unitWeight).toFixed(3))
     },
     searchDrivers (keyword) {
       this.driverLoading = true

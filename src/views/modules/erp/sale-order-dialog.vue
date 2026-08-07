@@ -254,7 +254,8 @@
                   v-model="scope.row.boxes"
                   :disabled="contentReadonly"
                   :controls="false"
-                  :precision="0"
+                  :precision="3"
+                  :step="0.125"
                   :min="0"
                   size="mini"
                   :style="{ width: isFuturesSale ? '76px' : '100%' }"
@@ -412,7 +413,7 @@
             <el-table-column prop="factoryNo" label="销售厂号" width="110" show-overflow-tooltip></el-table-column>
             <el-table-column label="分配箱数" width="120">
               <template slot-scope="scope">
-                <el-input-number v-model="scope.row.allocatedBoxes" :disabled="contentReadonly" :controls="false" :min="0" :precision="0" size="mini" style="width: 100%;"></el-input-number>
+                <el-input-number v-model="scope.row.allocatedBoxes" :disabled="contentReadonly" :controls="false" :min="0" :precision="3" :step="0.125" size="mini" style="width: 100%;"></el-input-number>
               </template>
             </el-table-column>
             <el-table-column label="分配重量KG" width="145">
@@ -553,7 +554,7 @@
           <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
           <el-table-column prop="availableBoxes" label="可售箱数" width="95" align="right"></el-table-column>
           <el-table-column label="销售箱数" width="105">
-            <template slot-scope="scope"><el-input-number v-model="scope.row.boxes" :disabled="contentReadonly" :controls="false" :min="1" :max="scope.row.availableBoxes || 999999" :precision="0" size="mini" style="width:100%;" @change="spotAllocationBoxesChange(scope.row)"></el-input-number></template>
+            <template slot-scope="scope"><el-input-number v-model="scope.row.boxes" :disabled="contentReadonly" :controls="false" :min="0.001" :max="scope.row.availableBoxes || 999999" :precision="3" :step="0.125" size="mini" style="width:100%;" @change="spotAllocationBoxesChange(scope.row)"></el-input-number></template>
           </el-table-column>
           <el-table-column prop="ownershipName" label="货权" min-width="120" show-overflow-tooltip>
             <template slot-scope="scope">{{ scope.row.ownershipName || '-' }}</template>
@@ -896,7 +897,7 @@
                   <span>{{ pickupMethodText(batch.pickupMethod) }}</span>
                   <span>出库：{{ formatDateOnly(batch.outboundDate) || '-' }}</span>
                   <span>{{ batch.driverName || '-' }}</span>
-                  <span>{{ formatInteger(batch.shippedTotalBoxes) }}箱 / {{ formatNumber(batch.shippedTotalWeight, 3) }}KG</span>
+                  <span>{{ formatBoxes(batch.shippedTotalBoxes) }}箱 / {{ formatNumber(batch.shippedTotalWeight, 3) }}KG</span>
                 </div>
               </div>
             </div>
@@ -955,13 +956,13 @@
               <el-table-column prop="containerNo" label="柜号" width="130" show-overflow-tooltip></el-table-column>
               <el-table-column prop="factoryNo" label="厂号" width="90" show-overflow-tooltip></el-table-column>
               <el-table-column label="计划箱数" width="90" align="right">
-                <template slot-scope="scope">{{ formatInteger(scope.row.plannedBoxes) }}</template>
+                <template slot-scope="scope">{{ formatBoxes(scope.row.plannedBoxes) }}</template>
               </el-table-column>
               <el-table-column label="实际箱数" width="90" align="right">
-                <template slot-scope="scope">{{ formatInteger(scope.row.actualBoxes) }}</template>
+                <template slot-scope="scope">{{ formatBoxes(scope.row.actualBoxes) }}</template>
               </el-table-column>
               <el-table-column label="差异箱数" width="90" align="right">
-                <template slot-scope="scope">{{ formatInteger(scope.row.diffBoxes) }}</template>
+                <template slot-scope="scope">{{ formatBoxes(scope.row.diffBoxes) }}</template>
               </el-table-column>
               <el-table-column label="计划重量(KG)" width="120" align="right">
                 <template slot-scope="scope">{{ formatNumber(scope.row.plannedWeight, 3) }}</template>
@@ -1175,13 +1176,13 @@
                 <template slot-scope="scope">{{ saleProductDisplayName(scope.row) }}</template>
               </el-table-column>
               <el-table-column label="应出箱数" width="95" align="right">
-                <template slot-scope="scope">{{ formatInteger(scope.row.expectedBoxes) }}</template>
+                <template slot-scope="scope">{{ formatBoxes(scope.row.expectedBoxes) }}</template>
               </el-table-column>
               <el-table-column label="实际箱数" width="95" align="right">
-                <template slot-scope="scope">{{ formatInteger(scope.row.shippedQty) }}</template>
+                <template slot-scope="scope">{{ formatBoxes(scope.row.shippedQty) }}</template>
               </el-table-column>
               <el-table-column label="差异箱数" width="95" align="right">
-                <template slot-scope="scope">{{ formatInteger(scope.row.diffBoxes) }}</template>
+                <template slot-scope="scope">{{ formatBoxes(scope.row.diffBoxes) }}</template>
               </el-table-column>
               <el-table-column label="应出重量(KG)" width="120" align="right">
                 <template slot-scope="scope">{{ formatNumber(scope.row.expectedWeight, 3) }}</template>
@@ -1242,7 +1243,7 @@
                     <el-table-column prop="containerNo" label="柜号" width="130" show-overflow-tooltip></el-table-column>
                     <el-table-column prop="factoryNo" label="厂号" width="100" show-overflow-tooltip></el-table-column>
                     <el-table-column label="实际箱数" width="100" align="right">
-                      <template slot-scope="itemScope">{{ formatInteger(itemScope.row.shippedQty) }}</template>
+                      <template slot-scope="itemScope">{{ formatBoxes(itemScope.row.shippedQty) }}</template>
                     </el-table-column>
                     <el-table-column label="实际重量(KG)" width="125" align="right">
                       <template slot-scope="itemScope">{{ formatNumber(itemScope.row.totalWeight, 3) }}</template>
@@ -1272,7 +1273,7 @@
                 <template slot-scope="scope">{{ scope.row.receiptItemList.length }}</template>
               </el-table-column>
               <el-table-column label="实际箱数" width="100" align="right">
-                <template slot-scope="scope">{{ formatInteger(scope.row.shippedTotalBoxes) }}</template>
+                <template slot-scope="scope">{{ formatBoxes(scope.row.shippedTotalBoxes) }}</template>
               </el-table-column>
               <el-table-column label="实际重量(KG)" width="125" align="right">
                 <template slot-scope="scope">{{ formatNumber(scope.row.shippedTotalWeight, 3) }}</template>
@@ -1437,17 +1438,17 @@
               </el-table-column>
               <el-table-column label="应出箱数" width="95" align="right">
                 <template slot-scope="scope">
-                  {{ formatInteger(scope.row.expectedBoxes) }}
+                  {{ formatBoxes(scope.row.expectedBoxes) }}
                 </template>
               </el-table-column>
               <el-table-column label="实际箱数" width="100">
                 <template slot-scope="scope">
-                  <el-input-number v-model="scope.row.shippedQty" :disabled="!outboundReceiptEditable" :controls="false" :precision="0" size="mini" style="width: 100%;"></el-input-number>
+                  <el-input-number v-model="scope.row.shippedQty" :disabled="!outboundReceiptEditable" :controls="false" :min="0.001" :precision="3" :step="0.125" size="mini" style="width: 100%;"></el-input-number>
                 </template>
               </el-table-column>
               <el-table-column label="差异箱数" width="95" align="right">
                 <template slot-scope="scope">
-                  {{ formatInteger(calcOutboundDiffBoxes(scope.row)) }}
+                  {{ formatBoxes(calcOutboundDiffBoxes(scope.row)) }}
                 </template>
               </el-table-column>
               <el-table-column label="应出重量(KG)" width="120" align="right">
@@ -1620,9 +1621,10 @@
             <el-input-number
               v-model="scope.row.boxes"
               :controls="false"
-              :min="1"
+              :min="0.001"
               :max="scope.row.availableBoxes || 999999"
-              :precision="0"
+              :precision="3"
+              :step="0.125"
               size="mini"
               style="width: 100%;"
               @change="spotPricingBoxesChange">
@@ -1648,8 +1650,9 @@
             :min="0.01"
             :precision="2"
             placeholder="请输入预计重量"
-            style="width: 100%;">
+            style="width: calc(100% - 138px);">
           </el-input-number>
+          <el-button size="small" style="width: 128px; margin-left: 6px;" @click="convertSpotWeightToBoxes">按重量换算箱数</el-button>
           <div class="spot-pricing-tip">系统已按当前库存单箱重量自动计算，可根据实际销售情况修改。</div>
         </el-form-item>
       </el-form>
@@ -2054,7 +2057,7 @@ export default {
       const keys = Object.keys(saleSummary)
       if (Object.keys(sourceSummary).length !== keys.length) return false
       return keys.every(key => sourceSummary[key] &&
-        sourceSummary[key].boxes === saleSummary[key].boxes &&
+        this.sameBoxes(sourceSummary[key].boxes, saleSummary[key].boxes) &&
         Math.round(sourceSummary[key].weight * 100) === Math.round(saleSummary[key].weight * 100))
     },
     spotPendingLotCount () {
@@ -2235,7 +2238,7 @@ export default {
     outboundReceiptMatched () {
       const summaryList = this.dataForm.outboundSummaryList || []
       if (!summaryList.length) return false
-      return summaryList.every(item => this.toNumber(item.expectedBoxes) > 0 && this.toNumber(item.expectedBoxes) === this.toNumber(item.shippedQty))
+      return summaryList.every(item => this.toNumber(item.expectedBoxes) > 0 && this.sameBoxes(item.expectedBoxes, item.shippedQty))
     },
     outboundShippedTotalBoxes () {
       const receipt = this.dataForm.outboundReceipt
@@ -2256,7 +2259,7 @@ export default {
       if (!summaryList.length) return '-'
       const saleBoxes = summaryList.reduce((sum, item) => sum + this.toNumber(item.expectedBoxes), 0)
       const shippedBoxes = summaryList.reduce((sum, item) => sum + this.toNumber(item.shippedQty), 0)
-      if (summaryList.every(item => this.toNumber(item.expectedBoxes) > 0 && this.toNumber(item.expectedBoxes) === this.toNumber(item.shippedQty))) {
+      if (summaryList.every(item => this.toNumber(item.expectedBoxes) > 0 && this.sameBoxes(item.expectedBoxes, item.shippedQty))) {
         return '销售单箱数与所有出库批次实际箱数一致'
       }
       return `销售单箱数${saleBoxes}箱，所有出库批次实际箱数${shippedBoxes}箱，请核对`
@@ -3033,6 +3036,13 @@ export default {
     formatInteger (value) {
       return String(Math.trunc(this.toNumber(value)))
     },
+    formatBoxes (value) {
+      const number = Number(this.toNumber(value).toFixed(3))
+      return String(number)
+    },
+    sameBoxes (left, right) {
+      return Math.abs(this.toNumber(left) - this.toNumber(right)) < 0.0005
+    },
     calcOutboundDiffBoxes (row) {
       return this.toNumber(row && row.expectedBoxes) - this.toNumber(row && row.shippedQty)
     },
@@ -3743,6 +3753,30 @@ export default {
       }, 0)
       this.spotPricingForm.expectedWeightKg = Number(expectedWeight.toFixed(2))
     },
+    convertSpotWeightToBoxes () {
+      const rows = this.spotPricingDetailRows || []
+      let remainingWeight = Number(this.spotPricingForm.expectedWeightKg || 0)
+      if (!rows.length || remainingWeight <= 0) {
+        this.$message.error('请先输入大于0的预计重量')
+        return
+      }
+      rows.forEach(row => {
+        const unitWeight = Number(row.estimatedUnitWeightKg || 0) ||
+          (Number(row.availableBoxes || 0) > 0 ? Number(row.availableWeightKg || 0) / Number(row.availableBoxes) : 0)
+        if (remainingWeight <= 0 || unitWeight <= 0) {
+          row.boxes = 0
+          return
+        }
+        const availableBoxes = Number(row.availableBoxes || 0)
+        const boxes = Math.min(availableBoxes, remainingWeight / unitWeight)
+        row.boxes = Number(Math.max(0, boxes).toFixed(3))
+        remainingWeight = Math.max(0, remainingWeight - row.boxes * unitWeight)
+      })
+      this.spotPricingForm.selectedBoxes = Number(rows.reduce((sum, row) => sum + Number(row.boxes || 0), 0).toFixed(3))
+      if (remainingWeight > 0.01) {
+        this.$message.warning(`当前库存单箱重量不足以覆盖输入重量，尚余${remainingWeight.toFixed(2)}KG未换算`)
+      }
+    },
     distributeSpotWeight (rows, totalWeight) {
       const totalCents = Math.round(Number(totalWeight || 0) * 100)
       const totalBoxes = rows.reduce((sum, item) => sum + Number(item.boxes || 0), 0)
@@ -3763,13 +3797,14 @@ export default {
         this.$message.error('本次库存批次不能为空')
         return
       }
-      for (let index = 0; index < detailRows.length; index++) {
-        const detail = detailRows[index]
+      const selectedDetailRows = detailRows.filter(detail => Number(detail.boxes || 0) > 0)
+      if (!selectedDetailRows.length) {
+        this.$message.error('本次销售箱数必须大于0')
+        return
+      }
+      for (let index = 0; index < selectedDetailRows.length; index++) {
+        const detail = selectedDetailRows[index]
         const boxes = Number(detail.boxes || 0)
-        if (!Number.isInteger(boxes) || boxes <= 0) {
-          this.$message.error(`第${index + 1}行本次销售箱数必须为大于0的整数`)
-          return
-        }
         if (Number(detail.availableBoxes || 0) > 0 && boxes > Number(detail.availableBoxes)) {
           this.$message.error(`第${index + 1}行本次销售箱数不能超过可售箱数${detail.availableBoxes}`)
           return
@@ -3783,7 +3818,7 @@ export default {
         this.$message.error('预计重量必须大于0')
         return
       }
-      const targetCount = detailRows.length
+      const targetCount = selectedDetailRows.length
       if (targetCount > 0 && expectedWeight < targetCount / 100) {
         this.$message.error(`预计重量不能小于${(targetCount / 100).toFixed(2)}KG`)
         return
@@ -3791,7 +3826,7 @@ export default {
       let rows = this.spotPricingRows || []
       if (this.spotPricingMode === 'ADD') {
         rows = []
-        detailRows.forEach(detail => {
+        selectedDetailRows.forEach(detail => {
           const added = this.appendSpotLot(detail._contract, detail._lot)
           if (added) {
             added.boxes = Number(detail.boxes || 0)
@@ -3799,7 +3834,12 @@ export default {
           }
         })
       } else {
-        rows = detailRows.map(detail => {
+        const removedRows = detailRows
+          .filter(detail => Number(detail.boxes || 0) <= 0)
+          .map(detail => detail._allocationRow)
+        this.dataForm.allocationItemList = (this.dataForm.allocationItemList || [])
+          .filter(item => removedRows.indexOf(item) < 0)
+        rows = selectedDetailRows.map(detail => {
           detail._allocationRow.boxes = Number(detail.boxes || 0)
           return detail._allocationRow
         })
@@ -4135,7 +4175,7 @@ export default {
           const sale = saleSummary[key]
           const source = sourceSummary[key]
           if (!sale) return `期货货源中的产品${key}不在By产品销售明细中`
-          if (source.boxes > sale.boxes || Math.round(source.weight * 100) > Math.round(sale.weight * 100)) {
+          if (source.boxes - sale.boxes > 0.0005 || Math.round(source.weight * 100) > Math.round(sale.weight * 100)) {
             return `产品${sale.code || key}的货源箱数/重量不能超过By产品销售明细`
           }
         }

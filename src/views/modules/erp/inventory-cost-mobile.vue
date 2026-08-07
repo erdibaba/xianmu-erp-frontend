@@ -124,7 +124,7 @@
           <div class="stock-amounts">
             <div>
               <span>可售箱数</span>
-              <strong>{{ numberText(item.availableBoxes, 0) }}</strong>
+              <strong>{{ boxText(item.availableBoxes) }}</strong>
               <em>箱</em>
             </div>
             <div>
@@ -170,7 +170,7 @@
               <b :class="shelfLifeClass(item.expiryDate)">{{ shelfLifeText(item.expiryDate) }}</b>
             </div>
             <div class="detail-stock">
-              <strong>{{ numberText(item.availableBoxes, 0) }} 箱</strong>
+              <strong>{{ boxText(item.availableBoxes) }} 箱</strong>
               <span>{{ numberText(item.availableWeightKg, 2) }} KG</span>
             </div>
             <dl>
@@ -381,6 +381,9 @@
       numberText (value, digits) {
         const number = Number(value || 0)
         return number.toLocaleString('zh-CN', { minimumFractionDigits: digits, maximumFractionDigits: digits })
+      },
+      boxText (value) {
+        return Number(Number(value || 0).toFixed(3)).toLocaleString('zh-CN', { maximumFractionDigits: 3 })
       },
       dateText (value) {
         return value ? String(value).slice(0, 10) : '-'
