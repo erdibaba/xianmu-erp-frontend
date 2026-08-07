@@ -17,6 +17,14 @@
           :warehouse-list="warehouseList">
         </adjustment-panel>
       </el-tab-pane>
+      <el-tab-pane v-if="isAuth('erp:inventory-adjustment:weight')" label="重量盘盈盘亏" name="WEIGHT_GAIN_LOSS">
+        <div class="adjust-tip weight-adjust-tip">只修正当前可售重量，不改变箱数、仓库、温区、生产日期和过期日期，也不联动出库。</div>
+        <adjustment-panel
+          ref="weightPanel"
+          adjustment-type="WEIGHT_GAIN_LOSS"
+          :warehouse-list="warehouseList">
+        </adjustment-panel>
+      </el-tab-pane>
       <el-tab-pane label="调整记录" name="RECORDS">
         <adjustment-record-panel ref="recordPanel"></adjustment-record-panel>
       </el-tab-pane>
@@ -64,6 +72,14 @@
       },
       isFreshToFrozen () {
         return this.adjustmentType === 'FRESH_TO_FROZEN'
+      },
+      isWeightGainLoss () {
+        return this.adjustmentType === 'WEIGHT_GAIN_LOSS'
+      },
+      canSubmit () {
+        return this.isWeightGainLoss
+          ? this.isAuth('erp:inventory-adjustment:weight')
+          : this.isAuth('erp:inventory-adjustment:save')
       },
       uploadButtonText () {
         return this.isWarehouseTransfer ? '上传识别转仓库单据' : '上传识别鲜转冻单据'
@@ -298,8 +314,10 @@
       },
       buildAdjustRow (row) {
         return Object.assign({}, row, {
-          transferBoxes: row.transferBoxes || '',
-          transferWeightKg: row.transferWeightKg || '',
+          transferBoxes: this.isWeightGainLoss ? row.availableBoxes : (row.transferBoxes || ''),
+          transferWeightKg: this.isWeightGainLoss ? row.availableWeightKg : (row.transferWeightKg || ''),
+          adjustedWeightKg: this.isWeightGainLoss ? row.availableWeightKg : '',
+          remark: row.remark || '',
           targetWarehouseId: row.targetWarehouseId || this.defaultTargetWarehouseId || '',
           targetWarehouseName: row.targetWarehouseName || this.defaultTargetWarehouseName || '',
           targetExpiryDate: this.isWarehouseTransfer ? (row.targetExpiryDate || row.expiryDate) : (row.targetExpiryDate || '')
@@ -362,7 +380,9 @@
               targetWarehouseName: row.targetWarehouseName,
               targetExpiryDate: row.targetExpiryDate,
               transferBoxes: Number(row.transferBoxes),
-              transferWeightKg: this.normalizeAmount(row.transferWeightKg)
+              transferWeightKg: this.normalizeAmount(row.transferWeightKg),
+              adjustedWeightKg: this.normalizeAmount(row.adjustedWeightKg),
+              remark: row.remark
             }))
           })
         }).then(({data}) => {
@@ -387,7 +407,16 @@
           const rowNo = i + 1
           const boxes = Number(row.transferBoxes)
           const weight = Number(this.normalizeAmount(row.transferWeightKg))
-          if (row._unmatched) return `第${rowNo}行${this.isWarehouseTransfer ? '未匹配到可用库存' : '未匹配到冷鲜库存'}，不能确认调整`
+          if (row._unmatched) return `第${rowNo}行${this.isFreshToFrozen ? '未匹配到冷鲜库存' : '未匹配到可用库存'}，不能确认调整`
+          if (this.isWeightGainLoss) {
+            const adjustedWeight = Number(this.normalizeAmount(row.adjustedWeightKg))
+            const currentWeight = Number(this.normalizeAmount(row.availableWeightKg))
+            if (!adjustedWeight || adjustedWeight <= 0) return `第${rowNo}行盘点后重量必须大于0`
+            if (Math.abs(adjustedWeight - currentWeight) < 0.005) return `第${rowNo}行盘点后重量与当前重量相同，无需调整`
+            if (!String(row.remark || '').trim()) return `第${rowNo}行请填写盘盈盘亏原因`
+            if (String(row.remark || '').trim().length > 200) return `第${rowNo}行盘盈盘亏原因不能超过200字`
+            continue
+          }
           if (!boxes || boxes <= 0) return `第${rowNo}行调整箱数必须大于0`
           if (boxes > Number(row.availableBoxes || 0)) return `第${rowNo}行调整箱数不能大于可售箱数`
           if (!weight || weight <= 0) return `第${rowNo}行调整重量必须大于0`
@@ -405,6 +434,17 @@
       normalizeAmount (value) {
         if (value === null || value === undefined) return ''
         return String(value).replace(/,/g, '').trim()
+      },
+      weightVariance (row) {
+        const adjusted = Number(this.normalizeAmount(row.adjustedWeightKg))
+        const current = Number(this.normalizeAmount(row.availableWeightKg))
+        if (!Number.isFinite(adjusted) || !Number.isFinite(current)) return ''
+        return (adjusted - current).toFixed(2)
+      },
+      weightVarianceType (row) {
+        const value = Number(this.weightVariance(row))
+        if (!value) return '无变化'
+        return value > 0 ? '盘盈' : '盘亏'
       },
       formatDate (value) {
         if (!value) return ''
@@ -426,10 +466,10 @@
           <div class="adjust-card-heading">
             <div>
               <div class="adjust-step-title"><span class="adjust-step-number">1</span>获取待调整库存</div>
-              <div class="adjust-step-desc">可以按仓库和柜号查询，也可以上传单据识别。</div>
+              <div class="adjust-step-desc">{{ isWeightGainLoss ? '按仓库、柜号和产品定位到生产日期批次后进行重量盘点。' : '可以按仓库和柜号查询，也可以上传单据识别。' }}</div>
             </div>
           </div>
-          <div class="adjust-source-layout">
+          <div class="adjust-source-layout" :class="{ 'query-only': isWeightGainLoss }">
             <div class="adjust-query-area">
               <div class="adjust-area-label">按库存查询</div>
               <el-form :inline="true" :model="query" size="small" class="adjust-query-form">
@@ -466,7 +506,7 @@
                 </el-form-item>
               </el-form>
             </div>
-            <div class="adjust-upload-area">
+            <div v-if="!isWeightGainLoss" class="adjust-upload-area">
               <div class="adjust-area-label">按单据识别</div>
               <div class="adjust-upload-desc">上传单据后，已匹配明细会直接加入待调整列表。</div>
               <el-upload
@@ -510,7 +550,7 @@
         </el-table>
         </section>
 
-        <section class="adjust-workflow-card batch-setting-card">
+        <section v-if="!isWeightGainLoss" class="adjust-workflow-card batch-setting-card">
           <div class="adjust-card-heading">
             <div>
               <div class="adjust-step-title"><span class="adjust-step-number">2</span>批量设置调整参数</div>
@@ -541,10 +581,10 @@
         <section class="adjust-workflow-card adjust-list-card">
           <div class="adjust-section-heading adjust-list-heading">
             <div>
-              <div class="adjust-step-title"><span class="adjust-step-number">3</span>待调整列表</div>
-              <div class="adjust-step-desc">核对箱数、重量和目标仓库后再确认，确认后不能撤销。</div>
+              <div class="adjust-step-title"><span class="adjust-step-number">{{ isWeightGainLoss ? 2 : 3 }}</span>待调整列表</div>
+              <div class="adjust-step-desc">{{ isWeightGainLoss ? '填写盘点后重量和原因；确认后通过反向调整更正，不联动出库。' : '核对箱数、重量和目标仓库后再确认，确认后不能撤销。' }}</div>
             </div>
-            <el-button v-if="isAuth('erp:inventory-adjustment:save')" type="success" @click="submitHandle()">确认调整</el-button>
+            <el-button v-if="canSubmit" type="success" @click="submitHandle()">确认调整</el-button>
           </div>
           <el-table ref="adjustTable" :data="adjustList" border stripe height="360" empty-text="请先查询勾选库存或上传识别单据后加入调整列表">
           <el-table-column type="index" label="序号" width="60" align="center" header-align="center"></el-table-column>
@@ -563,16 +603,36 @@
           </el-table-column>
           <el-table-column prop="availableBoxes" label="可售箱数" width="95" align="right" header-align="center"></el-table-column>
           <el-table-column prop="availableWeightKg" label="可售重量KG" width="115" align="right" header-align="center"></el-table-column>
-          <el-table-column prop="recognizedActualQty" label="识别箱数" width="95" align="right" header-align="center"></el-table-column>
-          <el-table-column prop="recognizedTotalWeightKg" label="识别重量KG" width="115" align="right" header-align="center"></el-table-column>
-          <el-table-column label="调整箱数" width="120" align="center" header-align="center">
+          <el-table-column v-if="!isWeightGainLoss" prop="recognizedActualQty" label="识别箱数" width="95" align="right" header-align="center"></el-table-column>
+          <el-table-column v-if="!isWeightGainLoss" prop="recognizedTotalWeightKg" label="识别重量KG" width="115" align="right" header-align="center"></el-table-column>
+          <el-table-column v-if="!isWeightGainLoss" label="调整箱数" width="120" align="center" header-align="center">
             <template slot-scope="scope">
               <el-input-number v-model="scope.row.transferBoxes" :min="0" :precision="0" :controls="false" size="small" style="width: 96px;"></el-input-number>
             </template>
           </el-table-column>
-          <el-table-column label="调整重量KG" width="130" align="center" header-align="center">
+          <el-table-column v-if="!isWeightGainLoss" label="调整重量KG" width="130" align="center" header-align="center">
             <template slot-scope="scope">
               <el-input v-model="scope.row.transferWeightKg" size="small"></el-input>
+            </template>
+          </el-table-column>
+          <el-table-column v-if="isWeightGainLoss" label="盘点后重量KG" width="150" align="center" header-align="center">
+            <template slot-scope="scope">
+              <el-input-number v-model="scope.row.adjustedWeightKg" :min="0.01" :precision="2" :controls="false" size="small" style="width: 125px;"></el-input-number>
+            </template>
+          </el-table-column>
+          <el-table-column v-if="isWeightGainLoss" label="盘盈/盘亏" width="105" align="center" header-align="center">
+            <template slot-scope="scope">
+              <el-tag :type="weightVarianceType(scope.row) === '盘盈' ? 'success' : (weightVarianceType(scope.row) === '盘亏' ? 'danger' : 'info')" size="small">
+                {{ weightVarianceType(scope.row) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column v-if="isWeightGainLoss" label="差异重量KG" width="125" align="right" header-align="center">
+            <template slot-scope="scope">{{ weightVariance(scope.row) }}</template>
+          </el-table-column>
+          <el-table-column v-if="isWeightGainLoss" label="盘盈盘亏原因" min-width="220" align="center" header-align="center">
+            <template slot-scope="scope">
+              <el-input v-model="scope.row.remark" maxlength="200" show-word-limit size="small" placeholder="必填，最多200字"></el-input>
             </template>
           </el-table-column>
           <el-table-column v-if="isWarehouseTransfer || isFreshToFrozen" :label="isFreshToFrozen ? '转入仓库' : '目标仓库'" min-width="170" align="center" header-align="center">
@@ -687,6 +747,7 @@
             <el-select v-model="query.adjustmentType" clearable placeholder="调整类型" style="width: 150px;">
               <el-option label="转仓库" value="WAREHOUSE_TRANSFER"></el-option>
               <el-option label="冷鲜转冷冻" value="FRESH_TO_FROZEN"></el-option>
+              <el-option v-if="isAuth('erp:inventory-adjustment:weight')" label="重量盘盈盘亏" value="WEIGHT_GAIN_LOSS"></el-option>
             </el-select>
           </el-form-item>
           <el-form-item>
@@ -722,7 +783,7 @@
           <el-table-column prop="adjustmentNo" label="调整单号" min-width="160" show-overflow-tooltip></el-table-column>
           <el-table-column prop="adjustmentTypeName" label="调整类型" width="110" align="center" header-align="center">
             <template slot-scope="scope">
-              <el-tag :type="scope.row.adjustmentType === 'FRESH_TO_FROZEN' ? 'warning' : 'success'" size="small">{{ scope.row.adjustmentTypeName }}</el-tag>
+              <el-tag :type="scope.row.adjustmentType === 'FRESH_TO_FROZEN' ? 'warning' : (scope.row.adjustmentType === 'WEIGHT_GAIN_LOSS' ? 'danger' : 'success')" size="small">{{ scope.row.adjustmentTypeName }}</el-tag>
             </template>
           </el-table-column>
           <el-table-column prop="createTime" label="调整时间" width="165" align="center" header-align="center">
@@ -748,6 +809,19 @@
           </el-table-column>
           <el-table-column prop="transferBoxes" label="调整箱数" width="100" align="right" header-align="center"></el-table-column>
           <el-table-column prop="transferWeightKg" label="调整重量KG" width="120" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="beforeWeightKg" label="调整前重量KG" width="125" align="right" header-align="center">
+            <template slot-scope="scope">{{ scope.row.beforeWeightKg == null ? '-' : scope.row.beforeWeightKg }}</template>
+          </el-table-column>
+          <el-table-column prop="afterWeightKg" label="调整后重量KG" width="125" align="right" header-align="center">
+            <template slot-scope="scope">{{ scope.row.afterWeightKg == null ? '-' : scope.row.afterWeightKg }}</template>
+          </el-table-column>
+          <el-table-column prop="weightVarianceKg" label="差异重量KG" width="120" align="right" header-align="center">
+            <template slot-scope="scope">
+              <span :class="scope.row.weightVarianceKg > 0 ? 'weight-gain-text' : (scope.row.weightVarianceKg < 0 ? 'weight-loss-text' : '')">
+                {{ scope.row.weightVarianceKg == null ? '-' : scope.row.weightVarianceKg }}
+              </span>
+            </template>
+          </el-table-column>
           <el-table-column prop="fileNames" label="归档原件" min-width="180" show-overflow-tooltip></el-table-column>
           <el-table-column prop="remark" label="备注" min-width="160" show-overflow-tooltip></el-table-column>
         </el-table>
@@ -772,7 +846,9 @@
     methods: {
       handleTabChange () {},
       currentPanel () {
-        return this.activeTab === 'FRESH_TO_FROZEN' ? this.$refs.freshPanel : this.$refs.warehousePanel
+        if (this.activeTab === 'FRESH_TO_FROZEN') return this.$refs.freshPanel
+        if (this.activeTab === 'WEIGHT_GAIN_LOSS') return this.$refs.weightPanel
+        return this.$refs.warehousePanel
       },
       loadWarehouses () {
         this.$http({
@@ -796,6 +872,12 @@
     background: #ecf5ff;
     color: #3a6f9f;
     line-height: 1.5;
+  }
+
+  .mod-erp-stock-adjustment .weight-adjust-tip {
+    border-color: #f3d19e;
+    background: #fdf6ec;
+    color: #9b641f;
   }
 
   .adjust-panel {
@@ -856,6 +938,20 @@
     grid-template-columns: minmax(0, 1fr) 280px;
     gap: 14px;
     margin-bottom: 16px;
+  }
+
+  .adjust-panel .adjust-source-layout.query-only {
+    grid-template-columns: 1fr;
+  }
+
+  .adjust-record-panel .weight-gain-text {
+    color: #2d8a58;
+    font-weight: 600;
+  }
+
+  .adjust-record-panel .weight-loss-text {
+    color: #d85050;
+    font-weight: 600;
   }
 
   .adjust-panel .adjust-query-area,
