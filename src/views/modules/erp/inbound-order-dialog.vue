@@ -701,10 +701,11 @@ export default {
         const driverPlate = this.normalizePlateNo(driver.plateNo)
         const driverMobile = this.normalizeText(driver.mobile)
         const driverIdCardNo = this.normalizeText(driver.idCardNo)
-        return (plate && driverPlate === plate) ||
-          (mobile && driverMobile === mobile) ||
-          (idCardNo && driverIdCardNo === idCardNo) ||
-          (name && driverName === name && (plate || mobile || idCardNo))
+        if (idCardNo && driverIdCardNo === idCardNo) {
+          return true
+        }
+        return !!(name && plate && mobile &&
+          driverName === name && driverPlate === plate && driverMobile === mobile)
       })
     },
     resolveRecognizedDriver () {
