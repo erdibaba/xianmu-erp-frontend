@@ -1637,7 +1637,7 @@
           <el-input-number
             v-model="spotPricingForm.salePriceKg"
             :controls="false"
-            :min="0.01"
+            :min="0"
             :precision="2"
             placeholder="请输入销售价"
             style="width: 100%;">
@@ -3673,11 +3673,14 @@ export default {
       const availableBoxes = Number((lot && lot.availableBoxes) || 0)
       return Number((lot && lot.estimatedUnitWeightKg) || (availableBoxes > 0 ? Number(lot.availableWeightKg || 0) / availableBoxes : 0))
     },
+    salePriceProvided (value) {
+      return value !== null && value !== undefined && value !== '' && !Number.isNaN(Number(value))
+    },
     existingSpotSalePrice (product) {
       const summary = (this.dataForm.itemList || []).find(item => this.spotProductMatches(item, product))
-      if (summary && Number(summary.salePriceKg || 0) > 0) return Number(summary.salePriceKg)
+      if (summary && this.salePriceProvided(summary.salePriceKg)) return Number(summary.salePriceKg)
       const allocation = (this.dataForm.allocationItemList || []).find(item => this.spotProductMatches(item, product))
-      return allocation && Number(allocation.salePriceKg || 0) > 0 ? Number(allocation.salePriceKg) : null
+      return allocation && this.salePriceProvided(allocation.salePriceKg) ? Number(allocation.salePriceKg) : null
     },
     openSpotPricingForCandidates (candidates) {
       const selectable = (candidates || []).filter(({ lot }) => this.spotLotSelectable(lot))
@@ -3739,7 +3742,7 @@ export default {
         productCode: row.productCode,
         productName: row.productName,
         marketCirculationName: row.marketCirculationName,
-        salePriceKg: Number(row.salePriceKg || 0) > 0 ? Number(row.salePriceKg) : null,
+        salePriceKg: this.salePriceProvided(row.salePriceKg) ? Number(row.salePriceKg) : null,
         expectedWeightKg: Number(rows.reduce((sum, item) => sum + Number(item.contractQuantityKg || 0), 0).toFixed(2)),
         selectedBoxes: rows.reduce((sum, item) => sum + Number(item.boxes || 0), 0)
       }
@@ -3790,7 +3793,7 @@ export default {
       })
     },
     confirmSpotPricing () {
-      const salePrice = Number(this.spotPricingForm.salePriceKg || 0)
+      const salePrice = Number(this.spotPricingForm.salePriceKg)
       const expectedWeight = Number(this.spotPricingForm.expectedWeightKg || 0)
       const detailRows = this.spotPricingDetailRows || []
       if (!detailRows.length) {
@@ -3810,8 +3813,8 @@ export default {
           return
         }
       }
-      if (salePrice <= 0) {
-        this.$message.error('销售价必须大于0')
+      if (!this.salePriceProvided(this.spotPricingForm.salePriceKg) || salePrice < 0) {
+        this.$message.error('销售价不能为空且不能小于0')
         return
       }
       if (expectedWeight <= 0) {
@@ -4059,8 +4062,8 @@ export default {
         const item = this.dataForm.itemList[index]
         if (!item.productId) return `现货单第${index + 1}行产品未选择`
         if (!item.boxes || Number(item.boxes) <= 0) return `现货单第${index + 1}行箱数必须大于0`
-        if (item.salePriceKg === null || item.salePriceKg === '' || Number(item.salePriceKg) <= 0) {
-          return `现货单第${index + 1}行销售价（元/千克）必须大于0`
+        if (!this.salePriceProvided(item.salePriceKg) || Number(item.salePriceKg) < 0) {
+          return `现货单第${index + 1}行销售价（元/千克）不能为空且不能小于0`
         }
         const productFactoryKey = this.saleItemFactoryKey(item)
         if (productIds[productFactoryKey]) return '同一产品、同一厂号请合并箱数后再生成分配明细'
@@ -4106,8 +4109,8 @@ export default {
             : `第${index + 1}行箱数必须大于0`
         }
         if (this.isSpotSale && Number(item.boxes) <= 0) return `第${index + 1}行箱数必须大于0`
-        if (item.salePriceKg === null || item.salePriceKg === '' || Number(item.salePriceKg) <= 0) {
-          return `产品${item.productCode || index + 1}的销售价（元/千克）必须大于0，请在已选库存明细中调整`
+        if (!this.salePriceProvided(item.salePriceKg) || Number(item.salePriceKg) < 0) {
+          return `产品${item.productCode || index + 1}的销售价（元/千克）不能为空且不能小于0，请在已选库存明细中调整`
         }
         const productFactoryKey = this.saleItemFactoryKey(item)
         if (productIds[productFactoryKey]) return '同一产品、同一厂号请合并为一行'
@@ -4271,24 +4274,38 @@ export default {
           this.$message.error(itemError)
           return false
         }
-        const isCreate = !this.dataForm.id
-        this.saveLoading = true
-        this.withGlobalLoading(this.$http({
-          url: this.$http.adornUrl(this.dataForm.id ? '/erp/saleorder/update' : '/erp/saleorder/save'),
-          method: 'post',
-          data: this.$http.adornData(this.buildSubmitData())
-        })).then(({ data }) => {
-          if (data && data.code === 0) {
-            this.$message.success('保存成功')
-            this.visible = false
-            this.$emit('refreshDataList', { created: isCreate })
-          } else {
-            this.$message.error((data && data.msg) || '保存失败')
-          }
-          this.saveLoading = false
-        }).catch(() => {
-          this.saveLoading = false
+        const submit = () => {
+          const isCreate = !this.dataForm.id
+          this.saveLoading = true
+          this.withGlobalLoading(this.$http({
+            url: this.$http.adornUrl(this.dataForm.id ? '/erp/saleorder/update' : '/erp/saleorder/save'),
+            method: 'post',
+            data: this.$http.adornData(this.buildSubmitData())
+          })).then(({ data }) => {
+            if (data && data.code === 0) {
+              this.$message.success('保存成功')
+              this.visible = false
+              this.$emit('refreshDataList', { created: isCreate })
+            } else {
+              this.$message.error((data && data.msg) || '保存失败')
+            }
+            this.saveLoading = false
+          }).catch(() => {
+            this.saveLoading = false
+          })
+        }
+        const hasZeroSalePrice = (this.dataForm.itemList || []).some(item => {
+          return this.salePriceProvided(item.salePriceKg) && Number(item.salePriceKg) === 0
         })
+        if (hasZeroSalePrice) {
+          this.$confirm('存在零销售价产品，请确认是否继续保存？', '零销售价确认', {
+            confirmButtonText: '确认保存',
+            cancelButtonText: '返回检查',
+            type: 'warning'
+          }).then(submit).catch(() => {})
+          return
+        }
+        submit()
       })
     },
     getFileListByType (fileType) {
