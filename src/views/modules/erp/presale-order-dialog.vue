@@ -10,6 +10,14 @@
       class="presale-order-dialog"
       v-loading="detailLoading"
       element-loading-text="数据加载中...">
+      <el-alert
+        v-if="activeCoreLockMessage"
+        class="core-lock-alert"
+        :title="activeCoreLockMessage"
+        type="warning"
+        :closable="false"
+        show-icon>
+      </el-alert>
       <el-tabs v-model="activeTab" class="presale-order-tabs">
         <el-tab-pane label="预售销售单" name="estimate">
           <div class="tab-pane-content">
@@ -920,6 +928,8 @@ function defaultConfirmInfo () {
     fileName: '',
     rawText: '',
     remark: '',
+    coreLocked: false,
+    coreLockMessage: '',
     itemList: []
   }
 }
@@ -966,6 +976,8 @@ function defaultPackingInfo () {
     fileName: '',
     rawText: '',
     remark: '',
+    coreLocked: false,
+    coreLockMessage: '',
     itemList: []
   }
 }
@@ -1020,6 +1032,8 @@ function defaultForm () {
     expectedDate: null,
     status: 0,
     remark: '',
+    coreLocked: false,
+    coreLockMessage: '',
     itemList: [],
     confirmInfo: defaultConfirmInfo(),
     confirmList: [],
@@ -1051,6 +1065,7 @@ export default {
     return {
       visible: false,
       readonly: false,
+      requestedReadonly: false,
       activeTab: 'estimate',
       saveLoading: false,
       detailLoading: false,
@@ -1118,6 +1133,19 @@ export default {
     }
   },
   computed: {
+    activeCoreLockMessage () {
+      if (this.requestedReadonly) return ''
+      if (this.activeTab === 'estimate' && this.dataForm.coreLocked) {
+        return this.dataForm.coreLockMessage || '该预售销售单核心数据已锁定，如需调整请联系管理员操作'
+      }
+      if (this.activeTab === 'confirm' && (this.dataForm.confirmInfo || {}).coreLocked) {
+        return this.dataForm.confirmInfo.coreLockMessage || '该客户订单确认函核心数据已锁定，如需调整请联系管理员操作'
+      }
+      if (this.activeTab === 'packing' && (this.dataForm.packingInfo || {}).coreLocked) {
+        return this.dataForm.packingInfo.coreLockMessage || '该装箱单核心数据已锁定，如需调整请联系管理员操作'
+      }
+      return ''
+    },
     businessEntityLocked () {
       return !!(this.dataForm.id && Number(this.dataForm.confirmCount || 0) > 0)
     },
@@ -1348,10 +1376,16 @@ export default {
       return ((this.confirmTotalWeightKg / this.presaleTotalWeightKg) * 100).toFixed(2) + '%'
     }
   },
+  watch: {
+    activeTab () {
+      this.applyActiveSectionReadonly()
+    }
+  },
   methods: {
     init (id, readonly, activeTab, activeConfirmId) {
       this.visible = true
-      this.readonly = !!readonly
+      this.requestedReadonly = !!readonly
+      this.readonly = this.requestedReadonly
       this.activeTab = this.onlyEstimate ? 'estimate' : (activeTab || 'estimate')
       this.dataForm = defaultForm()
       this.loadBaseOptions(() => {
@@ -1361,6 +1395,7 @@ export default {
     },
     initFromEstimateResult (result) {
       this.visible = true
+      this.requestedReadonly = false
       this.readonly = false
       this.activeTab = 'estimate'
       this.detailLoading = true
@@ -1371,6 +1406,7 @@ export default {
     },
     initFromConfirmResult (orderId, result, activeConfirmId) {
       this.visible = true
+      this.requestedReadonly = false
       this.readonly = false
       this.activeTab = 'confirm'
       this.detailLoading = true
@@ -1383,6 +1419,7 @@ export default {
     },
     initFromPackingResult (orderId, result, activeConfirmId) {
       this.visible = true
+      this.requestedReadonly = false
       this.readonly = false
       this.activeTab = 'packing'
       this.detailLoading = true
@@ -1410,12 +1447,24 @@ export default {
           } else {
             this.dataForm = form
           }
+          this.$nextTick(this.applyActiveSectionReadonly)
         } else {
           this.$message.error((data && data.msg) || '获取详情失败')
         }
       }).finally(() => {
         this.detailLoading = false
       })
+    },
+    applyActiveSectionReadonly () {
+      let coreLocked = false
+      if (this.activeTab === 'estimate') {
+        coreLocked = !!this.dataForm.coreLocked
+      } else if (this.activeTab === 'confirm') {
+        coreLocked = !!(this.dataForm.confirmInfo || {}).coreLocked
+      } else if (this.activeTab === 'packing') {
+        coreLocked = !!(this.dataForm.packingInfo || {}).coreLocked
+      }
+      this.readonly = this.requestedReadonly || coreLocked
     },
     loadBaseOptions (callback) {
       this.loadInternalEntities(() => {
@@ -2036,6 +2085,7 @@ export default {
         return itemRow
       })
       this.dataForm.confirmInfo = confirm
+      this.$nextTick(this.applyActiveSectionReadonly)
     },
     isActiveConfirm (row) {
       const active = this.dataForm.confirmInfo || {}
@@ -2312,6 +2362,10 @@ export default {
 .tab-tools {
   margin-bottom: 10px;
   flex: 0 0 auto;
+}
+
+.core-lock-alert {
+  margin-bottom: 12px;
 }
 
 .confirm-list-panel {

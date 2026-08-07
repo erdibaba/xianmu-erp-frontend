@@ -7,6 +7,14 @@
     top="4vh"
     custom-class="inbound-order-dialog-modal">
     <div ref="dialogBody" class="inbound-order-dialog" v-loading="detailLoading">
+      <el-alert
+        v-if="dataForm.coreLocked"
+        class="core-lock-alert"
+        :title="dataForm.coreLockMessage || '该入库单核心数据已锁定，如需调整请联系管理员操作'"
+        type="warning"
+        :closable="false"
+        show-icon>
+      </el-alert>
       <el-form
         ref="dataForm"
         :model="dataForm"
@@ -506,6 +514,8 @@ export default {
         wmsOrderNo: '',
         rawText: '',
         remark: '',
+        coreLocked: false,
+        coreLockMessage: '',
         fileList: [],
         expenseList: [],
         itemList: []
@@ -572,6 +582,9 @@ export default {
       }).then(({ data }) => {
         if (data && data.code === 0) {
           this.dataForm = this.normalizeForm(data.inboundOrder || {})
+          if (this.dataForm.coreLocked) {
+            this.readonly = true
+          }
         } else {
           this.$message.error((data && data.msg) || '加载失败')
         }
@@ -1340,6 +1353,10 @@ export default {
   max-height: calc(100vh - 246px);
   overflow: hidden;
   padding: 0 4px 0 0;
+}
+
+.core-lock-alert {
+  margin-bottom: 12px;
 }
 
 .inbound-order-dialog /deep/ .el-form-item {
