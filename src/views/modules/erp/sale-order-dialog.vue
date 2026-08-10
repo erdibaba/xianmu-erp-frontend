@@ -897,7 +897,13 @@
                   <span>{{ pickupMethodText(batch.pickupMethod) }}</span>
                   <span>出库：{{ formatDateOnly(batch.outboundDate) || '-' }}</span>
                   <span>{{ batch.driverName || '-' }}</span>
-                  <span>{{ formatBoxes(batch.shippedTotalBoxes) }}箱 / {{ formatNumber(batch.shippedTotalWeight, 3) }}KG</span>
+                  <span class="open-batch-quantity">
+                    <span>计划：{{ formatBoxes(batchPlannedBoxes(batch)) }}箱 / {{ formatNumber(batchPlannedWeight(batch), 3) }}KG</span>
+                    <span>
+                      实际：{{ formatBoxes(batch.shippedTotalBoxes) }}箱 / {{ formatNumber(batch.shippedTotalWeight, 3) }}KG
+                      <em v-if="Number(batch.receiptCount || 0) === 0">（待上传回单）</em>
+                    </span>
+                  </span>
                 </div>
               </div>
             </div>
@@ -3040,6 +3046,16 @@ export default {
       const number = Number(this.toNumber(value).toFixed(3))
       return String(number)
     },
+    batchPlannedBoxes (batch) {
+      return (batch && batch.planItemList ? batch.planItemList : []).reduce((sum, item) => {
+        return sum + this.toNumber(item.plannedBoxes)
+      }, 0)
+    },
+    batchPlannedWeight (batch) {
+      return (batch && batch.planItemList ? batch.planItemList : []).reduce((sum, item) => {
+        return sum + this.toNumber(item.plannedWeight)
+      }, 0)
+    },
     sameBoxes (left, right) {
       return Math.abs(this.toNumber(left) - this.toNumber(right)) < 0.0005
     },
@@ -5114,6 +5130,17 @@ export default {
   gap: 6px 12px;
   color: #606266;
   font-size: 12px;
+}
+
+.open-batch-quantity {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.open-batch-quantity em {
+  color: #e6a23c;
+  font-style: normal;
 }
 
 .outbound-batch-info {
