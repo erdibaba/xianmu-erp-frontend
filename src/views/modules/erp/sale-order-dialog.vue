@@ -1419,6 +1419,28 @@
                   </el-select>
                 </template>
               </el-table-column>
+              <el-table-column label="对应计划明细" min-width="300">
+                <template slot-scope="scope">
+                  <el-select
+                    v-model="scope.row.planItemId"
+                    filterable
+                    clearable
+                    size="mini"
+                    :disabled="!outboundReceiptEditable || !scope.row.productId"
+                    placeholder="选择生产日期对应的计划明细"
+                    style="width: 100%;"
+                    @change="value => outboundReceiptPlanChange(scope.row, value)">
+                    <el-option
+                      v-for="item in outboundPlanOptions(scope.row)"
+                      :key="item.id"
+                      :label="formatOutboundPlanOption(item)"
+                      :value="item.id">
+                      <div class="product-option-code">{{ item.productCode }} / {{ formatBoxes(item.plannedBoxes) }}箱</div>
+                      <div class="product-option-name">生产 {{ formatDateOnly(item.productionDate) }} / 过期 {{ formatDateOnly(item.expiryDate) }}</div>
+                    </el-option>
+                  </el-select>
+                </template>
+              </el-table-column>
               <el-table-column label="品名" min-width="170" show-overflow-tooltip>
                 <template slot-scope="scope">{{ saleProductDisplayName(scope.row) }}</template>
               </el-table-column>
@@ -2510,6 +2532,8 @@ export default {
         expectedContainerNo: '',
         expectedBoxes: 0,
         expectedWeight: 0,
+        expectedProductionDate: '',
+        expectedExpiryDate: '',
         salePriceKg: 0,
         planItemId: '',
         planMatchStatus: '待匹配',
@@ -3084,14 +3108,24 @@ export default {
       if (planItems.length) {
         const productPlans = planItems.filter(item => String(item.productId) === String(row.productId))
         if (!productPlans.length) return null
+        if (row.planItemId) {
+          const selectedPlan = productPlans.find(item => String(item.id) === String(row.planItemId))
+          if (selectedPlan) return selectedPlan
+        }
         const containerNo = this.normalizeOutboundContainerNo(row.containerNo)
         const factoryNo = this.normalizeOutboundContainerNo(row.factoryNo)
-        const exact = productPlans.find(item => {
+        const matchedPlans = productPlans.filter(item => {
           const containerMatched = !containerNo || this.normalizeOutboundContainerNo(item.containerNo) === containerNo
           const factoryMatched = !factoryNo || this.normalizeOutboundContainerNo(item.factoryNo) === factoryNo
           return containerMatched && factoryMatched
         })
-        return exact || (productPlans.length === 1 ? productPlans[0] : null)
+        if (matchedPlans.length === 1) return matchedPlans[0]
+        const shippedQty = this.toNumber(row.shippedQty)
+        if (shippedQty > 0) {
+          const quantityMatched = matchedPlans.filter(item => Math.abs(this.toNumber(item.plannedBoxes) - shippedQty) < 0.0005)
+          if (quantityMatched.length === 1) return quantityMatched[0]
+        }
+        return productPlans.length === 1 ? productPlans[0] : null
       }
       const sourceItems = this.outboundExpectedSourceItems()
       const productItems = sourceItems.filter(item => String(item.productId) === String(row.productId))
@@ -3106,13 +3140,16 @@ export default {
     applyOutboundExpectedByProduct (row) {
       const saleItem = this.findOutboundExpectedSaleItem(row)
       if (!saleItem) {
+        const pendingPlanSelection = this.outboundPlanOptions(row).length > 1
         this.$set(row, 'expectedFactoryNo', '')
         this.$set(row, 'expectedContainerNo', '')
         this.$set(row, 'expectedBoxes', 0)
         this.$set(row, 'expectedWeight', 0)
+        this.$set(row, 'expectedProductionDate', '')
+        this.$set(row, 'expectedExpiryDate', '')
         this.$set(row, 'salePriceKg', 0)
         this.$set(row, 'planItemId', '')
-        this.$set(row, 'planMatchStatus', '计划外出库')
+        this.$set(row, 'planMatchStatus', pendingPlanSelection ? '待选择计划' : '计划外出库')
         return
       }
       this.$set(row, 'contractNo', this.dataForm.contractNo || this.dataForm.orderNo || '')
@@ -3123,6 +3160,8 @@ export default {
       this.$set(row, 'expectedContainerNo', (isPlan ? saleItem.containerNo : saleItem.sourceContainerNo) || '')
       this.$set(row, 'expectedBoxes', Number((isPlan ? saleItem.plannedBoxes : saleItem.boxes) || 0))
       this.$set(row, 'expectedWeight', Number((isPlan ? saleItem.plannedWeight : saleItem.contractQuantityKg) || 0))
+      this.$set(row, 'expectedProductionDate', saleItem.productionDate || '')
+      this.$set(row, 'expectedExpiryDate', saleItem.expiryDate || '')
       this.$set(row, 'salePriceKg', Number(saleItem.salePriceKg || 0))
       const expectedFactory = isPlan ? saleItem.factoryNo : saleItem.contractFactoryNo
       if (!row.factoryNo && expectedFactory) {
@@ -3315,6 +3354,34 @@ export default {
       row._productOptions = Object.keys(unique).map(key => unique[key]).slice(0, 15)
       row._productLoading = false
     },
+    outboundPlanOptions (row) {
+      if (!row || !row.productId) return []
+      const plans = this.currentOutboundBatch && this.currentOutboundBatch.planItemList
+        ? this.currentOutboundBatch.planItemList
+        : []
+      return plans.filter(item => String(item.productId) === String(row.productId))
+    },
+    formatOutboundPlanOption (item) {
+      if (!item) return '-'
+      return `${item.productCode || '-'} | 生产${this.formatDateOnly(item.productionDate)} | 过期${this.formatDateOnly(item.expiryDate)} | ${this.formatBoxes(item.plannedBoxes)}箱`
+    },
+    outboundReceiptPlanChange (row, value) {
+      const plan = this.outboundPlanOptions(row).find(item => String(item.id) === String(value))
+      if (!plan) {
+        this.$set(row, 'planItemId', '')
+        this.applyOutboundExpectedByProduct(row)
+        return
+      }
+      this.$set(row, 'productId', plan.productId)
+      this.$set(row, 'productCode', plan.productCode || '')
+      this.$set(row, 'productName', plan.productName || '')
+      this.$set(row, 'productNameEn', plan.productNameEn || '')
+      this.$set(row, 'marketCirculationName', plan.marketCirculationName || '')
+      this.$set(row, 'containerNo', plan.containerNo || row.containerNo || '')
+      this.$set(row, 'factoryNo', plan.factoryNo || row.factoryNo || '')
+      this.$set(row, 'planItemId', plan.id)
+      this.applyOutboundExpectedByProduct(row)
+    },
     outboundReceiptProductChange (row, value) {
       this.ensureOutboundReceiptProductState(row)
       const product = row._productOptions.find(item => String(item.id) === String(value)) ||
@@ -3335,8 +3402,13 @@ export default {
       row.productName = product.productName || ''
       row.productNameEn = product.productNameEn || ''
       row.marketCirculationName = product.marketCirculationName || ''
+      row.planItemId = ''
       if (!row._productOptions.find(item => String(item.id) === String(product.id))) {
         row._productOptions = [product].concat(row._productOptions)
+      }
+      const planOptions = this.outboundPlanOptions(row)
+      if (planOptions.length === 1) {
+        row.planItemId = planOptions[0].id
       }
       this.applyOutboundExpectedByProduct(row)
     },
@@ -4630,6 +4702,7 @@ export default {
           outboundOrderNo: item.outboundOrderNo,
           customerCode: item.customerCode,
           customerName: item.customerName,
+          planItemId: item.planItemId || null,
           productId: item.productId || null,
           productCode: item.productCode,
           recognizedProductCode: item.recognizedProductCode,
@@ -4654,6 +4727,9 @@ export default {
       for (let index = 0; index < items.length; index++) {
         const item = items[index]
         if (!item.productId) return `第${index + 1}行系统编码不能为空`
+        if (this.outboundPlanOptions(item).length > 1 && !item.planItemId) {
+          return `第${index + 1}行存在多个生产日期计划，请选择对应计划明细`
+        }
         if (!item.shippedQty || Number(item.shippedQty) <= 0) return `第${index + 1}行实际箱数必须大于0`
         if (!item.totalWeight || Number(item.totalWeight) <= 0) return `第${index + 1}行实际重量必须大于0`
       }
