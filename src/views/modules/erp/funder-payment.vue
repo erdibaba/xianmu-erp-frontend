@@ -60,7 +60,7 @@
       <el-table-column fixed="right" label="操作" width="250" align="center">
         <template slot-scope="scope">
           <el-button
-            v-if="isAuth('erp:funderpayment:save') && scope.row.paymentType === 2 && scope.row.status === 0"
+            v-if="isAuth('erp:funderpayment:save') && scope.row.paymentType === 1"
             type="text"
             size="small"
             @click="openDepositSupplement(scope.row.id)">
@@ -493,16 +493,32 @@
       width="820px"
       append-to-body
       :close-on-click-modal="false">
+      <el-form label-width="120px" style="margin-bottom: 12px">
+        <el-form-item label="确认函合同号" required>
+          <el-select
+            v-model="depositSupplementForm.allocationId"
+            placeholder="请选择本次补保证金对应的确认函合同"
+            style="width: 100%"
+            @change="changeDepositSupplementAllocation">
+            <el-option
+              v-for="item in depositSupplementForm.allocationOptions"
+              :key="item.id"
+              :label="`${item.confirmContractNo || '-'} / 分摊金额${money(item.allocationAmount)} / 已出资${money(item.xianmuContributionModifiedAmount)}`"
+              :value="item.id">
+            </el-option>
+          </el-select>
+        </el-form-item>
+      </el-form>
       <el-descriptions :column="2" border size="small">
         <el-descriptions-item label="确认函合同号">{{ depositSupplementForm.confirmContractNo || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="确认函总金额">{{ money(depositSupplementForm.contractAmount) }}</el-descriptions-item>
-        <el-descriptions-item label="历史定金/保证金">{{ money(depositSupplementForm.existingDepositAmount) }}</el-descriptions-item>
+        <el-descriptions-item label="资方全款分摊金额">{{ money(depositSupplementForm.contractAmount) }}</el-descriptions-item>
+        <el-descriptions-item label="历史保证金">{{ money(depositSupplementForm.existingDepositAmount) }}</el-descriptions-item>
         <el-descriptions-item label="本次补保证金">{{ money(voucherTotal(depositSupplementForm, 'voucherList')) }}</el-descriptions-item>
         <el-descriptions-item label="补款后累计">{{ money(depositSupplementCumulative()) }}</el-descriptions-item>
-        <el-descriptions-item label="补款后待付尾款">{{ money(depositSupplementBalance()) }}</el-descriptions-item>
+        <el-descriptions-item label="补款后资方贷款本金">{{ money(depositSupplementBalance()) }}</el-descriptions-item>
       </el-descriptions>
       <el-alert
-        title="补保证金将追加为新的凭证流水，不会覆盖历史定金；尾款按确认函总金额减累计定金/保证金自动重算。"
+        title="补保证金将追加为新的内部主体出资凭证，不覆盖历史凭证；对应确认函的资方贷款本金将按分摊金额减累计保证金重新计算。"
         type="info"
         :closable="false"
         style="margin: 14px 0">
@@ -775,6 +791,8 @@ export default {
       depositSupplementSaving: false,
       depositSupplementForm: {
         paymentId: null,
+        allocationId: null,
+        allocationOptions: [],
         confirmContractNo: '',
         contractAmount: 0,
         existingDepositAmount: 0,
@@ -1512,31 +1530,46 @@ export default {
       }).catch(() => this.$message.error('加载待尾款记录请求失败')).finally(() => loading.close())
     },
     openDepositSupplement (id) {
-      const loading = this.$loading({ lock: true, text: '正在加载定金及待付尾款...' })
+      const loading = this.$loading({ lock: true, text: '正在加载资方打款及保证金...' })
       this.$http({
         url: this.$http.adornUrl(`/erp/funder-finance/payment/info/${id}`),
         method: 'get',
         params: this.$http.adornParams()
       }).then(({ data }) => {
         const payment = (data && data.payment) || {}
-        const allocation = (payment.allocationList || [])[0]
-        if (!data || data.code !== 0 || !allocation) {
+        if (!data || data.code !== 0) {
           this.$message.error((data && data.msg) || '加载补保证金信息失败')
           return
         }
-        if (payment.paymentType !== PAYMENT_TYPE_XIANMU || payment.status === 1) {
-          this.$message.error('当前打款记录不能继续补保证金')
+        if (payment.paymentType !== PAYMENT_TYPE_FUNDER) {
+          this.$message.error('只有资方全款打款可以补保证金')
+          return
+        }
+        const allocationOptions = (payment.allocationList || []).filter(item => this.hasXianmuContribution(item))
+        if (!allocationOptions.length) {
+          this.$message.error('该资方打款没有设置内部主体出资的确认函，不能补保证金')
           return
         }
         this.depositSupplementForm = {
           paymentId: payment.id,
-          confirmContractNo: allocation.confirmContractNo,
-          contractAmount: Number(allocation.allocationAmount || 0),
-          existingDepositAmount: Number(allocation.xianmuDepositModifiedAmount || 0),
+          allocationId: allocationOptions[0].id,
+          allocationOptions,
+          confirmContractNo: '',
+          contractAmount: 0,
+          existingDepositAmount: 0,
           voucherList: []
         }
+        this.changeDepositSupplementAllocation(allocationOptions[0].id)
         this.depositSupplementVisible = true
       }).catch(() => this.$message.error('加载补保证金信息请求失败')).finally(() => loading.close())
+    },
+    changeDepositSupplementAllocation (allocationId) {
+      const allocation = (this.depositSupplementForm.allocationOptions || []).find(item => item.id === allocationId)
+      if (!allocation) return
+      this.depositSupplementForm.confirmContractNo = allocation.confirmContractNo
+      this.depositSupplementForm.contractAmount = Number(allocation.allocationAmount || 0)
+      this.depositSupplementForm.existingDepositAmount = Number(allocation.xianmuContributionModifiedAmount || 0)
+      this.depositSupplementForm.voucherList = []
     },
     recognizeDepositSupplement (request) {
       const formData = new FormData()
@@ -1576,18 +1609,21 @@ export default {
         return
       }
       if (this.depositSupplementCumulative() > this.roundMoney(this.depositSupplementForm.contractAmount)) {
-        this.$message.error('累计定金/保证金不能大于确认函总金额')
+        this.$message.error('累计保证金不能大于该确认函的资方全款分摊金额')
         return
       }
       this.depositSupplementSaving = true
-      const loading = this.$loading({ lock: true, text: '正在保存补保证金并重算尾款...' })
+      const loading = this.$loading({ lock: true, text: '正在保存补保证金并重算资方贷款本金...' })
       this.$http({
         url: this.$http.adornUrl(`/erp/funder-finance/payment/deposit/supplement/${this.depositSupplementForm.paymentId}`),
         method: 'post',
-        data: this.$http.adornData(this.normalizeVoucherPayload(vouchers), false)
+        data: this.$http.adornData({
+          allocationId: this.depositSupplementForm.allocationId,
+          voucherList: this.normalizeVoucherPayload(vouchers)
+        }, false)
       }).then(({ data }) => {
         if (data && data.code === 0) {
-          this.$message.success('补保证金已保存，待付尾款已按累计定金重新计算')
+          this.$message.success('补保证金已保存，资方贷款本金已按累计保证金重新计算')
           this.depositSupplementVisible = false
           this.getDataList()
         } else {
