@@ -57,8 +57,15 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column fixed="right" label="操作" width="190" align="center">
+      <el-table-column fixed="right" label="操作" width="250" align="center">
         <template slot-scope="scope">
+          <el-button
+            v-if="isAuth('erp:funderpayment:save') && scope.row.paymentType === 2 && scope.row.status === 0"
+            type="text"
+            size="small"
+            @click="openDepositSupplement(scope.row.id)">
+            补保证金
+          </el-button>
           <el-button
             v-if="isAuth('erp:funderpayment:save') && scope.row.paymentType === 2 && scope.row.status === 0"
             type="text"
@@ -312,6 +319,7 @@
           <el-table-column v-if="!isFunderPayment" label="定金凭证" width="180">
             <template slot-scope="scope">
               <el-upload
+                v-if="!paymentForm.id"
                 action="#"
                 :show-file-list="false"
                 :http-request="request => recognizeXianmuInstallment(request, scope.$index, 'deposit')"
@@ -324,6 +332,13 @@
                   上传定金
                 </el-button>
               </el-upload>
+              <el-button
+                v-else-if="(scope.row.depositVoucherList || []).length"
+                type="text"
+                size="mini"
+                @click="openVoucherManager(scope.row, 'depositVoucherList', 'xianmuDeposit', '历史定金/保证金凭证', true)">
+                查看凭证
+              </el-button>
               <div class="row-file-name">{{ scope.row.xianmuDepositFileName || '未上传' }}</div>
               <div class="row-support-tip">支持浦发/建行/工行/兴业/农发行样本</div>
             </template>
@@ -335,6 +350,7 @@
                 :min="0"
                 :precision="2"
                 :controls="false"
+                :disabled="!!paymentForm.id"
                 style="width: 125px">
               </el-input-number>
             </template>
@@ -346,6 +362,7 @@
                 type="date"
                 value-format="yyyy-MM-dd"
                 placeholder="选择日期"
+                :disabled="!!paymentForm.id"
                 style="width: 120px">
               </el-date-picker>
             </template>
@@ -425,11 +442,12 @@
                 <el-card shadow="never">
                   <div slot="header"><strong>定金凭证</strong></div>
                   <el-form-item label="定金凭证">
-                    <el-upload action="#" multiple :show-file-list="false" :http-request="request => recognizeXianmuInstallment(request, 0, 'deposit')" accept=".jpg,.jpeg,.png,.jfif,.bmp,.pdf">
+                    <el-upload v-if="!paymentForm.id" action="#" multiple :show-file-list="false" :http-request="request => recognizeXianmuInstallment(request, 0, 'deposit')" accept=".jpg,.jpeg,.png,.jfif,.bmp,.pdf">
                       <el-button type="primary" plain :loading="xianmuInstallmentLoadingKey === installmentLoadingKey(0, 'deposit')">上传多张并识别定金</el-button>
                     </el-upload>
                     <span class="file-name">已上传 {{ (xianmuAllocation.depositVoucherList || []).length }} 张</span>
-                    <el-button v-if="(xianmuAllocation.depositVoucherList || []).length" type="text" @click="openVoucherManager(xianmuAllocation, 'depositVoucherList', 'xianmuDeposit', '内部主体定金凭证核对')">核对凭证</el-button>
+                    <el-button v-if="(xianmuAllocation.depositVoucherList || []).length" type="text" @click="openVoucherManager(xianmuAllocation, 'depositVoucherList', 'xianmuDeposit', '内部主体定金凭证核对', !!paymentForm.id)">{{ paymentForm.id ? '查看凭证' : '核对凭证' }}</el-button>
+                    <div v-if="paymentForm.id" class="bank-voucher-tip">历史定金/保证金不可在补尾款时修改，请通过列表“补保证金”操作追加。</div>
                     <div class="bank-voucher-tip">{{ bankVoucherSupportTip }}</div>
                   </el-form-item>
                   <el-form-item label="定金金额">
@@ -466,6 +484,63 @@
       <span slot="footer">
         <el-button @click="createVisible = false">取消</el-button>
         <el-button type="primary" :loading="submitLoading" @click="confirmPayment()">{{ confirmButtonText }}</el-button>
+      </span>
+    </el-dialog>
+
+    <el-dialog
+      title="补保证金"
+      :visible.sync="depositSupplementVisible"
+      width="820px"
+      append-to-body
+      :close-on-click-modal="false">
+      <el-descriptions :column="2" border size="small">
+        <el-descriptions-item label="确认函合同号">{{ depositSupplementForm.confirmContractNo || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="确认函总金额">{{ money(depositSupplementForm.contractAmount) }}</el-descriptions-item>
+        <el-descriptions-item label="历史定金/保证金">{{ money(depositSupplementForm.existingDepositAmount) }}</el-descriptions-item>
+        <el-descriptions-item label="本次补保证金">{{ money(voucherTotal(depositSupplementForm, 'voucherList')) }}</el-descriptions-item>
+        <el-descriptions-item label="补款后累计">{{ money(depositSupplementCumulative()) }}</el-descriptions-item>
+        <el-descriptions-item label="补款后待付尾款">{{ money(depositSupplementBalance()) }}</el-descriptions-item>
+      </el-descriptions>
+      <el-alert
+        title="补保证金将追加为新的凭证流水，不会覆盖历史定金；尾款按确认函总金额减累计定金/保证金自动重算。"
+        type="info"
+        :closable="false"
+        style="margin: 14px 0">
+      </el-alert>
+      <div class="supplement-toolbar">
+        <el-upload action="#" multiple :show-file-list="false" :http-request="recognizeDepositSupplement" accept=".jpg,.jpeg,.png,.jfif,.bmp,.pdf">
+          <el-button type="primary" plain :loading="depositSupplementRecognizeLoading">上传多张并识别补保证金</el-button>
+        </el-upload>
+        <span class="file-name">本次已上传 {{ (depositSupplementForm.voucherList || []).length }} 张</span>
+        <el-button
+          v-if="(depositSupplementForm.voucherList || []).length"
+          type="text"
+          @click="openVoucherManager(depositSupplementForm, 'voucherList', '', '补保证金凭证核对')">
+          核对凭证
+        </el-button>
+      </div>
+      <el-table :data="depositSupplementForm.voucherList || []" border max-height="260" style="margin-top: 12px">
+        <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
+        <el-table-column prop="fileName" label="凭证文件" min-width="260" show-overflow-tooltip></el-table-column>
+        <el-table-column label="确认金额" width="170" align="center">
+          <template slot-scope="scope">
+            <el-input-number v-model="scope.row.modifiedAmount" :min="0" :precision="2" :controls="false" style="width: 140px"></el-input-number>
+          </template>
+        </el-table-column>
+        <el-table-column label="打款日期" width="170" align="center">
+          <template slot-scope="scope">
+            <el-date-picker v-model="scope.row.paymentDate" type="date" value-format="yyyy-MM-dd" style="width: 140px"></el-date-picker>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="70" align="center">
+          <template slot-scope="scope">
+            <el-button type="text" class="danger-text" @click="removeDepositSupplementVoucher(scope.$index)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <span slot="footer">
+        <el-button @click="depositSupplementVisible = false">取消</el-button>
+        <el-button type="primary" :loading="depositSupplementSaving" @click="saveDepositSupplement">确认补保证金</el-button>
       </span>
     </el-dialog>
 
@@ -695,6 +770,16 @@ export default {
       createVisible: false,
       detailVisible: false,
       detailData: {},
+      depositSupplementVisible: false,
+      depositSupplementRecognizeLoading: false,
+      depositSupplementSaving: false,
+      depositSupplementForm: {
+        paymentId: null,
+        confirmContractNo: '',
+        contractAmount: 0,
+        existingDepositAmount: 0,
+        voucherList: []
+      },
       voucherManageVisible: false,
       voucherManageTitle: '',
       voucherManageTarget: null,
@@ -815,6 +900,13 @@ export default {
     },
     xianmuExpectedBalanceAmount (row) {
       return Math.max(0, this.roundMoney(Number(row.allocationAmount || 0) - Number(row.xianmuDepositModifiedAmount || 0)))
+    },
+    depositSupplementCumulative () {
+      return this.roundMoney(Number(this.depositSupplementForm.existingDepositAmount || 0) +
+        this.voucherTotal(this.depositSupplementForm, 'voucherList'))
+    },
+    depositSupplementBalance () {
+      return Math.max(0, this.roundMoney(Number(this.depositSupplementForm.contractAmount || 0) - this.depositSupplementCumulative()))
     },
     rateLabel (item) {
       return item.annualInterestRate === null || item.annualInterestRate === undefined ? '未维护' : item.annualInterestRate + '%'
@@ -1419,6 +1511,93 @@ export default {
         }
       }).catch(() => this.$message.error('加载待尾款记录请求失败')).finally(() => loading.close())
     },
+    openDepositSupplement (id) {
+      const loading = this.$loading({ lock: true, text: '正在加载定金及待付尾款...' })
+      this.$http({
+        url: this.$http.adornUrl(`/erp/funder-finance/payment/info/${id}`),
+        method: 'get',
+        params: this.$http.adornParams()
+      }).then(({ data }) => {
+        const payment = (data && data.payment) || {}
+        const allocation = (payment.allocationList || [])[0]
+        if (!data || data.code !== 0 || !allocation) {
+          this.$message.error((data && data.msg) || '加载补保证金信息失败')
+          return
+        }
+        if (payment.paymentType !== PAYMENT_TYPE_XIANMU || payment.status === 1) {
+          this.$message.error('当前打款记录不能继续补保证金')
+          return
+        }
+        this.depositSupplementForm = {
+          paymentId: payment.id,
+          confirmContractNo: allocation.confirmContractNo,
+          contractAmount: Number(allocation.allocationAmount || 0),
+          existingDepositAmount: Number(allocation.xianmuDepositModifiedAmount || 0),
+          voucherList: []
+        }
+        this.depositSupplementVisible = true
+      }).catch(() => this.$message.error('加载补保证金信息请求失败')).finally(() => loading.close())
+    },
+    recognizeDepositSupplement (request) {
+      const formData = new FormData()
+      formData.append('file', request.file)
+      this.depositSupplementRecognizeLoading = true
+      const loading = this.$loading({ lock: true, text: '正在识别并归档补保证金凭证...' })
+      this.$http({
+        url: this.$http.adornUrl('/erp/funder-finance/voucher/recognize'),
+        method: 'post',
+        data: formData,
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 1000 * 60 * 15
+      }).then(({ data }) => {
+        if (data && data.code === 0) {
+          this.appendVoucher(this.depositSupplementForm, 'voucherList', '', data.voucher || {}, request.file.name)
+          this.$message.success(`补保证金凭证识别完成，当前已上传${this.depositSupplementForm.voucherList.length}张`)
+        } else {
+          this.$message.error((data && data.msg) || '补保证金凭证识别失败')
+        }
+      }).catch(() => this.$message.error('补保证金凭证识别请求失败')).finally(() => {
+        this.depositSupplementRecognizeLoading = false
+        loading.close()
+      })
+    },
+    removeDepositSupplementVoucher (index) {
+      this.depositSupplementForm.voucherList.splice(index, 1)
+    },
+    saveDepositSupplement () {
+      const vouchers = this.depositSupplementForm.voucherList || []
+      if (!vouchers.length) {
+        this.$message.error('请至少上传一张补保证金凭证')
+        return
+      }
+      const invalidIndex = vouchers.findIndex(item => !item.filePath || !item.paymentDate || Number(item.modifiedAmount || 0) <= 0)
+      if (invalidIndex >= 0) {
+        this.$message.error(`第${invalidIndex + 1}张凭证的文件、确认金额和打款日期必须完整`)
+        return
+      }
+      if (this.depositSupplementCumulative() > this.roundMoney(this.depositSupplementForm.contractAmount)) {
+        this.$message.error('累计定金/保证金不能大于确认函总金额')
+        return
+      }
+      this.depositSupplementSaving = true
+      const loading = this.$loading({ lock: true, text: '正在保存补保证金并重算尾款...' })
+      this.$http({
+        url: this.$http.adornUrl(`/erp/funder-finance/payment/deposit/supplement/${this.depositSupplementForm.paymentId}`),
+        method: 'post',
+        data: this.$http.adornData(this.normalizeVoucherPayload(vouchers), false)
+      }).then(({ data }) => {
+        if (data && data.code === 0) {
+          this.$message.success('补保证金已保存，待付尾款已按累计定金重新计算')
+          this.depositSupplementVisible = false
+          this.getDataList()
+        } else {
+          this.$message.error((data && data.msg) || '保存补保证金失败')
+        }
+      }).catch(() => this.$message.error('保存补保证金请求失败')).finally(() => {
+        this.depositSupplementSaving = false
+        loading.close()
+      })
+    },
     openDetail (id) {
       const loading = this.$loading({ lock: true, text: '正在加载预销售单打款详情...' })
       this.detailVisible = false
@@ -1563,6 +1742,11 @@ export default {
 .file-name {
   margin-left: 12px;
   color: #606266;
+}
+.supplement-toolbar {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
 }
 .bank-voucher-tip {
   color: #909399;
