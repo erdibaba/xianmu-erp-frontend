@@ -82,7 +82,7 @@
           </el-row>
           </el-form>
 
-          <el-table class="batch-settlement-item-table" :data="form.itemList || []" border stripe height="420">
+          <el-table class="batch-settlement-item-table" :data="displayItemList" border stripe height="420">
           <el-table-column prop="lineNo" label="序号" width="60" align="center"></el-table-column>
           <el-table-column prop="confirmContractNo" label="确认函合同号" width="145" show-overflow-tooltip></el-table-column>
           <el-table-column prop="productCode" label="产品编码" width="100"></el-table-column>
@@ -271,6 +271,38 @@ export default {
     },
     goodsValueTotal () {
       return (this.form.itemList || []).reduce((total, item) => total + Number(item.costAmount || 0), 0)
+    },
+    displayItemList () {
+      const rows = []
+      const groups = Object.create(null)
+      const dimensionFields = [
+        'confirmId', 'confirmContractNo', 'productId', 'productCode', 'productName',
+        'warehouseId', 'warehouseName', 'containerNo', 'factoryNo', 'storageFeeRate',
+        'warehouseRateEffectiveDate', 'unitPriceInclTax', 'settlementUnitPrice', 'loanDays'
+      ]
+      const totalFields = [
+        'shippedBoxes', 'shippedWeight', 'feeWeight', 'costAmount', 'systemPrincipalAmount',
+        'confirmedPrincipalAmount', 'interestAmount', 'storageFeeAmount', 'handlingFeeAmount',
+        'codeScanFeeAmount', 'stampTaxAmount', 'depositAmount', 'taxAdjustAmount',
+        'grossWeightFeeAmount', 'otherFeeAmount', 'expectedPaymentAmount', 'principalBasisAmount',
+        'grossDiffWeight'
+      ]
+      const add = (left, right) => Number((Number(left || 0) + Number(right || 0)).toFixed(11))
+
+      ;(this.form.itemList || []).forEach(item => {
+        const key = JSON.stringify(dimensionFields.map(field => item[field] == null ? '' : String(item[field])))
+        if (!groups[key]) {
+          const row = Object.assign({}, item, { sourceLineCount: 1 })
+          groups[key] = row
+          rows.push(row)
+          return
+        }
+        const row = groups[key]
+        totalFields.forEach(field => { row[field] = add(row[field], item[field]) })
+        row.sourceLineCount += 1
+      })
+      rows.forEach((row, index) => { row.lineNo = index + 1 })
+      return rows
     },
     feeRuleText () {
       return `当前资方规则：${this.ruleName(this.form.ruleType)}。公式中的单价、费率、天数和金额均保存为本次对账快照，历史查看不会按最新费率重新计算。`
