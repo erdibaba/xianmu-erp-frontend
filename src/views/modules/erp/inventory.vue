@@ -87,6 +87,8 @@
           <el-table-column prop="packingBoxes" label="装箱单箱数" width="110" align="right" header-align="center"></el-table-column>
           <el-table-column prop="inboundBoxes" label="入库箱数" width="100" align="right" header-align="center"></el-table-column>
           <el-table-column prop="allocatedBoxes" label="已占用箱数" width="110" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="outboundBoxes" label="已出库箱数" width="110" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="pendingOutboundBoxes" label="占用未出库箱数" width="130" align="right" header-align="center"></el-table-column>
           <el-table-column prop="availableBoxes" label="可售箱数" width="100" align="right" header-align="center">
             <template slot-scope="scope">
               <span :class="{ 'inventory-danger': Number(scope.row.availableBoxes) < 0 }">{{ scope.row.availableBoxes }}</span>
@@ -223,6 +225,8 @@
           <el-table-column prop="packingBoxes" label="装箱单箱数" width="110" align="right" header-align="center"></el-table-column>
           <el-table-column prop="inboundBoxes" label="入库箱数" width="100" align="right" header-align="center"></el-table-column>
           <el-table-column prop="allocatedBoxes" label="已占用箱数" width="110" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="outboundBoxes" label="已出库箱数" width="110" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="pendingOutboundBoxes" label="占用未出库箱数" width="130" align="right" header-align="center"></el-table-column>
           <el-table-column prop="availableBoxes" label="可售箱数" width="100" align="right" header-align="center">
             <template slot-scope="scope">
               <span :class="{ 'inventory-danger': Number(scope.row.availableBoxes) < 0 }">{{ scope.row.availableBoxes }}</span>
@@ -619,6 +623,8 @@
           <el-table-column prop="packingBoxes" label="装箱单箱数" width="110" align="right" header-align="center"></el-table-column>
           <el-table-column prop="inboundBoxes" label="入库箱数" width="100" align="right" header-align="center"></el-table-column>
           <el-table-column prop="allocatedBoxes" label="已占用箱数" width="110" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="outboundBoxes" label="已出库箱数" width="110" align="right" header-align="center"></el-table-column>
+          <el-table-column prop="pendingOutboundBoxes" label="占用未出库箱数" width="130" align="right" header-align="center"></el-table-column>
           <el-table-column prop="availableBoxes" label="可售箱数" width="100" align="right" header-align="center"></el-table-column>
           <el-table-column prop="inboundWeightKg" label="入库重量(KG)" width="120" align="right" header-align="center"></el-table-column>
           <el-table-column prop="allocatedWeightKg" label="已占用重量(KG)" width="135" align="right" header-align="center"></el-table-column>
