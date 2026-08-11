@@ -29,6 +29,11 @@
           <el-tag size="small" :type="scope.row.scanFeeEnabled === 1 ? 'success' : 'info'">{{ scope.row.scanFeeEnabled === 1 ? '启用' : '停用' }}</el-tag>
         </template>
       </el-table-column>
+      <el-table-column label="毛重费用" width="100" align="center" header-align="center">
+        <template slot-scope="scope">
+          <el-tag size="small" :type="scope.row.grossWeightFeeEnabled === 1 ? 'success' : 'info'">{{ scope.row.grossWeightFeeEnabled === 1 ? '计算' : '不计算' }}</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="扫码费方式" width="110" align="center" header-align="center">
         <template slot-scope="scope">{{ scanFeeUnitLabel(scope.row.scanFeeUnit) }}</template>
       </el-table-column>

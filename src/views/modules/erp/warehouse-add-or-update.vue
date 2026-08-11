@@ -47,6 +47,11 @@
           </el-form-item>
         </el-col>
         <el-col :span="12">
+          <el-form-item label="计算毛重费用">
+            <el-switch v-model="dataForm.grossWeightFeeEnabled" :active-value="1" :inactive-value="0"></el-switch>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
           <el-form-item label="联系人">
             <el-input v-model="dataForm.contactName"></el-input>
           </el-form-item>
@@ -101,6 +106,7 @@
     chilledColdFee: 0,
     feeUnit: 'WEIGHT',
     scanFeeEnabled: 1,
+    grossWeightFeeEnabled: 0,
     status: 1,
     remark: ''
   })
