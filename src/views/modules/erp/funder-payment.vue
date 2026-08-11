@@ -490,16 +490,18 @@
     <el-dialog
       title="补保证金"
       :visible.sync="depositSupplementVisible"
-      width="820px"
+      width="1080px"
       append-to-body
       :close-on-click-modal="false">
       <el-form label-width="120px" style="margin-bottom: 12px">
         <el-form-item label="确认函合同号" required>
           <el-select
-            v-model="depositSupplementForm.allocationId"
-            placeholder="请选择本次补保证金对应的确认函合同"
+            v-model="depositSupplementForm.allocationIds"
+            multiple
+            collapse-tags
+            placeholder="可多选本次补保证金对应的确认函合同"
             style="width: 100%"
-            @change="changeDepositSupplementAllocation">
+            @change="changeDepositSupplementAllocations">
             <el-option
               v-for="item in depositSupplementForm.allocationOptions"
               :key="item.id"
@@ -509,19 +511,11 @@
           </el-select>
         </el-form-item>
       </el-form>
-      <el-descriptions :column="2" border size="small">
-        <el-descriptions-item label="确认函合同号">{{ depositSupplementForm.confirmContractNo || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="资方全款分摊金额">{{ money(depositSupplementForm.contractAmount) }}</el-descriptions-item>
-        <el-descriptions-item label="历史保证金">{{ money(depositSupplementForm.existingDepositAmount) }}</el-descriptions-item>
-        <el-descriptions-item label="本次补保证金">{{ money(voucherTotal(depositSupplementForm, 'voucherList')) }}</el-descriptions-item>
-        <el-descriptions-item label="补款后累计">{{ money(depositSupplementCumulative()) }}</el-descriptions-item>
-        <el-descriptions-item label="补款后资方贷款本金">{{ money(depositSupplementBalance()) }}</el-descriptions-item>
-      </el-descriptions>
       <el-alert
-        title="补保证金将追加为新的内部主体出资凭证，不覆盖历史凭证；对应确认函的资方贷款本金将按分摊金额减累计保证金重新计算。"
+        title="一张补保证金凭证可分摊到多个确认函；各合同本次分摊合计必须等于凭证确认金额合计，并分别减少对应资方贷款本金。"
         type="info"
         :closable="false"
-        style="margin: 14px 0">
+        style="margin-bottom: 14px">
       </el-alert>
       <div class="supplement-toolbar">
         <el-upload action="#" multiple :show-file-list="false" :http-request="recognizeDepositSupplement" accept=".jpg,.jpeg,.png,.jfif,.bmp,.pdf">
@@ -554,6 +548,47 @@
           </template>
         </el-table-column>
       </el-table>
+      <div style="display: flex; align-items: center; justify-content: space-between; margin: 16px 0 8px">
+        <strong>确认函补保证金分摊</strong>
+        <el-button
+          type="text"
+          :disabled="!(depositSupplementForm.allocationList || []).length || voucherTotal(depositSupplementForm, 'voucherList') <= 0"
+          @click="autoAllocateDepositSupplement">
+          按剩余可补金额比例自动分配
+        </el-button>
+      </div>
+      <el-table :data="depositSupplementForm.allocationList || []" border max-height="260">
+        <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
+        <el-table-column prop="confirmContractNo" label="确认函合同号" min-width="150" show-overflow-tooltip></el-table-column>
+        <el-table-column label="资方全款分摊金额" width="150" align="right">
+          <template slot-scope="scope">{{ money(scope.row.allocationAmount) }}</template>
+        </el-table-column>
+        <el-table-column label="历史保证金" width="130" align="right">
+          <template slot-scope="scope">{{ money(scope.row.existingDepositAmount) }}</template>
+        </el-table-column>
+        <el-table-column label="本次补保证金" width="170" align="center">
+          <template slot-scope="scope">
+            <el-input-number
+              v-model="scope.row.supplementAmount"
+              :min="0"
+              :max="depositSupplementCapacity(scope.row)"
+              :precision="2"
+              :controls="false"
+              style="width: 140px">
+            </el-input-number>
+          </template>
+        </el-table-column>
+        <el-table-column label="补款后贷款本金" width="150" align="right">
+          <template slot-scope="scope">{{ money(depositSupplementLoanAmount(scope.row)) }}</template>
+        </el-table-column>
+      </el-table>
+      <div style="display: flex; justify-content: flex-end; gap: 28px; margin-top: 10px; font-weight: 600">
+        <span>凭证确认金额：{{ money(voucherTotal(depositSupplementForm, 'voucherList')) }}</span>
+        <span>合同分摊合计：{{ money(depositSupplementAllocationTotal()) }}</span>
+        <span :style="{ color: depositSupplementDifference() === 0 ? '#17b3a3' : '#f56c6c' }">
+          差额：{{ money(depositSupplementDifference()) }}
+        </span>
+      </div>
       <span slot="footer">
         <el-button @click="depositSupplementVisible = false">取消</el-button>
         <el-button type="primary" :loading="depositSupplementSaving" @click="saveDepositSupplement">确认补保证金</el-button>
@@ -791,11 +826,9 @@ export default {
       depositSupplementSaving: false,
       depositSupplementForm: {
         paymentId: null,
-        allocationId: null,
+        allocationIds: [],
         allocationOptions: [],
-        confirmContractNo: '',
-        contractAmount: 0,
-        existingDepositAmount: 0,
+        allocationList: [],
         voucherList: []
       },
       voucherManageVisible: false,
@@ -919,12 +952,44 @@ export default {
     xianmuExpectedBalanceAmount (row) {
       return Math.max(0, this.roundMoney(Number(row.allocationAmount || 0) - Number(row.xianmuDepositModifiedAmount || 0)))
     },
-    depositSupplementCumulative () {
-      return this.roundMoney(Number(this.depositSupplementForm.existingDepositAmount || 0) +
-        this.voucherTotal(this.depositSupplementForm, 'voucherList'))
+    depositSupplementCapacity (row) {
+      return Math.max(0, this.roundMoney(Number(row.allocationAmount || 0) - Number(row.existingDepositAmount || 0)))
     },
-    depositSupplementBalance () {
-      return Math.max(0, this.roundMoney(Number(this.depositSupplementForm.contractAmount || 0) - this.depositSupplementCumulative()))
+    depositSupplementLoanAmount (row) {
+      return Math.max(0, this.roundMoney(this.depositSupplementCapacity(row) - Number(row.supplementAmount || 0)))
+    },
+    depositSupplementAllocationTotal () {
+      return this.roundMoney((this.depositSupplementForm.allocationList || [])
+        .reduce((total, item) => total + Number(item.supplementAmount || 0), 0))
+    },
+    depositSupplementDifference () {
+      return this.roundMoney(this.voucherTotal(this.depositSupplementForm, 'voucherList') - this.depositSupplementAllocationTotal())
+    },
+    autoAllocateDepositSupplement () {
+      const rows = this.depositSupplementForm.allocationList || []
+      const voucherAmount = this.voucherTotal(this.depositSupplementForm, 'voucherList')
+      const totalCapacity = this.roundMoney(rows.reduce((total, item) => total + this.depositSupplementCapacity(item), 0))
+      if (!rows.length || voucherAmount <= 0) return
+      if (voucherAmount > totalCapacity) {
+        this.$message.error('凭证确认金额大于已选合同剩余可补保证金合计')
+        return
+      }
+      let remaining = voucherAmount
+      rows.forEach((item, index) => {
+        const value = index === rows.length - 1
+          ? remaining
+          : this.roundMoney(voucherAmount * this.depositSupplementCapacity(item) / totalCapacity)
+        item.supplementAmount = Math.min(this.depositSupplementCapacity(item), value)
+        remaining = this.roundMoney(remaining - item.supplementAmount)
+      })
+      if (remaining !== 0) {
+        for (let index = rows.length - 1; index >= 0 && remaining > 0; index--) {
+          const room = this.roundMoney(this.depositSupplementCapacity(rows[index]) - rows[index].supplementAmount)
+          const addition = Math.min(room, remaining)
+          rows[index].supplementAmount = this.roundMoney(rows[index].supplementAmount + addition)
+          remaining = this.roundMoney(remaining - addition)
+        }
+      }
     },
     rateLabel (item) {
       return item.annualInterestRate === null || item.annualInterestRate === undefined ? '未维护' : item.annualInterestRate + '%'
@@ -1552,24 +1617,30 @@ export default {
         }
         this.depositSupplementForm = {
           paymentId: payment.id,
-          allocationId: allocationOptions[0].id,
+          allocationIds: allocationOptions.map(item => item.id),
           allocationOptions,
-          confirmContractNo: '',
-          contractAmount: 0,
-          existingDepositAmount: 0,
+          allocationList: [],
           voucherList: []
         }
-        this.changeDepositSupplementAllocation(allocationOptions[0].id)
+        this.changeDepositSupplementAllocations(this.depositSupplementForm.allocationIds)
         this.depositSupplementVisible = true
       }).catch(() => this.$message.error('加载补保证金信息请求失败')).finally(() => loading.close())
     },
-    changeDepositSupplementAllocation (allocationId) {
-      const allocation = (this.depositSupplementForm.allocationOptions || []).find(item => item.id === allocationId)
-      if (!allocation) return
-      this.depositSupplementForm.confirmContractNo = allocation.confirmContractNo
-      this.depositSupplementForm.contractAmount = Number(allocation.allocationAmount || 0)
-      this.depositSupplementForm.existingDepositAmount = Number(allocation.xianmuContributionModifiedAmount || 0)
-      this.depositSupplementForm.voucherList = []
+    changeDepositSupplementAllocations (allocationIds) {
+      const previous = {}
+      const currentRows = this.depositSupplementForm.allocationList || []
+      currentRows.forEach(item => { previous[item.allocationId] = item })
+      this.depositSupplementForm.allocationList = (allocationIds || []).map(allocationId => {
+        if (previous[allocationId]) return previous[allocationId]
+        const allocation = (this.depositSupplementForm.allocationOptions || []).find(item => item.id === allocationId) || {}
+        return {
+          allocationId,
+          confirmContractNo: allocation.confirmContractNo,
+          allocationAmount: Number(allocation.allocationAmount || 0),
+          existingDepositAmount: Number(allocation.xianmuContributionModifiedAmount || 0),
+          supplementAmount: 0
+        }
+      })
     },
     recognizeDepositSupplement (request) {
       const formData = new FormData()
@@ -1608,8 +1679,19 @@ export default {
         this.$message.error(`第${invalidIndex + 1}张凭证的文件、确认金额和打款日期必须完整`)
         return
       }
-      if (this.depositSupplementCumulative() > this.roundMoney(this.depositSupplementForm.contractAmount)) {
-        this.$message.error('累计保证金不能大于该确认函的资方全款分摊金额')
+      const allocations = this.depositSupplementForm.allocationList || []
+      if (!allocations.length) {
+        this.$message.error('请至少选择一个需要补保证金的确认函合同')
+        return
+      }
+      const invalidAllocation = allocations.find(item => Number(item.supplementAmount || 0) <= 0 ||
+        Number(item.supplementAmount || 0) > this.depositSupplementCapacity(item))
+      if (invalidAllocation) {
+        this.$message.error(`确认函${invalidAllocation.confirmContractNo || '-'}的本次补保证金必须大于0且不能超过剩余可补金额`)
+        return
+      }
+      if (this.depositSupplementDifference() !== 0) {
+        this.$message.error('确认函分摊金额合计必须等于凭证确认金额合计')
         return
       }
       this.depositSupplementSaving = true
@@ -1618,7 +1700,10 @@ export default {
         url: this.$http.adornUrl(`/erp/funder-finance/payment/deposit/supplement/${this.depositSupplementForm.paymentId}`),
         method: 'post',
         data: this.$http.adornData({
-          allocationId: this.depositSupplementForm.allocationId,
+          allocationList: allocations.map(item => ({
+            allocationId: item.allocationId,
+            supplementAmount: this.roundMoney(item.supplementAmount)
+          })),
           voucherList: this.normalizeVoucherPayload(vouchers)
         }, false)
       }).then(({ data }) => {
