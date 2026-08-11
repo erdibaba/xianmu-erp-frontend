@@ -3802,7 +3802,7 @@ export default {
         marketCirculationName: first.marketCirculationName,
         salePriceKg: this.existingSpotSalePrice(first),
         expectedWeightKg: Number(expectedWeight.toFixed(2)),
-        selectedBoxes: detailRows.reduce((sum, item) => sum + Number(item.boxes || 0), 0)
+        selectedBoxes: Number(detailRows.reduce((sum, item) => sum + Number(item.boxes || 0), 0).toFixed(3))
       }
       this.spotPricingDialogVisible = true
     },
@@ -3832,13 +3832,13 @@ export default {
         marketCirculationName: row.marketCirculationName,
         salePriceKg: this.salePriceProvided(row.salePriceKg) ? Number(row.salePriceKg) : null,
         expectedWeightKg: Number(rows.reduce((sum, item) => sum + Number(item.contractQuantityKg || 0), 0).toFixed(2)),
-        selectedBoxes: rows.reduce((sum, item) => sum + Number(item.boxes || 0), 0)
+        selectedBoxes: Number(rows.reduce((sum, item) => sum + Number(item.boxes || 0), 0).toFixed(3))
       }
       this.spotPricingDialogVisible = true
     },
     spotPricingBoxesChange () {
       const detailRows = this.spotPricingDetailRows || []
-      this.spotPricingForm.selectedBoxes = detailRows.reduce((sum, item) => sum + Number(item.boxes || 0), 0)
+      this.spotPricingForm.selectedBoxes = Number(detailRows.reduce((sum, item) => sum + Number(item.boxes || 0), 0).toFixed(3))
       const expectedWeight = detailRows.reduce((sum, item) => {
         return sum + Number(item.estimatedUnitWeightKg || 0) * Number(item.boxes || 0)
       }, 0)
