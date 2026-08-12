@@ -771,14 +771,19 @@
                   <el-table-column prop="fileName" label="文件名称" min-width="220"></el-table-column>
                   <el-table-column label="上传时间" width="180">
                     <template slot-scope="scope">
-                      {{ formatDateTime(scope.row.updateTime || scope.row.createTime) }}
+                      {{ formatDateTime(scope.row.createTime || scope.row.updateTime) }}
                     </template>
                   </el-table-column>
                   <el-table-column prop="recognizedQuarantineDate" label="识别检疫日期" width="130" align="center"></el-table-column>
                   <el-table-column prop="confirmedQuarantineDate" label="确认检疫日期" width="130" align="center"></el-table-column>
                   <el-table-column prop="filePath" label="归档路径" min-width="260"></el-table-column>
-                  <el-table-column label="操作" width="120" align="center" fixed="right">
+                  <el-table-column label="操作" width="190" align="center" fixed="right">
                     <template slot-scope="scope">
+                      <el-button
+                        v-if="scope.$index === 0 && isAuth('erp:tradeorder:save')"
+                        type="text"
+                        size="small"
+                        @click="editQuarantineDate(scope.row)">修改日期</el-button>
                       <el-button
                         type="text"
                         size="small"
@@ -796,6 +801,33 @@
         </el-tab-pane>
       </el-tabs>
     </div>
+    <el-dialog
+      title="修改确认检疫日期"
+      :visible.sync="quarantineDateDialogVisible"
+      append-to-body
+      width="460px"
+      :close-on-click-modal="false">
+      <el-form label-width="120px">
+        <el-form-item label="识别检疫日期">
+          <el-input :value="formatDate(quarantineDateForm.recognizedQuarantineDate) || '-'" disabled></el-input>
+        </el-form-item>
+        <el-form-item label="确认检疫日期" required>
+          <el-date-picker
+            v-model="quarantineDateForm.confirmedQuarantineDate"
+            type="date"
+            format="yyyy-MM-dd"
+            value-format="yyyy-MM-dd 00:00:00"
+            placeholder="请选择确认检疫日期"
+            style="width: 100%;">
+          </el-date-picker>
+        </el-form-item>
+        <div class="form-tip">只修改最后上传检疫证明的确认日期，不影响原件和OCR识别日期。</div>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button :disabled="quarantineDateSaving" @click="quarantineDateDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="quarantineDateSaving" :disabled="quarantineDateSaving" @click="saveQuarantineDate">保存</el-button>
+      </span>
+    </el-dialog>
     <span slot="footer" class="dialog-footer">
       <el-button @click="visible = false">{{ readonly ? '关闭' : '取消' }}</el-button>
       <el-button v-if="!readonly" type="primary" :loading="saveLoading" :disabled="saveLoading" @click="submitHandle()">保存</el-button>
@@ -990,6 +1022,8 @@ function defaultAttachmentInfo () {
     fileName: '',
     recognizedGrossWeight: null,
     confirmedGrossWeight: null,
+    recognizedQuarantineDate: null,
+    confirmedQuarantineDate: null,
     rawText: '',
     remark: '',
     createTime: '',
@@ -1071,6 +1105,9 @@ export default {
       detailLoading: false,
       attachmentUploadVisible: false,
       attachmentUploadType: 'customs',
+      quarantineDateDialogVisible: false,
+      quarantineDateSaving: false,
+      quarantineDateForm: defaultAttachmentInfo(),
       linkedConfirmDetailVisible: false,
       linkedConfirmDetail: null,
       dataForm: defaultForm(),
@@ -2232,6 +2269,43 @@ export default {
     formatDateTime (value) {
       if (!value) return ''
       return String(value).replace('T', ' ').slice(0, 19)
+    },
+    formatDate (value) {
+      if (!value) return ''
+      return String(value).replace('T', ' ').slice(0, 10)
+    },
+    editQuarantineDate (row) {
+      if (!row || !row.id) return
+      this.quarantineDateForm = Object.assign(defaultAttachmentInfo(), row)
+      this.quarantineDateDialogVisible = true
+    },
+    saveQuarantineDate () {
+      if (this.quarantineDateSaving) return
+      if (!this.quarantineDateForm.confirmedQuarantineDate) {
+        this.$message.error('请选择确认检疫日期')
+        return
+      }
+      this.quarantineDateSaving = true
+      this.$http({
+        url: this.$http.adornUrl('/erp/presale/attachment/quarantine-date'),
+        method: 'put',
+        data: this.$http.adornData({
+          id: this.quarantineDateForm.id,
+          confirmedQuarantineDate: normalizeDateTimeForSubmit(this.quarantineDateForm.confirmedQuarantineDate)
+        })
+      }).then(({ data }) => {
+        if (data && data.code === 0) {
+          this.$message.success('确认检疫日期修改成功')
+          this.quarantineDateDialogVisible = false
+          this.fetchOrderDetail(this.dataForm.id, null, (this.dataForm.confirmInfo || {}).id)
+        } else {
+          this.$message.error((data && data.msg) || '确认检疫日期修改失败')
+        }
+      }).catch(() => {
+        this.$message.error('确认检疫日期修改失败，请检查后端服务')
+      }).finally(() => {
+        this.quarantineDateSaving = false
+      })
     },
     downloadFile (url) {
       const token = this.$cookie.get('token') || ''
