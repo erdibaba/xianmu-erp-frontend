@@ -38,7 +38,7 @@
       </el-table-column>
       <el-table-column fixed="right" label="操作" width="120" align="center">
         <template slot-scope="scope">
-          <el-button type="text" size="small" @click="openReconciliation(scope.row)">{{ actionText(scope.row.workflowStatus) }}</el-button>
+          <el-button type="text" size="small" @click="openReconciliation(scope.row)">{{ actionText(scope.row) }}</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -52,7 +52,7 @@
     <el-dialog title="按出库批次费用对账" :visible.sync="dialogVisible" width="1280px" top="4vh" custom-class="batch-settlement-dialog" :close-on-click-modal="false">
       <div v-loading="dialogLoading" class="reconciliation-dialog-body">
         <div class="reconciliation-scroll-area">
-          <el-alert :title="workflowNotice" type="info" :closable="false" style="margin-bottom:16px"></el-alert>
+          <el-alert :title="workflowNotice" :type="reconciliationActionEnabled ? 'info' : 'warning'" :closable="false" style="margin-bottom:16px"></el-alert>
           <el-form :model="form" label-width="150px">
           <el-row :gutter="18">
             <el-col :span="12"><el-form-item label="出库批次"><el-input :value="batchDisplayName" disabled></el-input></el-form-item></el-col>
@@ -110,13 +110,14 @@
             <div class="section-title">资方计算单核对</div>
             <el-form :inline="true" label-width="120px">
               <el-form-item label="资方计算单" required>
-                <el-upload v-if="reconciliationEditable" action="" :show-file-list="false" :http-request="uploadStatement">
+                <el-upload v-if="reconciliationActionEnabled" action="" :show-file-list="false" :http-request="uploadStatement">
                   <el-button size="small" type="primary" :loading="statementUploading">上传资方计算单</el-button>
                 </el-upload>
+                <span v-else-if="Number(form.workflowStatus) === 0" class="action-locked-tip">完成二批来款水单后开放</span>
                 <el-button v-if="form.statementFileName" type="text" @click="downloadStatement">{{ form.statementFileName }}</el-button>
               </el-form-item>
               <el-form-item label="资方核算金额" required>
-                <el-input-number v-model="form.statementAmount" :min="0" :precision="2" :controls="false" :disabled="!reconciliationEditable" @change="markStatementAmountManual"></el-input-number>
+                <el-input-number v-model="form.statementAmount" :min="0" :precision="2" :controls="false" :disabled="!reconciliationActionEnabled" @change="markStatementAmountManual"></el-input-number>
               </el-form-item>
               <el-form-item label="对账差异">
                 <span :class="{ 'amount-difference': hasStatementDifference }">{{ amount(statementDifference) }}</span>
@@ -157,9 +158,9 @@
 
       <span slot="footer" class="dialog-footer">
         <el-button @click="dialogVisible = false">关闭</el-button>
-        <el-button v-if="reconciliationEditable" type="primary" :loading="submitLoading" @click="saveReconciliation">保存对账资料</el-button>
-        <el-button v-if="Number(form.workflowStatus) === 1" type="success" :loading="submitLoading" @click="confirmReconciliation">确认核对无误</el-button>
-        <el-button v-if="Number(form.workflowStatus) === 2" type="success" :loading="submitLoading" @click="confirmPayment">确认财务打款</el-button>
+        <el-button v-if="reconciliationActionEnabled" type="primary" :loading="submitLoading" @click="saveReconciliation">保存对账资料</el-button>
+        <el-button v-if="Number(form.workflowStatus) === 1 && bankSlipCompleted" type="success" :loading="submitLoading" @click="confirmReconciliation">确认核对无误</el-button>
+        <el-button v-if="Number(form.workflowStatus) === 2 && bankSlipCompleted" type="success" :loading="submitLoading" @click="confirmPayment">确认财务打款</el-button>
       </span>
     </el-dialog>
 
@@ -194,6 +195,8 @@ const emptyForm = () => ({
   contributionEntityNames: '',
   settlementDate: '',
   workflowStatus: 0,
+  bankSlipCompleted: false,
+  reconciliationActionEnabled: false,
   includeCodeScanFee: 0,
   extraStorageDays: 0,
   otherFeeAmount: 0,
@@ -234,11 +237,20 @@ export default {
     reconciliationEditable () {
       return Number(this.form.workflowStatus || 0) <= 1
     },
+    bankSlipCompleted () {
+      return this.form.bankSlipCompleted === true
+    },
+    reconciliationActionEnabled () {
+      return this.reconciliationEditable && this.bankSlipCompleted && this.form.reconciliationActionEnabled === true
+    },
     includeCodeScanFee: {
       get () { return Number(this.form.includeCodeScanFee || 0) === 1 },
       set (value) { this.form.includeCodeScanFee = value ? 1 : 0 }
     },
     workflowNotice () {
+      if (Number(this.form.workflowStatus || 0) === 0 && !this.bankSlipCompleted) {
+        return '当前出库批次的二批来款水单尚未完成，仅可试算和查看费用；水单上传并保存确认结果后，才可上传资方计算单并保存对账。'
+      }
       const messages = [
         '请按系统计算结果核对费用，上传资方计算单后保存。',
         '资方计算单已保存，请核对差异并确认无误。',
@@ -434,6 +446,8 @@ export default {
         workflowStatus: this.form.workflowStatus,
         statementFilePath: this.form.statementFilePath,
         statementFileName: this.form.statementFileName,
+        bankSlipCompleted: this.form.bankSlipCompleted,
+        reconciliationActionEnabled: this.form.reconciliationActionEnabled,
         remark: this.form.remark
       }
       if (!shouldSyncStatementAmount) preserved.statementAmount = this.form.statementAmount
@@ -454,7 +468,11 @@ export default {
       }).finally(() => { this.dialogLoading = false })
     },
     uploadStatement (request) {
+      if (!this.reconciliationActionEnabled) {
+        return this.$message.warning('请先完成出库批次的二批来款水单上传及确认')
+      }
       const formData = new FormData()
+      formData.append('outboundBatchId', this.form.outboundBatchId)
       formData.append('file', request.file)
       this.statementUploading = true
       this.$http({
@@ -479,6 +497,7 @@ export default {
       this.statementAmountAutoSync = false
     },
     saveReconciliation () {
+      if (!this.reconciliationActionEnabled) return this.$message.warning('请先完成出库批次的二批来款水单上传及确认')
       if (!this.form.statementFilePath) return this.$message.error('请先上传资方计算单据')
       if (Number(this.form.statementAmount || 0) <= 0) return this.$message.error('资方核算金额必须大于0')
       this.runWithLoading('正在保存费用对账资料...', '/erp/funder-finance/fee-reconciliation/save', this.form).then(data => {
@@ -490,6 +509,7 @@ export default {
       })
     },
     confirmReconciliation () {
+      if (!this.bankSlipCompleted) return this.$message.warning('请先完成出库批次的二批来款水单上传及确认')
       this.$confirm('确认资方计算单及系统费用核对无误？确认后费用不可修改。', '确认核对', { type: 'warning' }).then(() => {
         return this.runWithLoading('正在确认费用核对...', `/erp/funder-finance/fee-reconciliation/confirm/${this.form.id}`, {})
       }).then(data => {
@@ -531,6 +551,7 @@ export default {
       })
     },
     confirmPayment () {
+      if (!this.bankSlipCompleted) return this.$message.warning('请先完成出库批次的二批来款水单上传及确认')
       if (!this.form.filePath) return this.$message.error('请先上传财务打款凭证')
       if (Number(this.form.confirmedPaymentAmount || 0) <= 0) return this.$message.error('确认打款金额必须大于0')
       if (!this.form.paymentDate) return this.$message.error('请选择实际打款日期')
@@ -584,8 +605,10 @@ export default {
     statusTag (status) {
       return ['warning', '', 'danger', 'success'][Number(status || 0)] || 'info'
     },
-    actionText (status) {
-      return ['开始对账', '继续核对', '财务打款', '查看'][Number(status || 0)] || '查看'
+    actionText (row) {
+      const status = Number((row && row.workflowStatus) || 0)
+      if (status === 0 && row && row.bankSlipCompleted !== true) return '查看试算'
+      return ['开始对账', '继续核对', '财务打款', '查看'][status] || '查看'
     },
     amount (value) {
       if (value === null || value === undefined || value === '') return '-'
@@ -674,6 +697,7 @@ export default {
 .settlement-price-icon { margin-left: 5px; color: #168b80; cursor: pointer; }
 .amount-difference, .difference-tip { color: #f04444; font-weight: 600; }
 .difference-tip { margin: -5px 0 8px 120px; font-size: 12px; }
+.action-locked-tip { color: #e6a23c; font-size: 12px; }
 .reconciliation-dialog-body { display: flex; flex-direction: column; height: 72vh; min-height: 520px; overflow: hidden; }
 .reconciliation-scroll-area { flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; padding-right: 4px; }
 .reconciliation-dock { flex: 0 0 auto; padding: 0 12px 2px; border-top: 1px solid #dfe6e4; background: #fff; box-shadow: 0 -5px 12px rgba(24, 65, 58, 0.08); }
