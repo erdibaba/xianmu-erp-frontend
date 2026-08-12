@@ -116,7 +116,7 @@
                 <el-button v-if="form.statementFileName" type="text" @click="downloadStatement">{{ form.statementFileName }}</el-button>
               </el-form-item>
               <el-form-item label="资方核算金额" required>
-                <el-input-number v-model="form.statementAmount" :min="0" :precision="2" :controls="false" :disabled="!reconciliationEditable"></el-input-number>
+                <el-input-number v-model="form.statementAmount" :min="0" :precision="2" :controls="false" :disabled="!reconciliationEditable" @change="markStatementAmountManual"></el-input-number>
               </el-form-item>
               <el-form-item label="对账差异">
                 <span :class="{ 'amount-difference': hasStatementDifference }">{{ amount(statementDifference) }}</span>
@@ -224,6 +224,7 @@ export default {
       statementUploading: false,
       paymentUploading: false,
       submitLoading: false,
+      statementAmountAutoSync: true,
       formulaDialogVisible: false,
       feeExplainActiveNames: ['summary'],
       form: emptyForm()
@@ -404,6 +405,7 @@ export default {
     },
     openReconciliation (row) {
       this.form = emptyForm()
+      this.statementAmountAutoSync = true
       this.dialogVisible = true
       this.dialogLoading = true
       this.$http({
@@ -413,6 +415,7 @@ export default {
       }).then(({ data }) => {
         if (data && data.code === 0) {
           this.form = Object.assign(emptyForm(), data.settlement || {})
+          this.statementAmountAutoSync = Number(this.form.workflowStatus || 0) === 0 && !this.form.statementFilePath
           if (!this.form.statementAmount && Number(this.form.workflowStatus || 0) === 0) {
             this.form.statementAmount = Number(this.form.expectedPaymentAmount || 0)
           }
@@ -425,14 +428,15 @@ export default {
     },
     recalculate () {
       if (!this.reconciliationEditable || !this.form.outboundBatchId || !this.form.settlementDate) return
+      const shouldSyncStatementAmount = this.statementAmountAutoSync && !this.form.statementFilePath
       const preserved = {
         id: this.form.id,
         workflowStatus: this.form.workflowStatus,
-        statementAmount: this.form.statementAmount,
         statementFilePath: this.form.statementFilePath,
         statementFileName: this.form.statementFileName,
         remark: this.form.remark
       }
+      if (!shouldSyncStatementAmount) preserved.statementAmount = this.form.statementAmount
       this.dialogLoading = true
       this.$http({
         url: this.$http.adornUrl('/erp/funder-finance/loan/batch-settlement/calculate'),
@@ -441,6 +445,9 @@ export default {
       }).then(({ data }) => {
         if (data && data.code === 0) {
           this.form = Object.assign(emptyForm(), data.settlement || {}, preserved)
+          if (shouldSyncStatementAmount) {
+            this.form.statementAmount = Number(this.form.expectedPaymentAmount || 0)
+          }
         } else {
           this.$message.error((data && data.msg) || '重新计算费用失败')
         }
@@ -461,11 +468,15 @@ export default {
           const file = data.file || {}
           this.form.statementFilePath = file.filePath || ''
           this.form.statementFileName = file.fileName || request.file.name
+          this.statementAmountAutoSync = false
           this.$message.success('资方计算单已归档')
         } else {
           this.$message.error((data && data.msg) || '上传资方计算单失败')
         }
       }).catch(() => this.$message.error('上传资方计算单失败')).finally(() => { this.statementUploading = false })
+    },
+    markStatementAmountManual () {
+      this.statementAmountAutoSync = false
     },
     saveReconciliation () {
       if (!this.form.statementFilePath) return this.$message.error('请先上传资方计算单据')
