@@ -133,25 +133,22 @@
               <span>资方核算金额：¥{{ amount(form.statementAmount) }}</span>
               <span :class="{ 'amount-difference': hasStatementDifference }">对账差异：¥{{ amount(statementDifference) }}</span>
             </div>
-            <div class="section-title">财务打款</div>
-          <el-form :inline="true" label-width="120px">
-            <el-form-item label="财务打款凭证" required>
-              <el-upload v-if="Number(form.workflowStatus) === 2" action="" :show-file-list="false" :http-request="recognizePaymentVoucher">
-                <el-button size="small" type="primary" :loading="paymentUploading">上传并识别凭证</el-button>
-              </el-upload>
-              <el-button v-if="form.fileName" type="text" @click="downloadPayment">{{ form.fileName }}</el-button>
-            </el-form-item>
-            <el-form-item label="确认打款金额" required>
-              <el-input-number v-model="form.confirmedPaymentAmount" :min="0" :precision="2" :controls="false" :disabled="Number(form.workflowStatus) !== 2"></el-input-number>
-            </el-form-item>
-            <el-form-item label="实际打款日期" required>
-              <el-date-picker v-model="form.paymentDate" type="date" value-format="yyyy-MM-dd" :disabled="Number(form.workflowStatus) !== 2"></el-date-picker>
-            </el-form-item>
-            <el-form-item label="打款差异">
-              <span :class="{ 'amount-difference': hasPaymentDifference }">{{ amount(paymentDifference) }}</span>
-            </el-form-item>
-          </el-form>
-          <div v-if="hasPaymentDifference" class="difference-tip">确认打款金额与已确认的资方核算金额存在差异，请核对。</div>
+            <div class="section-title">财务打款凭证</div>
+            <div class="payment-progress">
+              <span>应付合计：¥{{ amount(paymentTargetAmount) }}</span>
+              <span>累计已付：¥{{ amount(form.paidPaymentAmount) }}</span>
+              <strong>剩余应付：¥{{ amount(form.remainingPaymentAmount) }}</strong>
+              <el-button v-if="Number(form.workflowStatus) === 2" size="small" type="primary" @click="openPaymentVoucherDialog">新增打款凭证</el-button>
+            </div>
+            <el-table :data="form.paymentVoucherList || []" border stripe size="mini" max-height="180">
+              <el-table-column prop="sortNo" label="序号" width="60" align="center"></el-table-column>
+              <el-table-column prop="voucherNo" label="凭证编号" width="145"></el-table-column>
+              <el-table-column label="打款日期" width="110"><template slot-scope="scope">{{ dateOnly(scope.row.paymentDate) }}</template></el-table-column>
+              <el-table-column label="识别金额" width="110" align="right"><template slot-scope="scope">{{ amount(scope.row.recognizedAmount) }}</template></el-table-column>
+              <el-table-column label="确认金额" width="110" align="right"><template slot-scope="scope">{{ amount(scope.row.confirmedAmount) }}</template></el-table-column>
+              <el-table-column label="涉及确认函" min-width="220" show-overflow-tooltip><template slot-scope="scope">{{ voucherContracts(scope.row) }}</template></el-table-column>
+              <el-table-column label="原件" width="150"><template slot-scope="scope"><el-button type="text" @click="downloadPaymentVoucher(scope.row)">{{ scope.row.fileName || '下载凭证' }}</el-button></template></el-table-column>
+            </el-table>
           </template>
         </div>
       </div>
@@ -160,8 +157,33 @@
         <el-button @click="dialogVisible = false">关闭</el-button>
         <el-button v-if="reconciliationActionEnabled" type="primary" :loading="submitLoading" @click="saveReconciliation">保存对账资料</el-button>
         <el-button v-if="Number(form.workflowStatus) === 1 && bankSlipCompleted" type="success" :loading="submitLoading" @click="confirmReconciliation">确认核对无误</el-button>
-        <el-button v-if="Number(form.workflowStatus) === 2 && bankSlipCompleted" type="success" :loading="submitLoading" @click="confirmPayment">确认财务打款</el-button>
       </span>
+    </el-dialog>
+
+    <el-dialog title="新增财务打款凭证" :visible.sync="paymentVoucherDialogVisible" width="1050px" append-to-body :close-on-click-modal="false">
+      <el-form label-width="120px">
+        <el-row :gutter="16">
+          <el-col :span="8"><el-form-item label="打款凭证" required><el-upload action="" :show-file-list="false" :http-request="recognizePaymentVoucher"><el-button size="small" type="primary" :loading="paymentUploading">上传并识别凭证</el-button></el-upload><div class="voucher-file-name">{{ paymentVoucherForm.fileName || '尚未上传' }}</div></el-form-item></el-col>
+          <el-col :span="8"><el-form-item label="识别金额"><el-input :value="amount(paymentVoucherForm.recognizedAmount)" disabled></el-input></el-form-item></el-col>
+          <el-col :span="8"><el-form-item label="确认金额" required><el-input-number v-model="paymentVoucherForm.confirmedAmount" :min="0" :precision="2" :controls="false" style="width:100%" @change="suggestPaymentAllocations"></el-input-number></el-form-item></el-col>
+          <el-col :span="8"><el-form-item label="实际打款日期" required><el-date-picker v-model="paymentVoucherForm.paymentDate" type="date" value-format="yyyy-MM-dd" style="width:100%"></el-date-picker></el-form-item></el-col>
+          <el-col :span="8"><el-form-item label="付款人"><el-input v-model="paymentVoucherForm.payerName" maxlength="255"></el-input></el-form-item></el-col>
+          <el-col :span="8"><el-form-item label="收款人"><el-input v-model="paymentVoucherForm.payeeName" maxlength="255"></el-input></el-form-item></el-col>
+        </el-row>
+      </el-form>
+      <el-alert title="勾选本张凭证涉及的确认函。本次还本金 + 费用/抵扣 = 分摊打款金额，分摊合计必须等于凭证确认金额。费用或抵扣可输入负数。" type="info" :closable="false" style="margin-bottom:10px"></el-alert>
+      <el-table ref="paymentAllocationTable" :data="paymentAllocationRows" border stripe max-height="360" @selection-change="paymentAllocationSelectionChange">
+        <el-table-column type="selection" width="48" :selectable="paymentAllocationSelectable"></el-table-column>
+        <el-table-column prop="confirmContractNo" label="确认函合同号" width="150"></el-table-column>
+        <el-table-column label="应付金额" width="110" align="right"><template slot-scope="scope">{{ amount(scope.row.expectedPaymentAmount) }}</template></el-table-column>
+        <el-table-column label="累计已付" width="110" align="right"><template slot-scope="scope">{{ amount(scope.row.paidPaymentAmount) }}</template></el-table-column>
+        <el-table-column label="剩余应付" width="110" align="right"><template slot-scope="scope">{{ amount(scope.row.remainingPaymentAmount) }}</template></el-table-column>
+        <el-table-column label="本次还本金" width="145"><template slot-scope="scope"><el-input-number v-model="scope.row.principalAmount" :min="0" :max="Number(scope.row.remainingPrincipal || 0)" :precision="2" :controls="false" style="width:125px" @change="syncAllocationPayment(scope.row)"></el-input-number></template></el-table-column>
+        <el-table-column label="费用/抵扣" width="145"><template slot-scope="scope"><el-input-number v-model="scope.row.feeAmount" :precision="2" :controls="false" style="width:125px" @change="syncAllocationPayment(scope.row)"></el-input-number></template></el-table-column>
+        <el-table-column label="分摊打款金额" width="140"><template slot-scope="scope"><el-input-number v-model="scope.row.paymentAmount" :min="0" :precision="2" :controls="false" style="width:120px" @change="syncAllocationFee(scope.row)"></el-input-number></template></el-table-column>
+      </el-table>
+      <div class="allocation-total" :class="{ 'amount-difference': hasVoucherAllocationDifference }">分摊合计：¥{{ amount(paymentAllocationTotal) }}；与凭证差额：¥{{ amount(paymentVoucherAllocationDifference) }}</div>
+      <span slot="footer"><el-button @click="paymentVoucherDialogVisible = false">取消</el-button><el-button type="primary" :loading="submitLoading" @click="confirmPaymentVoucher">确认本张凭证</el-button></span>
     </el-dialog>
 
     <el-dialog title="费用计算说明" :visible.sync="formulaDialogVisible" width="1180px" append-to-body>
@@ -210,7 +232,25 @@ const emptyForm = () => ({
   filePath: '',
   fileName: '',
   rawText: '',
-  itemList: []
+  itemList: [],
+  paymentVoucherList: [],
+  paymentAllocationList: [],
+  paidPaymentAmount: 0,
+  remainingPaymentAmount: 0
+})
+
+const emptyPaymentVoucherForm = () => ({
+  settlementId: null,
+  recognizedAmount: 0,
+  confirmedAmount: 0,
+  paymentDate: '',
+  payerName: '',
+  payeeName: '',
+  bankSerialNo: '',
+  filePath: '',
+  fileName: '',
+  rawText: '',
+  allocationList: []
 })
 
 export default {
@@ -230,6 +270,10 @@ export default {
       statementAmountAutoSync: true,
       formulaDialogVisible: false,
       feeExplainActiveNames: ['summary'],
+      paymentVoucherDialogVisible: false,
+      paymentVoucherForm: emptyPaymentVoucherForm(),
+      paymentAllocationRows: [],
+      selectedPaymentAllocations: [],
       form: emptyForm()
     }
   },
@@ -278,6 +322,18 @@ export default {
     },
     hasPaymentDifference () {
       return Math.abs(this.paymentDifference) >= 0.01
+    },
+    paymentTargetAmount () {
+      return Number(this.form.statementAmount || this.form.expectedPaymentAmount || 0)
+    },
+    paymentAllocationTotal () {
+      return (this.selectedPaymentAllocations || []).reduce((total, row) => total + Number(row.paymentAmount || 0), 0)
+    },
+    paymentVoucherAllocationDifference () {
+      return Number(this.paymentAllocationTotal || 0) - Number(this.paymentVoucherForm.confirmedAmount || 0)
+    },
+    hasVoucherAllocationDifference () {
+      return Math.abs(this.paymentVoucherAllocationDifference) >= 0.01
     },
     storageFeeName () {
       return this.form.ruleType === 'WANXIANG' ? '额外仓储费' : '仓储费用'
@@ -543,12 +599,16 @@ export default {
       }).then(({ data }) => {
         if (data && data.code === 0) {
           const voucher = data.voucher || {}
-          this.form.recognizedPaymentAmount = Number(voucher.recognizedAmount || 0)
-          this.form.confirmedPaymentAmount = Number(voucher.recognizedAmount || 0)
-          this.form.paymentDate = voucher.paymentDate || this.form.paymentDate
-          this.form.filePath = voucher.filePath || ''
-          this.form.fileName = voucher.fileName || request.file.name
-          this.form.rawText = voucher.rawText || ''
+          this.paymentVoucherForm.recognizedAmount = Number(voucher.recognizedAmount || 0)
+          this.paymentVoucherForm.confirmedAmount = Number(voucher.recognizedAmount || 0)
+          this.paymentVoucherForm.paymentDate = voucher.paymentDate || this.paymentVoucherForm.paymentDate
+          this.paymentVoucherForm.payerName = voucher.payerName || ''
+          this.paymentVoucherForm.payeeName = voucher.payeeName || ''
+          this.paymentVoucherForm.bankSerialNo = voucher.serialNo || voucher.bankSerialNo || ''
+          this.paymentVoucherForm.filePath = voucher.filePath || ''
+          this.paymentVoucherForm.fileName = voucher.fileName || request.file.name
+          this.paymentVoucherForm.rawText = voucher.rawText || ''
+          this.suggestPaymentAllocations()
           this.$message.success('财务打款凭证识别完成，请确认金额和日期')
         } else {
           this.$message.error((data && data.msg) || '识别财务打款凭证失败')
@@ -558,20 +618,96 @@ export default {
         loading.close()
       })
     },
-    confirmPayment () {
+    openPaymentVoucherDialog () {
+      const canCarryLegacyDraft = Number(this.form.workflowStatus) === 2 && this.form.filePath &&
+        !(this.form.paymentVoucherList || []).length
+      this.paymentVoucherForm = Object.assign(emptyPaymentVoucherForm(), {
+        settlementId: this.form.id,
+        recognizedAmount: canCarryLegacyDraft ? Number(this.form.recognizedPaymentAmount || 0) : 0,
+        confirmedAmount: canCarryLegacyDraft ? Number(this.form.confirmedPaymentAmount || 0) : 0,
+        paymentDate: canCarryLegacyDraft ? this.form.paymentDate : '',
+        filePath: canCarryLegacyDraft ? this.form.filePath : '',
+        fileName: canCarryLegacyDraft ? this.form.fileName : '',
+        rawText: canCarryLegacyDraft ? this.form.rawText : ''
+      })
+      this.paymentAllocationRows = (this.form.paymentAllocationList || []).map(row => Object.assign({}, row, {
+        principalAmount: 0,
+        feeAmount: 0,
+        paymentAmount: 0
+      }))
+      this.selectedPaymentAllocations = []
+      this.paymentVoucherDialogVisible = true
+      this.$nextTick(() => {
+        if (canCarryLegacyDraft) this.suggestPaymentAllocations()
+        else if (this.$refs.paymentAllocationTable) this.$refs.paymentAllocationTable.clearSelection()
+      })
+    },
+    paymentAllocationSelectable (row) {
+      return Number(row.remainingPaymentAmount || 0) > 0
+    },
+    paymentAllocationSelectionChange (rows) {
+      this.selectedPaymentAllocations = rows || []
+    },
+    suggestPaymentAllocations () {
+      let left = Number(this.paymentVoucherForm.confirmedAmount || 0)
+      this.paymentAllocationRows.forEach(row => {
+        const amount = Math.min(Math.max(left, 0), Number(row.remainingPaymentAmount || 0))
+        row.paymentAmount = Number(amount.toFixed(2))
+        row.principalAmount = Number(Math.min(amount, Number(row.remainingSettlementPrincipal || 0), Number(row.remainingPrincipal || 0)).toFixed(2))
+        row.feeAmount = Number((row.paymentAmount - row.principalAmount).toFixed(2))
+        left = Number((left - amount).toFixed(2))
+      })
+      this.$nextTick(() => {
+        if (!this.$refs.paymentAllocationTable) return
+        this.$refs.paymentAllocationTable.clearSelection()
+        this.paymentAllocationRows.filter(row => Number(row.paymentAmount || 0) > 0)
+          .forEach(row => this.$refs.paymentAllocationTable.toggleRowSelection(row, true))
+      })
+    },
+    syncAllocationPayment (row) {
+      row.paymentAmount = Number((Number(row.principalAmount || 0) + Number(row.feeAmount || 0)).toFixed(2))
+    },
+    syncAllocationFee (row) {
+      row.feeAmount = Number((Number(row.paymentAmount || 0) - Number(row.principalAmount || 0)).toFixed(2))
+    },
+    confirmPaymentVoucher () {
       if (!this.bankSlipCompleted) return this.$message.warning('请先完成出库批次的二批来款水单上传及确认')
-      if (!this.form.filePath) return this.$message.error('请先上传财务打款凭证')
-      if (Number(this.form.confirmedPaymentAmount || 0) <= 0) return this.$message.error('确认打款金额必须大于0')
-      if (!this.form.paymentDate) return this.$message.error('请选择实际打款日期')
-      this.$confirm('确认财务已完成打款？确认后将生成还款记录并扣减贷款余额。', '确认财务打款', { type: 'warning' }).then(() => {
-        return this.runWithLoading('正在生成还款记录...', '/erp/funder-finance/fee-reconciliation/payment/confirm', this.form)
+      if (!this.paymentVoucherForm.filePath) return this.$message.error('请先上传财务打款凭证')
+      if (Number(this.paymentVoucherForm.confirmedAmount || 0) <= 0) return this.$message.error('确认打款金额必须大于0')
+      if (!this.paymentVoucherForm.paymentDate) return this.$message.error('请选择实际打款日期')
+      if (!this.selectedPaymentAllocations.length) return this.$message.error('请至少勾选一个确认函合同')
+      if (this.hasVoucherAllocationDifference) return this.$message.error('确认函分摊合计必须等于本张凭证确认金额')
+      const payload = Object.assign({}, this.paymentVoucherForm, {
+        settlementId: this.form.id,
+        allocationList: this.selectedPaymentAllocations.map(row => ({
+          loanId: row.loanId,
+          confirmId: row.confirmId,
+          principalAmount: Number(row.principalAmount || 0),
+          feeAmount: Number(row.feeAmount || 0),
+          paymentAmount: Number(row.paymentAmount || 0)
+        }))
+      })
+      this.$confirm('确认本张财务凭证及确认函分摊无误？确认后将立即生成对应还款记录并扣减贷款余额。', '确认财务打款', { type: 'warning' }).then(() => {
+        return this.runWithLoading('正在生成本张凭证的还款记录...', '/erp/funder-finance/fee-reconciliation/payment-voucher/confirm', payload)
       }).then(data => {
         if (data && data.code === 0) {
-          this.form.workflowStatus = 3
-          this.$message.success('财务打款已确认，费用对账完成')
+          this.paymentVoucherDialogVisible = false
+          this.$message.success('本张财务打款凭证已确认')
+          this.reloadCurrentReconciliation()
           this.getDataList()
         }
       }).catch(() => {})
+    },
+    reloadCurrentReconciliation () {
+      if (!this.form.id) return
+      this.dialogLoading = true
+      this.$http({
+        url: this.$http.adornUrl('/erp/funder-finance/fee-reconciliation/info'),
+        method: 'get',
+        params: this.$http.adornParams({ settlementId: this.form.id })
+      }).then(({ data }) => {
+        if (data && data.code === 0) this.form = Object.assign(emptyForm(), data.settlement || {})
+      }).finally(() => { this.dialogLoading = false })
     },
     runWithLoading (text, url, payload) {
       this.submitLoading = true
@@ -598,6 +734,12 @@ export default {
     },
     downloadPayment () {
       if (this.form.id) this.download(`/erp/funder-finance/fee-reconciliation/payment/download/${this.form.id}`, this.form.fileName)
+    },
+    downloadPaymentVoucher (voucher) {
+      if (voucher && voucher.id) this.download(`/erp/funder-finance/fee-reconciliation/payment-voucher/download/${voucher.id}`, voucher.fileName)
+    },
+    voucherContracts (voucher) {
+      return (voucher.allocationList || []).map(item => item.confirmContractNo).filter(Boolean).join('、') || '-'
     },
     download (url, fileName) {
       const loading = this.$loading({ lock: true, text: '正在获取文件...' })
@@ -713,6 +855,11 @@ export default {
 .reconciliation-dock .el-form-item { margin-bottom: 8px; }
 .confirmed-statement-bar { display: flex; align-items: center; gap: 18px; min-height: 38px; padding-top: 5px; color: #606266; }
 .confirmed-statement-bar strong { color: #303133; }
+.payment-progress { display: flex; align-items: center; gap: 24px; margin-bottom: 9px; color: #606266; }
+.payment-progress strong { color: #168b80; }
+.payment-progress .el-button { margin-left: auto; }
+.voucher-file-name { margin-top: 4px; color: #909399; font-size: 12px; line-height: 18px; }
+.allocation-total { margin-top: 10px; text-align: right; font-weight: 700; }
 @media (max-width: 900px) {
   .fee-summary-grid { grid-template-columns: 1fr; }
   .fee-summary-card { margin-left: 0; }
