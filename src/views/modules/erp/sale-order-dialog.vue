@@ -848,6 +848,7 @@
                     size="mini"
                     type="primary"
                     plain
+                    :disabled="!currentOutboundHasReceiptFile"
                     :loading="outboundBatchLoading"
                     @click="confirmInternalSettlement">
                     确认内部结算
