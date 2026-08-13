@@ -22,8 +22,14 @@
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-form-item label="是否内部主体">
-            <el-switch v-model="dataForm.internalEntityFlag" :active-value="1" :inactive-value="0"></el-switch>
+          <el-form-item label="内部主体标识">
+            <el-switch
+              v-model="dataForm.internalEntityFlag"
+              :active-value="1"
+              :inactive-value="0"
+              active-text="是"
+              inactive-text="否"></el-switch>
+            <div class="internal-entity-tip">二批商属于鲜牧、鲜食、程远等内部主体时请选择“是”</div>
           </el-form-item>
         </el-col>
         <el-col :span="24">
@@ -374,6 +380,13 @@ export default {
 </script>
 
 <style scoped>
+.internal-entity-tip {
+  margin-top: 4px;
+  color: #909399;
+  font-size: 12px;
+  line-height: 18px;
+}
+
 .rate-rule-header {
   display: flex;
   align-items: center;
