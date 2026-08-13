@@ -471,13 +471,18 @@ export default {
       if (!this.reconciliationActionEnabled) {
         return this.$message.warning('请先完成出库批次的二批来款水单上传及确认')
       }
+      const outboundBatchId = Number(this.form.outboundBatchId || 0)
+      if (!outboundBatchId) {
+        return this.$message.error('当前出库批次信息未加载完成，请关闭窗口后重新打开再上传')
+      }
       const formData = new FormData()
-      formData.append('outboundBatchId', this.form.outboundBatchId)
+      formData.append('outboundBatchId', String(outboundBatchId))
       formData.append('file', request.file)
       this.statementUploading = true
       this.$http({
         url: this.$http.adornUrl('/erp/funder-finance/fee-reconciliation/statement/upload'),
         method: 'post',
+        params: this.$http.adornParams({ outboundBatchId }),
         data: formData,
         headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 120000
@@ -491,7 +496,10 @@ export default {
         } else {
           this.$message.error((data && data.msg) || '上传资方计算单失败')
         }
-      }).catch(() => this.$message.error('上传资方计算单失败')).finally(() => { this.statementUploading = false })
+      }).catch(error => {
+        const response = error && error.response && error.response.data
+        this.$message.error((response && response.msg) || '上传资方计算单失败，请检查当前出库批次信息或后端服务')
+      }).finally(() => { this.statementUploading = false })
     },
     markStatementAmountManual () {
       this.statementAmountAutoSync = false
