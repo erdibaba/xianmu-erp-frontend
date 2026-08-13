@@ -30,6 +30,13 @@
       <el-table-column label="业务角色" min-width="170" show-overflow-tooltip>
         <template slot-scope="scope">{{ bizRoleLabel(scope.row.businessRole) }}</template>
       </el-table-column>
+      <el-table-column label="内部主体" width="100" align="center" header-align="center">
+        <template slot-scope="scope">
+          <el-tag size="small" :type="Number(scope.row.internalEntityFlag || 0) === 1 ? 'success' : 'info'">
+            {{ Number(scope.row.internalEntityFlag || 0) === 1 ? '是' : '否' }}
+          </el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="风险标记" width="100" align="center" header-align="center">
         <template slot-scope="scope">
           <el-tag size="small" :type="riskTagType(scope.row.riskLevel)">{{ riskLabel(scope.row.riskLevel) }}</el-tag>

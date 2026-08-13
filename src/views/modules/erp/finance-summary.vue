@@ -137,7 +137,7 @@
                   <template slot-scope="scope">{{ weight(scope.row.saleWeight) }}</template>
                 </el-table-column>
                 <el-table-column label="收款方式" width="90" align="center">
-                  <template slot-scope="scope">{{ Number(scope.row.paymentMode) === 2 ? '全款' : '分批' }}</template>
+                  <template slot-scope="scope">{{ Number(scope.row.paymentMode) === 3 ? '内部结算' : (Number(scope.row.paymentMode) === 2 ? '全款' : '分批') }}</template>
                 </el-table-column>
                 <el-table-column label="批次进度" width="105" align="center">
                   <template slot-scope="scope">{{ scope.row.repaidBatchCount || 0 }}/{{ scope.row.batchCount || 0 }}</template>

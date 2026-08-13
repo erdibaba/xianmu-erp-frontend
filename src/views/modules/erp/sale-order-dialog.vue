@@ -149,6 +149,7 @@
                 @change="paymentModeChangeHandle">
                 <el-option label="分批付款" :value="1"></el-option>
                 <el-option label="全款付款" :value="2"></el-option>
+                <el-option v-if="secondaryPartnerInternal" label="内部结算" :value="3"></el-option>
               </el-select>
               <div v-if="paymentModeLocked && !readonly" class="form-tip">已有出库批次，收款方式不可修改</div>
             </el-form-item>
@@ -601,7 +602,7 @@
         <div v-if="dataForm.id" class="sub-title">合同与付款附件</div>
         <div v-if="dataForm.id" class="full-payment-summary">
           <div>
-            <strong>客户全款付款：</strong>
+            <strong>收款方式：</strong>
             <el-tag size="mini" :type="isFullPaymentMode ? 'success' : 'info'">{{ paymentModeLabel }}</el-tag>
             <el-tag v-if="isFullPaymentMode" size="mini" :type="fullPaymentUploaded ? 'success' : 'warning'">
               {{ fullPaymentUploaded ? '水单已上传' : '待上传水单' }}
@@ -802,7 +803,7 @@
                 <el-steps :active="outboundWorkflowActiveStep" finish-status="success" simple class="outbound-flow-steps">
                   <el-step title="创建批次"></el-step>
                   <el-step title="上传出库回单"></el-step>
-                  <el-step title="上传来款水单"></el-step>
+                  <el-step :title="isInternalSettlementMode ? '确认内部结算' : '上传来款水单'"></el-step>
                   <el-step title="确认批次完成"></el-step>
                 </el-steps>
                 <div class="outbound-flow-actions">
@@ -843,6 +844,15 @@
                     {{ outboundBankSlipUploadLabel }}
                   </el-button>
                   <el-button
+                    v-if="attachmentEditable && isInternalSettlementMode && currentOutboundBatch && currentOutboundBatchEditable && !currentInternalSettlementConfirmed"
+                    size="mini"
+                    type="primary"
+                    plain
+                    :loading="outboundBatchLoading"
+                    @click="confirmInternalSettlement">
+                    确认内部结算
+                  </el-button>
+                  <el-button
                     v-if="attachmentEditable && currentOutboundBatchIsSelfPickup && currentOutboundBatchEditable"
                     size="mini"
                     type="warning"
@@ -859,6 +869,15 @@
                     :loading="outboundBatchLoading"
                     @click="bindOutboundScanLink">
                     新增扫码链接
+                  </el-button>
+                  <el-button
+                    v-if="attachmentEditable && currentOutboundBatch && currentOutboundBatchEditable && !isFullPaymentMode"
+                    size="mini"
+                    type="primary"
+                    plain
+                    :loading="depositDeductionSaving"
+                    @click="saveOutboundBatchDepositDeduction">
+                    保存定金抵扣
                   </el-button>
                   <el-button
                     v-if="attachmentEditable && currentOutboundBatch && canConfirmOutboundBatch"
@@ -943,6 +962,30 @@
                 </el-button>
               </template>
               <el-button size="mini" type="primary" plain @click="downloadPickupDetail(currentOutboundBatch)">下载提货明细</el-button>
+            </div>
+            <div v-if="currentOutboundBatch && !isFullPaymentMode" class="outbound-deposit-panel">
+              <div class="outbound-deposit-summary">
+                <span>销售定金确认金额：¥{{ formatNumber(currentOutboundBatch.saleDepositConfirmedAmount, 2) }}</span>
+                <span>其他批次已抵扣：¥{{ formatNumber(currentOutboundBatch.saleDepositUsedAmount, 2) }}</span>
+                <span>当前批次可用余额：¥{{ formatNumber(currentOutboundBatch.saleDepositAvailableAmount, 2) }}</span>
+                <span>本批次货款：¥{{ formatNumber(currentOutboundBatch.batchGoodsAmount, 2) }}</span>
+              </div>
+              <div class="outbound-deposit-editor">
+                <span>本批次抵扣定金</span>
+                <el-input-number
+                  v-model="currentOutboundBatch.depositDeductionAmount"
+                  :disabled="!attachmentEditable || !currentOutboundBatchEditable"
+                  :controls="false"
+                  :min="0"
+                  :max="Math.min(Number(currentOutboundBatch.saleDepositAvailableAmount || 0), Number(currentOutboundBatch.batchGoodsAmount || 0))"
+                  :precision="2"
+                  size="mini">
+                </el-input-number>
+                <span>
+                  计息本金：¥{{ formatNumber(Math.max(0, Number(currentOutboundBatch.batchGoodsAmount || 0) - Number(currentOutboundBatch.depositDeductionAmount || 0)), 2) }}
+                </span>
+                <span class="sub-title-tip">抵扣只减少二批利息，仓储费仍按原规则计算；确认批次后锁定。</span>
+              </div>
             </div>
             <div v-if="currentOutboundBatch && currentOutboundBatch.planItemList && currentOutboundBatch.planItemList.length" class="outbound-section-title">
               <strong>本批次计划及实际核对</strong>
@@ -1071,12 +1114,39 @@
                 </el-col>
               </el-row>
             </div>
+            <div v-if="isInternalSettlementMode && currentOutboundBatch" class="bank-slip-panel">
+              <div class="outbound-section-title">
+                <strong>内部结算确认</strong>
+                <span class="sub-title-tip">内部主体之间结算，无需上传回款水单，也无需填写金额和打款日期。</span>
+              </div>
+              <div class="bank-slip-card">
+                <el-tag size="mini" :type="currentInternalSettlementConfirmed ? 'success' : 'warning'">
+                  {{ currentInternalSettlementConfirmed ? '已确认' : '待确认' }}
+                </el-tag>
+                <span v-if="currentInternalSettlementConfirmed" class="sub-title-tip">
+                  确认时间：{{ formatDateTime(currentOutboundBatch.internalSettlementConfirmTime) || '-' }}
+                </span>
+                <el-form-item label="备注">
+                  <el-input
+                    :value="currentOutboundBatch.internalSettlementRemark || ''"
+                    type="textarea"
+                    :rows="2"
+                    disabled
+                    placeholder="无备注">
+                  </el-input>
+                </el-form-item>
+              </div>
+            </div>
             <div v-if="currentOutboundBatch" class="secondary-fee-panel">
               <div class="outbound-section-title">
                 <strong>二批超期费用</strong>
                 <span class="sub-title-tip">利息按二批商阶梯年化分段计算，库费按仓库二批收费标准计算。</span>
               </div>
               <div class="secondary-fee-cards">
+                <div class="secondary-fee-card">
+                  <span>计息本金</span>
+                  <strong>¥{{ formatNumber(currentOutboundBatch.secondaryInterestPrincipal, 2) }}</strong>
+                </div>
                 <div class="secondary-fee-card">
                   <span>计息天数</span>
                   <strong>{{ formatInteger(currentOutboundBatch.secondaryInterestDays) }}天</strong>
@@ -1310,6 +1380,12 @@
                     </el-popover>
                   </span>
                 </template>
+              </el-table-column>
+              <el-table-column label="抵扣定金" width="110" align="right">
+                <template slot-scope="scope">¥{{ formatNumber(scope.row.depositDeductionAmount, 2) }}</template>
+              </el-table-column>
+              <el-table-column label="计息本金" width="120" align="right">
+                <template slot-scope="scope">¥{{ formatNumber(scope.row.secondaryInterestPrincipal, 2) }}</template>
               </el-table-column>
               <el-table-column label="归档原件" min-width="180">
                 <template slot-scope="scope">
@@ -1869,7 +1945,7 @@
           <span>定金为非必填记录</span>
         </div>
         <el-alert
-          title="本记录仅用于定金水单OCR识别和原件归档，不影响销售单状态、库存锁定、出库流程及财务计算。"
+          title="定金确认金额可在分批付款的出库批次中由业务手工选择抵扣，用于减少该批次二批计息本金；不影响仓储费、库存锁定和资方还款。"
           type="info"
           :closable="false"
           show-icon>
@@ -1963,6 +2039,7 @@ export default {
       fullPaymentSaving: false,
       depositDialogVisible: false,
       depositSaving: false,
+      depositDeductionSaving: false,
       globalLoadingCount: 0,
       currentUploadType: '',
       currentConfirmType: '',
@@ -2097,7 +2174,14 @@ export default {
     isFullPaymentMode () {
       return Number(this.dataForm.paymentMode || 1) === 2
     },
+    isInternalSettlementMode () {
+      return Number(this.dataForm.paymentMode || 1) === 3
+    },
+    secondaryPartnerInternal () {
+      return Number(this.dataForm.secondaryPartnerInternalFlag || 0) === 1
+    },
     paymentModeLabel () {
+      if (this.isInternalSettlementMode) return '内部结算'
       return this.isFullPaymentMode ? '全款付款' : '分批付款'
     },
     paymentModeLocked () {
@@ -2132,7 +2216,7 @@ export default {
       if (this.outboundCompleted) return 4
       if (!this.currentOutboundBatch) return 0
       if (!this.currentOutboundHasReceiptFile) return 1
-      if (!this.currentOutboundBankSlipVisible) return 2
+      if (this.isInternalSettlementMode ? !this.currentInternalSettlementConfirmed : !this.currentOutboundBankSlipVisible) return 2
       return 3
     },
     outboundWorkflowTip () {
@@ -2140,7 +2224,8 @@ export default {
       if (this.isFullPaymentMode && !this.fullPaymentUploaded) return '当前为全款付款，请先在“全款付款详情”上传客户全款水单，再新增出库批次。'
       if (!this.currentOutboundBatch) return '先新增一个出库批次，再按步骤上传单据。'
       if (!this.currentOutboundHasReceiptFile) return '当前批次已创建，下一步上传出库回单。'
-      if (!this.currentOutboundBankSlipVisible) return this.isFullPaymentMode ? '出库回单已上传，下一步上传仓储费水单。' : '出库回单已上传，下一步上传二批来款水单。'
+      if (this.isInternalSettlementMode && !this.currentInternalSettlementConfirmed) return '出库回单已上传，下一步确认内部结算；备注可选填。'
+      if (!this.isInternalSettlementMode && !this.currentOutboundBankSlipVisible) return this.isFullPaymentMode ? '出库回单已上传，下一步上传仓储费水单。' : '出库回单已上传，下一步上传二批来款水单。'
       if (this.currentOutboundBatchIsSelfPickup && !this.currentOutboundDisclaimerFile) return '当前为二批自提，请上传自提免责证明后再确认批次。'
       if (this.canConfirmOutboundBatch) return '单据已齐全，可以确认当前批次完成。'
       return '请先保存并核对当前批次明细，再确认批次完成。'
@@ -2199,6 +2284,9 @@ export default {
     currentOutboundBankSlipVisible () {
       const batch = this.currentOutboundBatch
       return !!(batch && (batch.bankSlipFileId || batch.bankSlipFile))
+    },
+    currentInternalSettlementConfirmed () {
+      return !!(this.currentOutboundBatch && Number(this.currentOutboundBatch.internalSettlementConfirmed || 0) === 1)
     },
     currentOutboundBankSlipDiffVisible () {
       const batch = this.currentOutboundBatch
@@ -2304,11 +2392,13 @@ export default {
       if (!batch || !this.currentOutboundBatchEditable) return false
       const receipt = this.dataForm.outboundReceipt
       const hasReceipt = !!(receipt && receipt.itemList && receipt.itemList.length)
-      const hasBankSlip = !!batch.bankSlipFileId || !!batch.bankSlipFile
+      const settlementReady = this.isInternalSettlementMode
+        ? Number(batch.internalSettlementConfirmed || 0) === 1
+        : (!!batch.bankSlipFileId || !!batch.bankSlipFile)
       const hasDisclaimer = batch.pickupMethod !== 'SECONDARY_SELF_PICKUP' ||
         !!batch.selfPickupDisclaimerFileId ||
         !!batch.selfPickupDisclaimerFile
-      return hasReceipt && hasBankSlip && hasDisclaimer && this.currentOutboundHasReceiptFile
+      return hasReceipt && settlementReady && hasDisclaimer && this.currentOutboundHasReceiptFile
     }
   },
   watch: {
@@ -2338,6 +2428,7 @@ export default {
         sellingEntityName: '',
         secondaryPartnerId: '',
         secondaryPartnerName: '',
+        secondaryPartnerInternalFlag: 0,
         secondaryPartnerColdStorageFreeDays: '',
         salespersonId: '',
         salespersonName: '',
@@ -2664,6 +2755,11 @@ export default {
     },
     paymentModeChangeHandle (value) {
       const mode = Number(value || 1)
+      if (mode === 3 && !this.secondaryPartnerInternal) {
+        this.$message.error('只有标记为内部主体的二批商才能选择内部结算')
+        this.dataForm.paymentMode = 1
+        return
+      }
       this.dataForm.paymentMode = mode
       if (!this.dataForm.id) return
       if (this.paymentModeLocked) {
@@ -2989,6 +3085,12 @@ export default {
         bankSerialNoModified: '',
         bankExpectedAmount: 0,
         bankAmountDiff: 0,
+        depositDeductionAmount: 0,
+        secondaryInterestPrincipal: 0,
+        saleDepositConfirmedAmount: 0,
+        saleDepositUsedAmount: 0,
+        saleDepositAvailableAmount: 0,
+        batchGoodsAmount: 0,
         secondaryInterestDays: 0,
         secondaryInterestAmount: 0,
         secondaryStorageDays: 0,
@@ -3043,7 +3145,7 @@ export default {
     formatOutboundBatchStatus (status) {
       const map = {
         0: '待上传回单',
-        1: '待上传水单',
+        1: this.isInternalSettlementMode ? '待确认内部结算' : '待上传水单',
         2: '待确认',
         3: '已完成',
         9: '已作废'
@@ -3187,6 +3289,11 @@ export default {
       const partner = this.secondaryPartnerList.find(item => String(item.id) === String(value))
       this.dataForm.secondaryPartnerName = partner ? partner.partnerName : ''
       this.dataForm.secondaryPartnerColdStorageFreeDays = partner ? (partner.coldStorageFreeDays || 7) : ''
+      this.dataForm.secondaryPartnerInternalFlag = partner && Number(partner.internalEntityFlag || 0) === 1 ? 1 : 0
+      if (!this.dataForm.secondaryPartnerInternalFlag && Number(this.dataForm.paymentMode || 1) === 3) {
+        this.dataForm.paymentMode = 1
+        this.$message.warning('所选二批商不是内部主体，收款方式已切换为分批付款')
+      }
       this.warnSecondaryPartnerRisk(partner)
     },
     findSecondaryPartnerColdStorageFreeDays (partnerId) {
@@ -4428,7 +4535,7 @@ export default {
       if (fileType === 'FUNDER_PAYMENT_PROOF') return this.isStepConfirmed('BUYER_BANK_SLIP')
       if (fileType === 'OUTBOUND_RECEIPT') return !!this.currentOutboundBatch && this.currentOutboundBatchEditable
       if (fileType === 'OUTBOUND_BATCH_BANK_SLIP') {
-        return !!this.currentOutboundBatch && this.currentOutboundBatchEditable
+        return !this.isInternalSettlementMode && !!this.currentOutboundBatch && this.currentOutboundBatchEditable
       }
       if (fileType === 'SELF_PICKUP_DISCLAIMER') {
         return !!this.currentOutboundBatch &&
@@ -4457,6 +4564,39 @@ export default {
       if (fileType === 'OUTBOUND_BATCH_BANK_SLIP') return '当前批次不可上传二批来款水单'
       if (fileType === 'SELF_PICKUP_DISCLAIMER') return '只有未完成的二批自提批次可以上传免责证明'
       return '当前节点暂不可上传'
+    },
+    confirmInternalSettlement () {
+      if (!this.currentOutboundBatch || !this.isInternalSettlementMode) return
+      this.$prompt('可填写本批次内部结算备注，也可以留空直接确认。', '确认内部结算', {
+        confirmButtonText: '确认内部结算',
+        cancelButtonText: '取消',
+        inputType: 'textarea',
+        inputValue: this.currentOutboundBatch.internalSettlementRemark || '',
+        inputPlaceholder: '选填，最多500字',
+        inputValidator: value => !value || String(value).length <= 500 || '备注不能超过500字'
+      }).then(({ value }) => {
+        this.outboundBatchLoading = true
+        this.withGlobalLoading(this.$http({
+          url: this.$http.adornUrl('/erp/saleorder/outbound/batch/internal-settlement/confirm'),
+          method: 'post',
+          data: this.$http.adornData({
+            saleOrderId: this.dataForm.id,
+            batchId: this.currentOutboundBatch.id,
+            remark: value || ''
+          })
+        })).then(({ data }) => {
+          if (data && data.code === 0) {
+            this.$message.success('内部结算已确认')
+            this.refreshDetail()
+            this.$emit('refreshDataList')
+          } else {
+            this.$message.error((data && data.msg) || '内部结算确认失败')
+          }
+          this.outboundBatchLoading = false
+        }).catch(() => {
+          this.outboundBatchLoading = false
+        })
+      }).catch(() => {})
     },
     bindOutboundScanLink () {
       if (!this.currentOutboundBatch) return
@@ -4540,6 +4680,36 @@ export default {
       this.activeOutboundBatchId = batch && batch.id
       this.refreshDetail()
       this.$emit('refreshDataList')
+    },
+    saveOutboundBatchDepositDeduction () {
+      const batch = this.currentOutboundBatch
+      if (!batch || !batch.id || this.depositDeductionSaving) return
+      const amount = this.parseAmountValue(batch.depositDeductionAmount)
+      const available = this.parseAmountValue(batch.saleDepositAvailableAmount)
+      const goodsAmount = this.parseAmountValue(batch.batchGoodsAmount)
+      if (amount < 0 || amount > available + 0.001 || amount > goodsAmount + 0.001) {
+        this.$message.error('本批次抵扣定金不能超过当前可用余额或本批次货款')
+        return
+      }
+      this.depositDeductionSaving = true
+      this.withGlobalLoading(this.$http({
+        url: this.$http.adornUrl('/erp/saleorder/outbound/batch/deposit-deduction/save'),
+        method: 'post',
+        data: this.$http.adornData({
+          id: batch.id,
+          saleOrderId: this.dataForm.id,
+          depositDeductionAmount: amount
+        })
+      })).then(({ data }) => {
+        if (data && data.code === 0) {
+          this.$message.success('本批次定金抵扣已保存')
+          this.activeOutboundBatchId = data.batch && data.batch.id
+          return this.refreshDetail()
+        }
+        this.$message.error((data && data.msg) || '保存定金抵扣失败')
+      }).finally(() => {
+        this.depositDeductionSaving = false
+      })
     },
     confirmOutboundBatch () {
       if (!this.currentOutboundBatch) return
@@ -5229,6 +5399,32 @@ export default {
   border-radius: 4px;
   background: #f4f9ff;
   color: #606266;
+}
+
+.outbound-deposit-panel {
+  margin: 10px 0 14px;
+  padding: 12px 14px;
+  border: 1px solid #d9ecff;
+  border-radius: 4px;
+  background: #f4faff;
+}
+
+.outbound-deposit-summary,
+.outbound-deposit-editor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 22px;
+}
+
+.outbound-deposit-summary {
+  margin-bottom: 10px;
+  color: #52616b;
+  font-size: 13px;
+}
+
+.outbound-deposit-editor .el-input-number {
+  width: 180px;
 }
 
 .history-detail-label {

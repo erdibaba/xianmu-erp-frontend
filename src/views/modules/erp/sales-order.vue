@@ -83,8 +83,8 @@
       </el-table-column>
       <el-table-column label="收款方式" width="120" align="center" show-overflow-tooltip>
         <template slot-scope="scope">
-          <el-tag size="small" :type="Number(scope.row.paymentMode || 1) === 2 ? 'success' : 'info'">
-            {{ Number(scope.row.paymentMode || 1) === 2 ? '全款付款' : '分批付款' }}
+          <el-tag size="small" :type="Number(scope.row.paymentMode || 1) === 3 ? 'warning' : (Number(scope.row.paymentMode || 1) === 2 ? 'success' : 'info')">
+            {{ Number(scope.row.paymentMode || 1) === 3 ? '内部结算' : (Number(scope.row.paymentMode || 1) === 2 ? '全款付款' : '分批付款') }}
           </el-tag>
         </template>
       </el-table-column>

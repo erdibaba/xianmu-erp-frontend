@@ -21,6 +21,11 @@
             <el-switch v-model="dataForm.status" :active-value="1" :inactive-value="0"></el-switch>
           </el-form-item>
         </el-col>
+        <el-col :span="12">
+          <el-form-item label="是否内部主体">
+            <el-switch v-model="dataForm.internalEntityFlag" :active-value="1" :inactive-value="0"></el-switch>
+          </el-form-item>
+        </el-col>
         <el-col :span="24">
           <el-form-item label="业务角色">
             <el-checkbox-group v-model="dataForm.businessRoles">
@@ -220,6 +225,7 @@ const defaultForm = () => ({
   partnerName: '',
   businessRole: '',
   businessRoles: [],
+  internalEntityFlag: 0,
   coldStorageFreeDays: 7,
   annualInterestRate: null,
   funderCreditDays: null,
@@ -290,6 +296,7 @@ export default {
             if (data && data.code === 0) {
               this.dataForm = Object.assign(defaultForm(), data.partner || {})
               this.dataForm.businessRoles = this.dataForm.businessRole ? this.dataForm.businessRole.split(',') : []
+              this.dataForm.internalEntityFlag = Number(this.dataForm.internalEntityFlag || 0) === 1 ? 1 : 0
               this.dataForm.coldStorageFreeDays = this.dataForm.coldStorageFreeDays || 7
               if (!this.dataForm.interestRateList || !this.dataForm.interestRateList.length) {
                 this.dataForm.interestRateList = defaultForm().interestRateList

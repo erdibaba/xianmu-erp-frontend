@@ -525,7 +525,7 @@ export default {
     },
     uploadStatement (request) {
       if (!this.reconciliationActionEnabled) {
-        return this.$message.warning('请先完成出库批次的二批来款水单上传及确认')
+        return this.$message.warning('请先完成出库批次的结算确认')
       }
       const outboundBatchId = Number(this.form.outboundBatchId || 0)
       if (!outboundBatchId) {
@@ -561,7 +561,7 @@ export default {
       this.statementAmountAutoSync = false
     },
     saveReconciliation () {
-      if (!this.reconciliationActionEnabled) return this.$message.warning('请先完成出库批次的二批来款水单上传及确认')
+      if (!this.reconciliationActionEnabled) return this.$message.warning('请先完成出库批次的结算确认')
       if (!this.form.statementFilePath) return this.$message.error('请先上传资方计算单据')
       if (Number(this.form.statementAmount || 0) <= 0) return this.$message.error('资方核算金额必须大于0')
       this.runWithLoading('正在保存费用对账资料...', '/erp/funder-finance/fee-reconciliation/save', this.form).then(data => {
@@ -573,7 +573,7 @@ export default {
       })
     },
     confirmReconciliation () {
-      if (!this.bankSlipCompleted) return this.$message.warning('请先完成出库批次的二批来款水单上传及确认')
+      if (!this.bankSlipCompleted) return this.$message.warning('请先完成出库批次的结算确认')
       this.$confirm('确认资方计算单及系统费用核对无误？确认后费用不可修改。', '确认核对', { type: 'warning' }).then(() => {
         return this.runWithLoading('正在确认费用核对...', `/erp/funder-finance/fee-reconciliation/confirm/${this.form.id}`, {})
       }).then(data => {
@@ -671,7 +671,7 @@ export default {
       row.feeAmount = Number((Number(row.paymentAmount || 0) - Number(row.principalAmount || 0)).toFixed(2))
     },
     confirmPaymentVoucher () {
-      if (!this.bankSlipCompleted) return this.$message.warning('请先完成出库批次的二批来款水单上传及确认')
+      if (!this.bankSlipCompleted) return this.$message.warning('请先完成出库批次的结算确认')
       if (!this.paymentVoucherForm.filePath) return this.$message.error('请先上传财务打款凭证')
       if (Number(this.paymentVoucherForm.confirmedAmount || 0) <= 0) return this.$message.error('确认打款金额必须大于0')
       if (!this.paymentVoucherForm.paymentDate) return this.$message.error('请选择实际打款日期')

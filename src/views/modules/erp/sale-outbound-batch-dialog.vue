@@ -58,6 +58,27 @@
             <el-button type="primary" plain @click="quickDriverVisible = true">新增司机</el-button>
           </el-col>
         </el-row>
+        <div v-if="!isFullPaymentMode" class="deposit-deduction-panel">
+          <div class="deposit-deduction-summary">
+            <span>销售定金确认金额：¥{{ money(saleDepositConfirmedAmount) }}</span>
+            <span>其他批次已抵扣：¥{{ money(saleDepositUsedAmount) }}</span>
+            <span>当前可用余额：¥{{ money(saleDepositAvailableAmount) }}</span>
+            <span>本批次预计货款：¥{{ money(plannedGoodsAmount) }}</span>
+          </div>
+          <el-form-item label="抵扣定金">
+            <el-input-number
+              v-model="form.depositDeductionAmount"
+              :controls="false"
+              :min="0"
+              :max="maxDepositDeductionAmount"
+              :precision="2"
+              style="width: 220px;">
+            </el-input-number>
+            <span class="deposit-deduction-tip">
+              预计计息本金：¥{{ money(estimatedInterestPrincipal) }}，仅减少二批资金利息，不影响仓储费。
+            </span>
+          </el-form-item>
+        </div>
         <el-form-item label="备注">
           <el-input
             v-model="form.remark"
@@ -174,6 +195,7 @@ export default {
         ownershipName: '',
         pickupMethod: 'ARRANGED_TRANSPORT',
         outboundDate: '',
+        depositDeductionAmount: 0,
         remark: ''
       },
       driverForm: {
@@ -201,6 +223,31 @@ export default {
     filteredCandidates () {
       if (!this.form.ownershipName) return []
       return this.candidates.filter(item => item.ownershipName === this.form.ownershipName)
+    },
+    isFullPaymentMode () {
+      return Number(this.saleOrder.paymentMode || 1) === 2
+    },
+    saleDepositConfirmedAmount () {
+      return Number(this.saleOrder.depositAmountModified || 0)
+    },
+    saleDepositUsedAmount () {
+      return (this.saleOrder.outboundBatchList || []).reduce((sum, batch) => {
+        return Number(batch.status || 0) === 9 ? sum : sum + Number(batch.depositDeductionAmount || 0)
+      }, 0)
+    },
+    saleDepositAvailableAmount () {
+      return Math.max(0, this.saleDepositConfirmedAmount - this.saleDepositUsedAmount)
+    },
+    plannedGoodsAmount () {
+      return this.candidates
+        .filter(item => item._selected && item.ownershipName === this.form.ownershipName)
+        .reduce((sum, item) => sum + Number(item.plannedWeight || 0) * Number(item.salePriceKg || 0), 0)
+    },
+    maxDepositDeductionAmount () {
+      return Math.max(0, Math.min(this.saleDepositAvailableAmount, this.plannedGoodsAmount))
+    },
+    estimatedInterestPrincipal () {
+      return Math.max(0, this.plannedGoodsAmount - Number(this.form.depositDeductionAmount || 0))
     }
   },
   methods: {
@@ -219,6 +266,7 @@ export default {
         ownershipName: '',
         pickupMethod: 'ARRANGED_TRANSPORT',
         outboundDate: this.todayDate(),
+        depositDeductionAmount: 0,
         remark: ''
       }
       this.driverOptions = []
@@ -265,6 +313,9 @@ export default {
     },
     dateOnly (value) {
       return value ? String(value).substring(0, 10) : '-'
+    },
+    money (value) {
+      return Number(value || 0).toFixed(2)
     },
     proportionalWeight (row, boxes) {
       const totalBoxes = Number(row.boxes || 0)
@@ -327,6 +378,10 @@ export default {
           this.$message.error('请至少选择一条本批次计划货物')
           return
         }
+        if (Number(this.form.depositDeductionAmount || 0) > this.maxDepositDeductionAmount + 0.001) {
+          this.$message.error('本批次抵扣定金不能超过当前可用余额或本批次预计货款')
+          return
+        }
         for (let index = 0; index < selected.length; index++) {
           const row = selected[index]
           if (Number(row.plannedBoxes || 0) <= 0 || Number(row.plannedBoxes) > Number(row.remainingBoxes)) {
@@ -344,6 +399,7 @@ export default {
           ownershipName: this.form.ownershipName,
           pickupMethod: this.form.pickupMethod,
           outboundDate: this.form.outboundDate,
+          depositDeductionAmount: this.isFullPaymentMode ? 0 : Number(this.form.depositDeductionAmount || 0),
           remark: this.form.remark,
           planItemList: selected.map(row => ({
             saleOrderItemId: row.id,
@@ -387,6 +443,29 @@ export default {
 
 .section-title span {
   color: #909399;
+  font-size: 12px;
+}
+
+.deposit-deduction-panel {
+  margin: 0 0 12px;
+  padding: 12px 14px 2px;
+  border: 1px solid #d9ecff;
+  border-radius: 4px;
+  background: #f4faff;
+}
+
+.deposit-deduction-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin-bottom: 10px;
+  color: #52616b;
+  font-size: 13px;
+}
+
+.deposit-deduction-tip {
+  margin-left: 12px;
+  color: #606266;
   font-size: 12px;
 }
 </style>
