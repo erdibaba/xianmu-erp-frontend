@@ -13,133 +13,162 @@
     </el-alert>
 
     <el-form :model="dataForm" :rules="dataRule" ref="dataForm" label-width="145px" class="fee-rate-form">
-      <el-row :gutter="14">
-        <el-col :span="8">
-          <el-form-item label="生效日期" prop="effectiveDate">
-            <el-date-picker
-              v-model="dataForm.effectiveDate"
-              value-format="yyyy-MM-dd"
-              type="date"
-              placeholder="选择日期"
-              style="width: 100%;">
-            </el-date-picker>
-          </el-form-item>
-        </el-col>
-        <el-col :span="8">
-          <el-form-item label="仓储冷冻费(元/吨)" prop="frozenStorageFee">
-            <el-input-number v-model="dataForm.frozenStorageFee" :precision="2" :min="0" :controls="false" style="width: 100%;"></el-input-number>
-          </el-form-item>
-        </el-col>
-        <el-col :span="8">
-          <el-form-item label="仓储冷藏费(元/吨)" prop="chilledStorageFee">
-            <el-input-number v-model="dataForm.chilledStorageFee" :precision="2" :min="0" :controls="false" style="width: 100%;"></el-input-number>
-          </el-form-item>
-        </el-col>
-        <el-col :span="8">
-          <el-form-item label="冷链冷冻装卸费(元/吨)" prop="frozenColdFee">
-            <el-input-number v-model="dataForm.frozenColdFee" :precision="2" :min="0" :controls="false" style="width: 100%;"></el-input-number>
-          </el-form-item>
-        </el-col>
-        <el-col :span="8">
-          <el-form-item label="冷链冷藏装卸费(元/吨)" prop="chilledColdFee">
-            <el-input-number v-model="dataForm.chilledColdFee" :precision="2" :min="0" :controls="false" style="width: 100%;"></el-input-number>
-          </el-form-item>
-        </el-col>
-        <el-col :span="8">
-          <el-form-item label="二批冷冻库费(元/吨/天)" prop="secondaryFrozenStorageFee">
-            <el-input-number v-model="dataForm.secondaryFrozenStorageFee" :precision="2" :min="0" :controls="false" style="width: 100%;"></el-input-number>
-          </el-form-item>
-        </el-col>
-        <el-col :span="8">
-          <el-form-item label="二批冷鲜库费(元/吨/天)" prop="secondaryChilledStorageFee">
-            <el-input-number v-model="dataForm.secondaryChilledStorageFee" :precision="2" :min="0" :controls="false" style="width: 100%;"></el-input-number>
-          </el-form-item>
-        </el-col>
-        <el-col :span="8">
-          <el-form-item label="扫码费方式" prop="scanFeeUnit">
-            <el-select v-model="dataForm.scanFeeUnit" style="width: 100%;">
-              <el-option label="按吨" value="TON"></el-option>
-              <el-option label="按箱" value="BOX"></el-option>
-            </el-select>
-          </el-form-item>
-        </el-col>
-        <el-col :span="8">
-          <el-form-item label="扫码费单价" prop="scanFeeRate">
-            <el-input-number v-model="dataForm.scanFeeRate" :precision="2" :min="0" :controls="false" style="width: 100%;"></el-input-number>
-          </el-form-item>
-        </el-col>
-        <el-col :span="8">
-          <el-form-item label="计重口径" prop="weightBasis">
-            <el-select v-model="dataForm.weightBasis" style="width: 100%;">
-              <el-option label="净重" value="NET"></el-option>
-              <el-option label="毛重" value="GROSS"></el-option>
-            </el-select>
-          </el-form-item>
-        </el-col>
-        <el-col :span="8">
-          <el-form-item label="缠膜费">
-            <div class="fee-unit-row">
-              <el-input-number v-model="dataForm.wrappingFee" :precision="2" :min="0" :controls="false"></el-input-number>
-              <el-select v-model="dataForm.wrappingFeeUnit">
-                <el-option label="元/吨" value="TON"></el-option>
-                <el-option label="元/箱" value="BOX"></el-option>
-                <el-option label="元/托" value="PALLET"></el-option>
-                <el-option label="元/柜" value="CONTAINER"></el-option>
+      <section class="fee-section fee-section--basic">
+        <div class="fee-section__header">
+          <span class="fee-section__index">01</span>
+          <div>
+            <div class="fee-section__title">基础设置</div>
+            <div class="fee-section__description">维护价格生效时间、计重口径与启停状态</div>
+          </div>
+        </div>
+        <el-row :gutter="14">
+          <el-col :span="8">
+            <el-form-item label="生效日期" prop="effectiveDate">
+              <el-date-picker v-model="dataForm.effectiveDate" value-format="yyyy-MM-dd" type="date" placeholder="选择日期" style="width: 100%;"></el-date-picker>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="计重口径" prop="weightBasis">
+              <el-select v-model="dataForm.weightBasis" style="width: 100%;">
+                <el-option label="净重" value="NET"></el-option>
+                <el-option label="毛重" value="GROSS"></el-option>
               </el-select>
-            </div>
-          </el-form-item>
-        </el-col>
-        <el-col :span="8">
-          <el-form-item label="分拣费">
-            <div class="fee-unit-row">
-              <el-input-number v-model="dataForm.sortingFee" :precision="2" :min="0" :controls="false"></el-input-number>
-              <el-select v-model="dataForm.sortingFeeUnit">
-                <el-option label="元/吨" value="TON"></el-option>
-                <el-option label="元/箱" value="BOX"></el-option>
-                <el-option label="元/托" value="PALLET"></el-option>
-                <el-option label="元/柜" value="CONTAINER"></el-option>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="状态">
+              <el-select v-model="dataForm.status" style="width: 100%;">
+                <el-option label="启用" :value="1"></el-option>
+                <el-option label="停用" :value="0"></el-option>
               </el-select>
-            </div>
-          </el-form-item>
-        </el-col>
-        <el-col :span="8">
-          <el-form-item label="重复上下架费">
-            <div class="fee-unit-row">
-              <el-input-number v-model="dataForm.repeatedHandlingFee" :precision="2" :min="0" :controls="false"></el-input-number>
-              <el-select v-model="dataForm.repeatedHandlingFeeUnit">
-                <el-option label="元/吨" value="TON"></el-option>
-                <el-option label="元/箱" value="BOX"></el-option>
-                <el-option label="元/托" value="PALLET"></el-option>
-                <el-option label="元/柜" value="CONTAINER"></el-option>
-              </el-select>
-            </div>
-          </el-form-item>
-        </el-col>
-        <el-col :span="8">
-          <el-form-item label="存货人变更费">
-            <div class="fee-unit-row">
-              <el-input-number v-model="dataForm.ownerChangeFee" :precision="2" :min="0" :controls="false"></el-input-number>
-              <el-select v-model="dataForm.ownerChangeFeeUnit">
-                <el-option label="元/吨" value="TON"></el-option>
-                <el-option label="元/箱" value="BOX"></el-option>
-                <el-option label="元/托" value="PALLET"></el-option>
-                <el-option label="元/柜" value="CONTAINER"></el-option>
-              </el-select>
-            </div>
-          </el-form-item>
-        </el-col>
-        <el-col :span="8">
-          <el-form-item label="状态">
-            <el-select v-model="dataForm.status" style="width: 100%;">
-              <el-option label="启用" :value="1"></el-option>
-              <el-option label="停用" :value="0"></el-option>
-            </el-select>
-          </el-form-item>
-        </el-col>
-        <el-col :span="24">
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </section>
+
+      <section class="fee-section fee-section--storage">
+        <div class="fee-section__header">
+          <span class="fee-section__index">02</span>
+          <div>
+            <div class="fee-section__title">基础仓储费用</div>
+            <div class="fee-section__description">仓储、出入库装卸及向二批收取的日常库费</div>
+          </div>
+        </div>
+        <el-row :gutter="14">
+          <el-col :span="8">
+            <el-form-item label="仓储冷冻费(元/吨)" prop="frozenStorageFee">
+              <el-input-number v-model="dataForm.frozenStorageFee" :precision="2" :min="0" :controls="false" style="width: 100%;"></el-input-number>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="仓储冷藏费(元/吨)" prop="chilledStorageFee">
+              <el-input-number v-model="dataForm.chilledStorageFee" :precision="2" :min="0" :controls="false" style="width: 100%;"></el-input-number>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="冷链冷冻装卸费(元/吨)" prop="frozenColdFee">
+              <el-input-number v-model="dataForm.frozenColdFee" :precision="2" :min="0" :controls="false" style="width: 100%;"></el-input-number>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="冷链冷藏装卸费(元/吨)" prop="chilledColdFee">
+              <el-input-number v-model="dataForm.chilledColdFee" :precision="2" :min="0" :controls="false" style="width: 100%;"></el-input-number>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="二批冷冻库费(元/吨/天)" prop="secondaryFrozenStorageFee">
+              <el-input-number v-model="dataForm.secondaryFrozenStorageFee" :precision="2" :min="0" :controls="false" style="width: 100%;"></el-input-number>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="二批冷鲜库费(元/吨/天)" prop="secondaryChilledStorageFee">
+              <el-input-number v-model="dataForm.secondaryChilledStorageFee" :precision="2" :min="0" :controls="false" style="width: 100%;"></el-input-number>
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </section>
+
+      <section class="fee-section fee-section--service">
+        <div class="fee-section__header">
+          <span class="fee-section__index">03</span>
+          <div>
+            <div class="fee-section__title">附加服务费用</div>
+            <div class="fee-section__description">扫码、缠膜、存货人变更、重复上下架、分拣和分色费用</div>
+          </div>
+        </div>
+        <el-row :gutter="14">
+          <el-col :span="12">
+            <el-form-item label="扫码费" prop="scanFeeRate">
+              <div class="fee-unit-row">
+                <el-input-number v-model="dataForm.scanFeeRate" :precision="2" :min="0" :controls="false"></el-input-number>
+                <el-select v-model="dataForm.scanFeeUnit">
+                  <el-option label="元/吨" value="TON"></el-option>
+                  <el-option label="元/箱" value="BOX"></el-option>
+                </el-select>
+              </div>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="缠膜费">
+              <div class="fee-unit-row">
+                <el-input-number v-model="dataForm.wrappingFee" :precision="2" :min="0" :controls="false"></el-input-number>
+                <el-select v-model="dataForm.wrappingFeeUnit">
+                  <el-option label="元/吨" value="TON"></el-option>
+                  <el-option label="元/箱" value="BOX"></el-option>
+                  <el-option label="元/托" value="PALLET"></el-option>
+                  <el-option label="元/柜" value="CONTAINER"></el-option>
+                </el-select>
+              </div>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="存货人变更费">
+              <div class="fee-unit-row">
+                <el-input-number v-model="dataForm.ownerChangeFee" :precision="2" :min="0" :controls="false"></el-input-number>
+                <el-select v-model="dataForm.ownerChangeFeeUnit">
+                  <el-option label="元/吨" value="TON"></el-option>
+                  <el-option label="元/箱" value="BOX"></el-option>
+                  <el-option label="元/托" value="PALLET"></el-option>
+                  <el-option label="元/柜" value="CONTAINER"></el-option>
+                </el-select>
+              </div>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="重复上下架费">
+              <div class="fee-unit-row">
+                <el-input-number v-model="dataForm.repeatedHandlingFee" :precision="2" :min="0" :controls="false"></el-input-number>
+                <el-select v-model="dataForm.repeatedHandlingFeeUnit">
+                  <el-option label="元/吨" value="TON"></el-option>
+                  <el-option label="元/箱" value="BOX"></el-option>
+                  <el-option label="元/托" value="PALLET"></el-option>
+                  <el-option label="元/柜" value="CONTAINER"></el-option>
+                </el-select>
+              </div>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="分拣费">
+              <div class="fee-unit-row">
+                <el-input-number v-model="dataForm.sortingFee" :precision="2" :min="0" :controls="false"></el-input-number>
+                <el-select v-model="dataForm.sortingFeeUnit">
+                  <el-option label="元/吨" value="TON"></el-option>
+                  <el-option label="元/箱" value="BOX"></el-option>
+                  <el-option label="元/托" value="PALLET"></el-option>
+                  <el-option label="元/柜" value="CONTAINER"></el-option>
+                </el-select>
+              </div>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <div class="color-fee-panel">
           <div class="color-fee-header">
-            <span>分色费阶梯</span>
-            <el-button type="text" @click="addColorFeeTier">新增阶梯</el-button>
+            <div>
+              <div class="color-fee-title">分色费阶梯</div>
+              <div class="color-fee-description">按数量区间设置不同的分色收费标准</div>
+            </div>
+            <el-button type="primary" plain size="mini" @click="addColorFeeTier">新增阶梯</el-button>
           </div>
           <el-table :data="dataForm.colorFeeTierList" border size="mini" class="color-fee-table">
             <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
@@ -187,7 +216,10 @@
               </template>
             </el-table-column>
           </el-table>
-        </el-col>
+        </div>
+      </section>
+
+      <el-row>
         <el-col :span="24">
           <el-form-item label="备注">
             <el-input v-model="dataForm.remark" maxlength="500" show-word-limit></el-input>
@@ -462,6 +494,63 @@
     margin-bottom: 8px;
   }
 
+  .fee-section {
+    margin-bottom: 14px;
+    padding: 16px 16px 0;
+    border: 1px solid #e3e9e7;
+    border-radius: 8px;
+    background: #fbfcfc;
+  }
+
+  .fee-section--basic {
+    border-left: 4px solid #2f7f91;
+  }
+
+  .fee-section--storage {
+    border-left: 4px solid #17a495;
+  }
+
+  .fee-section--service {
+    border-left: 4px solid #e5963b;
+  }
+
+  .fee-section__header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .fee-section__index {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    color: #fff;
+    background: #244c5a;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+
+  .fee-section__title,
+  .color-fee-title {
+    color: #263b43;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 20px;
+  }
+
+  .fee-section__description,
+  .color-fee-description {
+    margin-top: 2px;
+    color: #819097;
+    font-size: 12px;
+    line-height: 18px;
+  }
+
   .fee-unit-row {
     display: flex;
     gap: 8px;
@@ -479,12 +568,19 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin: 2px 0 8px;
-    font-weight: 600;
+    margin-bottom: 10px;
+  }
+
+  .color-fee-panel {
+    margin: 2px 0 16px;
+    padding: 12px;
+    border: 1px dashed #d8dfdc;
+    border-radius: 6px;
+    background: #fff;
   }
 
   .color-fee-table {
-    margin-bottom: 12px;
+    margin-bottom: 0;
   }
 
   .color-fee-table .el-input-number,
