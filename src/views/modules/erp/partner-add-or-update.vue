@@ -92,12 +92,12 @@
           </div>
           <el-table :data="dataForm.interestRateList" border size="mini" class="rate-rule-table">
             <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
-            <el-table-column label="起始天数" width="120">
+            <el-table-column label="超期起始天数" width="140">
               <template slot-scope="scope">
                 <el-input-number v-model="scope.row.startDay" :min="1" :precision="0" :controls="false" size="mini"></el-input-number>
               </template>
             </el-table-column>
-            <el-table-column label="结束天数" width="120">
+            <el-table-column label="超期结束天数" width="140">
               <template slot-scope="scope">
                 <el-input-number v-model="scope.row.endDay" :min="1" :precision="0" :controls="false" size="mini" placeholder="空=以后"></el-input-number>
               </template>
@@ -123,7 +123,7 @@
               </template>
             </el-table-column>
           </el-table>
-          <div class="rate-rule-tip">自然天从检疫证日期当天算第1天；系统会先扣除冷库减免天数，再按命中的自然天阶梯分段计息。</div>
+          <div class="rate-rule-tip">总占用天数仍按起算日和出库日首尾计日；系统先扣除冷库减免天数，再从超期第1天开始计算以上年化阶梯。</div>
         </el-col>
         <el-col :span="12" v-if="showFunderFields">
           <el-form-item label="资方账期天数">
@@ -250,8 +250,8 @@ const defaultForm = () => ({
   riskRemark: '',
   riskMarkDate: '',
   interestRateList: [
-    { startDay: 8, endDay: 30, annualRate: 9.6, remark: '默认：第8-30天（含30天）按9.6%', status: 1 },
-    { startDay: 31, endDay: null, annualRate: 18, remark: '默认：第31天起按18%', status: 1 }
+    { startDay: 1, endDay: 30, annualRate: 9.6, remark: '默认：超期第1-30天（含30天）按9.6%', status: 1 },
+    { startDay: 31, endDay: null, annualRate: 18, remark: '默认：超期第31天起按18%', status: 1 }
   ],
   remark: '',
   status: 1
