@@ -75,7 +75,6 @@
         <el-select v-model="queryForm.temperatureZone" clearable popper-class="sales-inventory-mobile-dropdown" placeholder="温区">
           <el-option label="冷鲜" value="冷鲜"></el-option>
           <el-option label="冷冻" value="冷冻"></el-option>
-          <el-option label="冷藏" value="冷藏"></el-option>
         </el-select>
 
         <el-select
