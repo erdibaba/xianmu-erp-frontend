@@ -39,6 +39,12 @@
           <el-checkbox v-for="role in roleList" :key="role.roleId" :label="role.roleId">{{ role.roleName }}</el-checkbox>
         </el-checkbox-group>
       </el-form-item>
+      <el-form-item label="库存温区权限" size="mini" prop="inventoryTemperatureScopes">
+        <el-checkbox-group v-model="dataForm.inventoryTemperatureScopes">
+          <el-checkbox label="CHILLED">冷藏（含冷鲜）</el-checkbox>
+          <el-checkbox label="FROZEN">冷冻</el-checkbox>
+        </el-checkbox-group>
+      </el-form-item>
       <el-form-item label="状态" size="mini" prop="status">
         <el-radio-group v-model="dataForm.status">
           <el-radio :label="0">禁用</el-radio>
@@ -101,6 +107,7 @@ export default {
         email: '',
         mobile: '',
         secondaryPartnerId: '',
+        inventoryTemperatureScopes: ['CHILLED', 'FROZEN'],
         roleIdList: [],
         status: 1
       },
@@ -121,6 +128,9 @@ export default {
         mobile: [
           { required: true, message: '手机号不能为空', trigger: 'blur' },
           { validator: validateMobile, trigger: 'blur' }
+        ],
+        inventoryTemperatureScopes: [
+          { type: 'array', required: true, min: 1, message: '请至少选择一个库存温区权限', trigger: 'change' }
         ]
       }
     }
@@ -147,6 +157,8 @@ export default {
               this.dataForm.email = data.user.email
               this.dataForm.mobile = data.user.mobile
               this.dataForm.secondaryPartnerId = data.user.secondaryPartnerId || ''
+              this.dataForm.inventoryTemperatureScopes = String(data.user.inventoryTemperatureScope || 'CHILLED,FROZEN')
+                .split(',').filter(item => item === 'CHILLED' || item === 'FROZEN')
               this.dataForm.roleIdList = data.user.roleIdList
               this.dataForm.status = data.user.status
             } else {
@@ -206,6 +218,7 @@ export default {
             mobile: this.dataForm.mobile,
             secondaryPartnerId: this.dataForm.secondaryPartnerId || undefined,
             secondaryPartnerName: partner ? partner.partnerName : '',
+            inventoryTemperatureScope: this.dataForm.inventoryTemperatureScopes.join(','),
             status: this.dataForm.status,
             roleIdList: this.dataForm.roleIdList
           })

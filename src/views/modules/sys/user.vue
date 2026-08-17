@@ -63,6 +63,14 @@
         label="绑定角色">
       </el-table-column>
       <el-table-column
+        prop="inventoryTemperatureScope"
+        header-align="center"
+        align="center"
+        min-width="170"
+        label="库存温区权限">
+        <template slot-scope="scope">{{ temperatureScopeText(scope.row.inventoryTemperatureScope) }}</template>
+      </el-table-column>
+      <el-table-column
         prop="status"
         header-align="center"
         align="center"
@@ -130,6 +138,13 @@
       this.getDataList()
     },
     methods: {
+      temperatureScopeText (value) {
+        const scopes = String(value || 'CHILLED,FROZEN').split(',')
+        const labels = []
+        if (scopes.includes('CHILLED')) labels.push('冷藏（含冷鲜）')
+        if (scopes.includes('FROZEN')) labels.push('冷冻')
+        return labels.join('、') || '-'
+      },
       // 获取数据列表
       getDataList () {
         this.dataListLoading = true

@@ -73,8 +73,7 @@
         </el-select>
 
         <el-select v-model="queryForm.temperatureZone" clearable popper-class="sales-inventory-mobile-dropdown" placeholder="温区">
-          <el-option label="冷鲜" value="冷鲜"></el-option>
-          <el-option label="冷冻" value="冷冻"></el-option>
+          <el-option v-for="item in temperatureOptions" :key="item.value" :label="item.label" :value="item.value"></el-option>
         </el-select>
 
         <el-select
@@ -135,7 +134,7 @@
 
           <dl class="card-details">
             <div><dt>货权</dt><dd>{{ item.ownershipName || '-' }}</dd></div>
-            <div><dt>厂号</dt><dd>{{ item.factoryNos || '-' }}</dd></div>
+            <div><dt>厂号</dt><dd>{{ item.factoryNo || item.factoryNos || '-' }}</dd></div>
             <div><dt>柜号</dt><dd>{{ item.containerNos || '-' }}</dd></div>
             <div><dt>温区</dt><dd>{{ item.temperatureZone || '-' }}</dd></div>
             <div v-if="inventoryType === 'spot'"><dt>仓库</dt><dd>{{ item.warehouseNames || '-' }}</dd></div>
@@ -198,6 +197,7 @@
         productOptions: [],
         containerOptions: [],
         ownershipOptions: [],
+        temperatureScopes: ['CHILLED', 'FROZEN'],
         optionLoading: {
           contract: false,
           product: false,
@@ -221,11 +221,26 @@
       }
     },
     activated () {
+      this.loadTemperatureScope()
       this.loadWarehouses()
       this.primeOptions()
       this.getDataList()
     },
     methods: {
+      loadTemperatureScope () {
+        return this.$http({
+          url: this.$http.adornUrl('/sys/user/info'),
+          method: 'get',
+          params: this.$http.adornParams()
+        }).then(({ data }) => {
+          const raw = data && data.user && data.user.inventoryTemperatureScope
+          const scopes = String(raw || 'CHILLED,FROZEN').split(',').filter(item => item === 'CHILLED' || item === 'FROZEN')
+          this.temperatureScopes = scopes.length ? scopes : ['CHILLED', 'FROZEN']
+          if (this.queryForm.temperatureZone && !this.temperatureOptions.some(item => item.value === this.queryForm.temperatureZone)) {
+            this.queryForm.temperatureZone = ''
+          }
+        })
+      },
       unlockMobileSelectInput (refName) {
         const select = this.$refs[refName]
         const input = select && select.$el && select.$el.querySelector('.el-input__inner')
@@ -284,7 +299,8 @@
             productId: row.productId,
             confirmId: row.confirmId || '',
             contractNo: row.contractNo || '',
-            ownershipName: row.ownershipName || ''
+            ownershipName: row.ownershipName || '',
+            factoryNo: row.factoryNo || ''
           }))
         }).then(({ data }) => {
           if (data && data.code === 0) {
@@ -368,7 +384,7 @@
         })
       },
       cardKey (item) {
-        return [item.inventoryType, item.productId, item.confirmId, item.contractNo, item.ownershipName].join('-')
+        return [item.inventoryType, item.productId, item.confirmId, item.contractNo, item.ownershipName, item.factoryNo].join('-')
       },
       detailKey (item, index) {
         return [item.contractNo, item.containerNo, item.factoryNo, item.productionDate, item.expiryDate, index].join('-')
@@ -407,6 +423,14 @@
         if (days <= 0) return 'danger'
         if (days <= 30) return 'warning'
         return 'safe'
+      }
+    },
+    computed: {
+      temperatureOptions () {
+        const result = []
+        if (this.temperatureScopes.includes('CHILLED')) result.push({ label: '冷藏（含冷鲜）', value: '冷鲜' })
+        if (this.temperatureScopes.includes('FROZEN')) result.push({ label: '冷冻', value: '冷冻' })
+        return result
       }
     }
   }

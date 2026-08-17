@@ -60,6 +60,7 @@
       <el-table-column prop="productName" label="中文名称" min-width="170" show-overflow-tooltip></el-table-column>
       <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
       <el-table-column prop="ownershipName" label="货权" min-width="170" show-overflow-tooltip></el-table-column>
+      <el-table-column prop="factoryNo" label="厂号" width="100" align="center" header-align="center"></el-table-column>
       <el-table-column prop="availableBoxes" label="可售箱数" width="100" align="right" header-align="center"></el-table-column>
       <el-table-column prop="availableWeightKg" label="可售重量(KG)" width="125" align="right" header-align="center">
         <template slot-scope="scope">{{ numberText(scope.row.availableWeightKg, 2) }}</template>
@@ -116,6 +117,7 @@
         <span>确认函合同号：{{ currentRow.contractNo || '-' }}</span>
         <span>产品名称：{{ currentRow.productName || '-' }}</span>
         <span>货权：{{ currentRow.ownershipName || '-' }}</span>
+        <span>厂号：{{ currentRow.factoryNo || '-' }}</span>
         <span>成本价：{{ numberText(currentRow.costPriceKg, 6) }} 元/KG</span>
       </div>
       <div v-if="currentRow" class="cost-formula-box">
@@ -266,6 +268,7 @@
           confirmId: row.confirmId || '',
           contractNo: row.contractNo || '',
           ownershipName: row.ownershipName || '',
+          factoryNo: row.factoryNo || '',
           containerNos: (this.queryForm.containerNos || []).join(',')
         })
         this.$http({
