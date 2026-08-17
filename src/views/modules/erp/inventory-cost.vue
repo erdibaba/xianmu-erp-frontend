@@ -1,7 +1,9 @@
 <template>
   <div class="mod-erp-inventory-cost">
+    <el-tabs v-model="activeView" @tab-click="inventoryCostTabChange">
+      <el-tab-pane label="实时库存成本" name="live">
     <el-alert
-      title="成本价按当前剩余库存重量动态计算：订单确认函含税采购价 + 每日动态资金成本 + 每日动态仓储费 + 已登记支出费用。"
+      title="成本价按当前剩余库存重量动态计算：确认函含税采购价 + 资金成本 + 仓储费 + 已登记支出 + 启用仓库已配置的预计附加费用。"
       type="info"
       :closable="false"
       show-icon>
@@ -169,6 +171,70 @@
         <el-table-column prop="remark" label="说明" width="320" show-overflow-tooltip></el-table-column>
       </el-table>
     </el-dialog>
+      </el-tab-pane>
+
+      <el-tab-pane label="每日成本快照" name="snapshot">
+        <el-alert
+          title="每日23:50提前生成次日成本。合同+SKU价格固定取一条代表库存记录；By SKU价格按合同+SKU行做简单平均。"
+          type="info"
+          :closable="false"
+          show-icon>
+        </el-alert>
+        <div class="snapshot-toolbar">
+          <el-date-picker
+            v-model="snapshotQuery.snapshotDate"
+            type="date"
+            value-format="yyyy-MM-dd"
+            placeholder="选择估值日期"
+            @change="querySnapshotList">
+          </el-date-picker>
+          <el-radio-group v-model="snapshotQuery.rowType" @change="querySnapshotList">
+            <el-radio-button label="CONTRACT_SKU">合同 + SKU</el-radio-button>
+            <el-radio-button label="SKU_SUMMARY">By SKU</el-radio-button>
+          </el-radio-group>
+          <el-input
+            v-model="snapshotQuery.keyword"
+            clearable
+            placeholder="合同号/产品编码/市场流通名称"
+            style="width: 300px;"
+            @keyup.enter.native="querySnapshotList">
+          </el-input>
+          <el-button type="primary" @click="querySnapshotList">查询</el-button>
+          <el-button type="warning" :loading="snapshotGenerating" @click="generateSnapshot">重算该日快照</el-button>
+        </div>
+        <el-table :data="snapshotList" border stripe v-loading="snapshotLoading" height="640">
+          <el-table-column type="index" :index="snapshotRowIndex" label="序号" width="60" align="center"></el-table-column>
+          <el-table-column prop="snapshotDate" label="估值日期" width="110" align="center"></el-table-column>
+          <el-table-column v-if="snapshotQuery.rowType === 'CONTRACT_SKU'" prop="contractNo" label="确认函合同号" min-width="150" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="productCode" label="产品编码" min-width="115" align="center"></el-table-column>
+          <el-table-column prop="marketCirculationName" label="市场流通名称" min-width="210" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="availableBoxes" label="剩余箱数" width="110" align="right"></el-table-column>
+          <el-table-column label="剩余重量(KG)" width="135" align="right">
+            <template slot-scope="scope">{{ numberText(scope.row.availableWeightKg, 2) }}</template>
+          </el-table-column>
+          <el-table-column label="平均/代表含税采购单价" width="190" align="right">
+            <template slot-scope="scope">{{ numberText(scope.row.purchasePriceKg, 6) }}</template>
+          </el-table-column>
+          <el-table-column label="平均/代表成本价" width="170" align="right">
+            <template slot-scope="scope"><span class="cost-price">{{ numberText(scope.row.costPriceKg, 6) }}</span></template>
+          </el-table-column>
+          <el-table-column v-if="snapshotQuery.rowType === 'SKU_SUMMARY'" prop="contractCount" label="参与合同数" width="105" align="center"></el-table-column>
+          <el-table-column prop="rateWarning" label="费率提示" min-width="260" show-overflow-tooltip>
+            <template slot-scope="scope"><span class="rate-warning">{{ scope.row.rateWarning || '-' }}</span></template>
+          </el-table-column>
+        </el-table>
+        <el-pagination
+          class="inventory-cost-pagination"
+          :current-page="snapshotPageIndex"
+          :page-size="snapshotPageSize"
+          :page-sizes="[20, 50, 100]"
+          :total="snapshotTotal"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="snapshotPageSizeChange"
+          @current-change="snapshotPageChange">
+        </el-pagination>
+      </el-tab-pane>
+    </el-tabs>
   </div>
 </template>
 
@@ -176,6 +242,7 @@
   export default {
     data () {
       return {
+        activeView: 'live',
         warehouseList: [],
         containerOptions: [],
         containerLoading: false,
@@ -196,7 +263,19 @@
         detailDialogVisible: false,
         detailLoading: false,
         detailList: [],
-        currentRow: null
+        currentRow: null,
+        snapshotDates: [],
+        snapshotList: [],
+        snapshotLoading: false,
+        snapshotGenerating: false,
+        snapshotPageIndex: 1,
+        snapshotPageSize: 20,
+        snapshotTotal: 0,
+        snapshotQuery: {
+          snapshotDate: '',
+          rowType: 'CONTRACT_SKU',
+          keyword: ''
+        }
       }
     },
     computed: {
@@ -213,8 +292,92 @@
     activated () {
       this.loadWarehouses()
       this.getDataList()
+      this.loadSnapshotDates()
     },
     methods: {
+      inventoryCostTabChange (tab) {
+        if (tab && tab.name === 'snapshot') {
+          this.loadSnapshotDates()
+        }
+      },
+      tomorrowText () {
+        const date = new Date()
+        date.setDate(date.getDate() + 1)
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const day = String(date.getDate()).padStart(2, '0')
+        return `${year}-${month}-${day}`
+      },
+      loadSnapshotDates () {
+        this.$http({
+          url: this.$http.adornUrl('/erp/inventory-cost/snapshot/dates'),
+          method: 'get',
+          params: this.$http.adornParams()
+        }).then(({data}) => {
+          this.snapshotDates = (data && data.list) || []
+          if (!this.snapshotQuery.snapshotDate) {
+            this.snapshotQuery.snapshotDate = this.snapshotDates[0] || this.tomorrowText()
+          }
+          if (this.activeView === 'snapshot') this.getSnapshotList()
+        })
+      },
+      querySnapshotList () {
+        this.snapshotPageIndex = 1
+        this.getSnapshotList()
+      },
+      getSnapshotList () {
+        this.snapshotLoading = true
+        this.$http({
+          url: this.$http.adornUrl('/erp/inventory-cost/snapshot'),
+          method: 'get',
+          params: this.$http.adornParams(Object.assign({}, this.snapshotQuery, {
+            page: this.snapshotPageIndex,
+            limit: this.snapshotPageSize
+          }))
+        }).then(({data}) => {
+          if (data && data.code === 0) {
+            const page = data.page || {}
+            this.snapshotList = page.list || []
+            this.snapshotTotal = Number(page.totalCount || 0)
+          } else {
+            this.snapshotList = []
+            this.snapshotTotal = 0
+            this.$message.error((data && data.msg) || '获取成本快照失败')
+          }
+        }).finally(() => {
+          this.snapshotLoading = false
+        })
+      },
+      generateSnapshot () {
+        this.snapshotGenerating = true
+        this.$http({
+          url: this.$http.adornUrl('/erp/inventory-cost/snapshot/generate'),
+          method: 'post',
+          params: this.$http.adornParams({ snapshotDate: this.snapshotQuery.snapshotDate })
+        }).then(({data}) => {
+          if (data && data.code === 0) {
+            const result = data.result || {}
+            this.$message.success(`快照生成完成：合同SKU ${result.contractSkuCount || 0} 条，SKU ${result.skuCount || 0} 条`)
+            this.loadSnapshotDates()
+          } else {
+            this.$message.error((data && data.msg) || '生成成本快照失败')
+          }
+        }).finally(() => {
+          this.snapshotGenerating = false
+        })
+      },
+      snapshotPageSizeChange (value) {
+        this.snapshotPageSize = value
+        this.snapshotPageIndex = 1
+        this.getSnapshotList()
+      },
+      snapshotPageChange (value) {
+        this.snapshotPageIndex = value
+        this.getSnapshotList()
+      },
+      snapshotRowIndex (index) {
+        return (this.snapshotPageIndex - 1) * this.snapshotPageSize + index + 1
+      },
       queryDataList () {
         this.pageIndex = 1
         this.getDataList()
@@ -438,6 +601,18 @@
     display: inline-block;
     margin-left: 10px;
     vertical-align: middle;
+  }
+
+  .snapshot-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin: 15px 0 12px;
+  }
+
+  .rate-warning {
+    color: #d46b08;
   }
 
   .inventory-cost-pagination {
