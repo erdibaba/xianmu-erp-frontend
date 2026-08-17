@@ -54,6 +54,9 @@
         <template slot-scope="scope">{{ scope.row.salespersonName || '-' }}</template>
       </el-table-column>
       <el-table-column prop="warehouseName" label="仓库" min-width="160" show-overflow-tooltip></el-table-column>
+      <el-table-column label="创建时间" width="170" align="center" show-overflow-tooltip>
+        <template slot-scope="scope">{{ formatDateTime(scope.row.createTime) || '-' }}</template>
+      </el-table-column>
       <el-table-column label="关联预售合同" min-width="190" show-overflow-tooltip>
         <template slot-scope="scope">{{ scope.row.sourcePresaleOrderNos || scope.row.sourcePresaleOrderNo || '-' }}</template>
       </el-table-column>
@@ -389,6 +392,9 @@ export default {
     getSaleTypeLabel (value) {
       const target = this.saleTypeOptions.find(item => item.value === value)
       return target ? target.label : value
+    },
+    formatDateTime (value) {
+      return value ? String(value).slice(0, 19).replace('T', ' ') : ''
     },
     getStatusLabel (value) {
       const target = this.statusOptions.find(item => String(item.value) === String(value))
