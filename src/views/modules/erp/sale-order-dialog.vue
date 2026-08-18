@@ -830,7 +830,7 @@
                     type="primary"
                     plain
                     :loading="outboundSaveLoading"
-                    :disabled="isStepConfirmed('OUTBOUND_RECEIPT')"
+                    :disabled="!currentOutboundBatchEditable"
                     @click="saveOutboundReceipt()">
                     保存出库回单
                   </el-button>
@@ -2211,7 +2211,7 @@ export default {
       return '系统已自动带入识别内容，用户只需核对和修改确认结果；金额差异只提示并保存，不拦截批次完成。'
     },
     outboundCompleted () {
-      return Number(this.dataForm.outboundReceiptConfirmed || 0) === 1 || this.outboundReceiptMatched
+      return Number(this.dataForm.outboundReceiptConfirmed || 0) === 1
     },
     outboundWorkflowActiveStep () {
       if (this.outboundCompleted) return 4
@@ -4508,6 +4508,10 @@ export default {
       return (this.dataForm.fileList || []).filter(item => item.fileType === fileType)
     },
     isStepConfirmed (fileType) {
+      // 出库回单已改为按批次流转，不能再用整单确认状态锁住未完成批次。
+      if (fileType === 'OUTBOUND_RECEIPT' && this.currentOutboundBatch) {
+        return !this.currentOutboundBatchEditable
+      }
       if (fileType === 'SIGNED_CONTRACT') return Number(this.dataForm.signedContractConfirmed || 0) === 1
       if (fileType === 'BUYER_PAYMENT_PROOF') return Number(this.dataForm.buyerPaymentConfirmed || 0) === 1
       if (fileType === 'BUYER_BANK_SLIP') return Number(this.dataForm.buyerBankConfirmed || 0) === 1
@@ -4529,12 +4533,14 @@ export default {
       return !this.isStepConfirmed(fileType)
     },
     canUploadStep (fileType) {
+      if (fileType === 'OUTBOUND_RECEIPT') {
+        return !!this.currentOutboundBatch && this.currentOutboundBatchEditable
+      }
       if (this.isStepConfirmed(fileType)) return false
       if (fileType === 'SIGNED_CONTRACT') return true
       if (fileType === 'BUYER_PAYMENT_PROOF') return this.isStepConfirmed('SIGNED_CONTRACT')
       if (fileType === 'BUYER_BANK_SLIP') return this.isStepConfirmed('BUYER_PAYMENT_PROOF')
       if (fileType === 'FUNDER_PAYMENT_PROOF') return this.isStepConfirmed('BUYER_BANK_SLIP')
-      if (fileType === 'OUTBOUND_RECEIPT') return !!this.currentOutboundBatch && this.currentOutboundBatchEditable
       if (fileType === 'OUTBOUND_BATCH_BANK_SLIP') {
         return !this.isInternalSettlementMode && !!this.currentOutboundBatch && this.currentOutboundBatchEditable
       }
