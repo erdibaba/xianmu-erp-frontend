@@ -175,7 +175,7 @@
 
       <el-tab-pane label="每日成本快照" name="snapshot">
         <el-alert
-          title="每日23:50提前生成次日成本。合同+SKU价格固定取一条代表库存记录；By SKU价格按合同+SKU行做简单平均。"
+          title="每日23:50提前生成次日成本，快照字段与实时库存成本一致，可按估值日期回看历史成本。"
           type="info"
           :closable="false"
           show-icon>
@@ -188,14 +188,10 @@
             placeholder="选择估值日期"
             @change="querySnapshotList">
           </el-date-picker>
-          <el-radio-group v-model="snapshotQuery.rowType" @change="querySnapshotList">
-            <el-radio-button label="CONTRACT_SKU">合同 + SKU</el-radio-button>
-            <el-radio-button label="SKU_SUMMARY">By SKU</el-radio-button>
-          </el-radio-group>
           <el-input
             v-model="snapshotQuery.keyword"
             clearable
-            placeholder="合同号/产品编码/市场流通名称"
+            placeholder="合同号/产品编码/名称/货权/厂号"
             style="width: 300px;"
             @keyup.enter.native="querySnapshotList">
           </el-input>
@@ -205,22 +201,36 @@
         <el-table :data="snapshotList" border stripe v-loading="snapshotLoading" height="640">
           <el-table-column type="index" :index="snapshotRowIndex" label="序号" width="60" align="center"></el-table-column>
           <el-table-column prop="snapshotDate" label="估值日期" width="110" align="center"></el-table-column>
-          <el-table-column v-if="snapshotQuery.rowType === 'CONTRACT_SKU'" prop="contractNo" label="确认函合同号" min-width="150" show-overflow-tooltip></el-table-column>
-          <el-table-column prop="productCode" label="产品编码" min-width="115" align="center"></el-table-column>
-          <el-table-column prop="marketCirculationName" label="市场流通名称" min-width="210" show-overflow-tooltip></el-table-column>
-          <el-table-column prop="availableBoxes" label="剩余箱数" width="110" align="right"></el-table-column>
-          <el-table-column label="剩余重量(KG)" width="135" align="right">
+          <el-table-column prop="productCode" label="产品编码" min-width="110" align="center"></el-table-column>
+          <el-table-column prop="contractNo" label="确认函合同号" min-width="150" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="productName" label="中文名称" min-width="170" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="productNameEn" label="英文名称" min-width="220" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="ownershipName" label="货权" min-width="170" show-overflow-tooltip></el-table-column>
+          <el-table-column prop="factoryNo" label="厂号" width="100" align="center"></el-table-column>
+          <el-table-column prop="availableBoxes" label="可售箱数" width="100" align="right"></el-table-column>
+          <el-table-column label="可售重量(KG)" width="125" align="right">
             <template slot-scope="scope">{{ numberText(scope.row.availableWeightKg, 2) }}</template>
           </el-table-column>
-          <el-table-column label="平均/代表含税采购单价" width="190" align="right">
+          <el-table-column label="含税采购单价(元/KG)" width="165" align="right">
             <template slot-scope="scope">{{ numberText(scope.row.purchasePriceKg, 6) }}</template>
           </el-table-column>
-          <el-table-column label="平均/代表成本价" width="170" align="right">
+          <el-table-column label="成本价(元/KG)" width="135" align="right">
             <template slot-scope="scope"><span class="cost-price">{{ numberText(scope.row.costPriceKg, 6) }}</span></template>
           </el-table-column>
-          <el-table-column v-if="snapshotQuery.rowType === 'SKU_SUMMARY'" prop="contractCount" label="参与合同数" width="105" align="center"></el-table-column>
-          <el-table-column prop="rateWarning" label="费率提示" min-width="260" show-overflow-tooltip>
-            <template slot-scope="scope"><span class="rate-warning">{{ scope.row.rateWarning || '-' }}</span></template>
+          <el-table-column label="建议销售价(元/KG)" width="155" align="right">
+            <template slot-scope="scope">{{ scope.row.suggestedSalePriceKg ? numberText(scope.row.suggestedSalePriceKg, 6) : '-' }}</template>
+          </el-table-column>
+          <el-table-column label="增长百分比" width="115" align="right">
+            <template slot-scope="scope">{{ percentText(scope.row.suggestedMarkupPercent) }}</template>
+          </el-table-column>
+          <el-table-column label="采购成本" width="125" align="right">
+            <template slot-scope="scope">{{ moneyText(scope.row.purchaseAmount) }}</template>
+          </el-table-column>
+          <el-table-column label="分摊费用" width="125" align="right">
+            <template slot-scope="scope">{{ moneyText(scope.row.allocatedFeeAmount) }}</template>
+          </el-table-column>
+          <el-table-column label="成本总额" width="125" align="right">
+            <template slot-scope="scope">{{ moneyText(scope.row.totalCostAmount) }}</template>
           </el-table-column>
         </el-table>
         <el-pagination
@@ -273,7 +283,6 @@
         snapshotTotal: 0,
         snapshotQuery: {
           snapshotDate: '',
-          rowType: 'CONTRACT_SKU',
           keyword: ''
         }
       }
@@ -357,7 +366,7 @@
         }).then(({data}) => {
           if (data && data.code === 0) {
             const result = data.result || {}
-            this.$message.success(`快照生成完成：合同SKU ${result.contractSkuCount || 0} 条，SKU ${result.skuCount || 0} 条`)
+            this.$message.success(`快照生成完成：${result.snapshotCount || 0} 条`)
             this.loadSnapshotDates()
           } else {
             this.$message.error((data && data.msg) || '生成成本快照失败')
@@ -609,10 +618,6 @@
     align-items: center;
     gap: 10px;
     margin: 15px 0 12px;
-  }
-
-  .rate-warning {
-    color: #d46b08;
   }
 
   .inventory-cost-pagination {
