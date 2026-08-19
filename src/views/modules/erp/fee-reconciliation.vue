@@ -86,7 +86,7 @@
           <el-table-column prop="lineNo" label="序号" width="60" align="center"></el-table-column>
           <el-table-column prop="confirmContractNo" label="确认函合同号" width="145" show-overflow-tooltip></el-table-column>
           <el-table-column prop="productCode" label="产品编码" width="100"></el-table-column>
-          <el-table-column prop="productName" label="品名" min-width="150" show-overflow-tooltip></el-table-column>
+          <el-table-column label="品名" min-width="150" show-overflow-tooltip><template slot-scope="scope">{{ scope.row.displayProductName || scope.row.productName || '-' }}</template></el-table-column>
           <el-table-column prop="warehouseName" label="仓库" width="180" show-overflow-tooltip></el-table-column>
           <el-table-column prop="containerNo" label="柜号" width="125" show-overflow-tooltip></el-table-column>
           <el-table-column prop="factoryNo" label="厂号" width="85"></el-table-column>
@@ -418,7 +418,7 @@ export default {
           lineNo: item.lineNo,
           confirmContractNo: item.confirmContractNo,
           productCode: item.productCode,
-          productName: item.productName,
+          productName: item.displayProductName || item.productName,
           warehouseName: item.warehouseName
         }
         rows.push(Object.assign({}, base, { feeName: '结算销售单价', amount: item.settlementUnitPrice, unitPrice: true, formula: this.settlementPriceFormula(item) }))
