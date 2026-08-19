@@ -52,7 +52,7 @@
     <el-dialog title="按出库批次费用对账" :visible.sync="dialogVisible" width="1280px" top="4vh" custom-class="batch-settlement-dialog" :close-on-click-modal="false">
       <div v-loading="dialogLoading" class="reconciliation-dialog-body">
         <div class="reconciliation-scroll-area">
-          <el-alert :title="workflowNotice" :type="reconciliationActionEnabled ? 'info' : 'warning'" :closable="false" style="margin-bottom:16px"></el-alert>
+          <el-alert :title="workflowNotice" :type="workflowNoticeType" :closable="false" style="margin-bottom:16px"></el-alert>
           <el-form :model="form" label-width="150px">
           <el-row :gutter="18">
             <el-col :span="12"><el-form-item label="出库批次"><el-input :value="batchDisplayName" disabled></el-input></el-form-item></el-col>
@@ -113,7 +113,7 @@
                 <el-upload v-if="reconciliationActionEnabled" action="" :show-file-list="false" :http-request="uploadStatement">
                   <el-button size="small" type="primary" :loading="statementUploading">上传资方计算单</el-button>
                 </el-upload>
-                <span v-else-if="Number(form.workflowStatus) === 0" class="action-locked-tip">完成二批来款水单后开放</span>
+                <span v-else-if="Number(form.workflowStatus) === 0" class="action-locked-tip">完成出库批次或确认来款水单后开放</span>
                 <el-button v-if="form.statementFileName" type="text" @click="downloadStatement">{{ form.statementFileName }}</el-button>
               </el-form-item>
               <el-form-item label="资方核算金额" required>
@@ -156,7 +156,7 @@
       <span slot="footer" class="dialog-footer">
         <el-button @click="dialogVisible = false">关闭</el-button>
         <el-button v-if="reconciliationActionEnabled" type="primary" :loading="submitLoading" @click="saveReconciliation">保存对账资料</el-button>
-        <el-button v-if="Number(form.workflowStatus) === 1 && bankSlipCompleted" type="success" :loading="submitLoading" @click="confirmReconciliation">确认核对无误</el-button>
+        <el-button v-if="Number(form.workflowStatus) === 1 && batchSettlementReady" type="success" :loading="submitLoading" @click="confirmReconciliation">确认核对无误</el-button>
       </span>
     </el-dialog>
 
@@ -284,16 +284,26 @@ export default {
     bankSlipCompleted () {
       return this.form.bankSlipCompleted === true
     },
+    batchSettlementReady () {
+      return this.form.reconciliationActionEnabled === true
+    },
     reconciliationActionEnabled () {
-      return this.reconciliationEditable && this.bankSlipCompleted && this.form.reconciliationActionEnabled === true
+      return this.reconciliationEditable && this.batchSettlementReady
+    },
+    workflowNoticeType () {
+      if (this.batchSettlementReady && !this.bankSlipCompleted) return 'error'
+      return this.reconciliationActionEnabled ? 'info' : 'warning'
     },
     includeCodeScanFee: {
       get () { return Number(this.form.includeCodeScanFee || 0) === 1 },
       set (value) { this.form.includeCodeScanFee = value ? 1 : 0 }
     },
     workflowNotice () {
-      if (Number(this.form.workflowStatus || 0) === 0 && !this.bankSlipCompleted) {
-        return '当前出库批次的二批来款水单尚未完成，仅可试算和查看费用；水单上传并保存确认结果后，才可上传资方计算单并保存对账。'
+      if (!this.batchSettlementReady) {
+        return '当前批次尚未完成出库，二批来款水单也未确认，仅可试算和查看费用；满足任一条件后即可保存费用对账。'
+      }
+      if (!this.bankSlipCompleted) {
+        return '二批来款水单尚未确认，本次按出库批次已完成状态放行费用对账。'
       }
       const messages = [
         '请按系统计算结果核对费用，上传资方计算单后保存。',
@@ -573,7 +583,7 @@ export default {
       })
     },
     confirmReconciliation () {
-      if (!this.bankSlipCompleted) return this.$message.warning('请先完成出库批次的结算确认')
+      if (!this.batchSettlementReady) return this.$message.warning('请先完成出库批次，或确认二批来款水单')
       this.$confirm('确认资方计算单及系统费用核对无误？确认后费用不可修改。', '确认核对', { type: 'warning' }).then(() => {
         return this.runWithLoading('正在确认费用核对...', `/erp/funder-finance/fee-reconciliation/confirm/${this.form.id}`, {})
       }).then(data => {
@@ -671,7 +681,7 @@ export default {
       row.feeAmount = Number((Number(row.paymentAmount || 0) - Number(row.principalAmount || 0)).toFixed(2))
     },
     confirmPaymentVoucher () {
-      if (!this.bankSlipCompleted) return this.$message.warning('请先完成出库批次的结算确认')
+      if (!this.batchSettlementReady) return this.$message.warning('请先完成出库批次，或确认二批来款水单')
       if (!this.paymentVoucherForm.filePath) return this.$message.error('请先上传财务打款凭证')
       if (Number(this.paymentVoucherForm.confirmedAmount || 0) <= 0) return this.$message.error('确认打款金额必须大于0')
       if (!this.paymentVoucherForm.paymentDate) return this.$message.error('请选择实际打款日期')
@@ -757,7 +767,7 @@ export default {
     },
     actionText (row) {
       const status = Number((row && row.workflowStatus) || 0)
-      if (status === 0 && row && row.bankSlipCompleted !== true) return '查看试算'
+      if (status === 0 && row && row.reconciliationActionEnabled !== true) return '查看试算'
       return ['开始对账', '继续核对', '财务打款', '查看'][status] || '查看'
     },
     amount (value) {
