@@ -37,9 +37,50 @@
         </el-select>
       </el-form-item>
       <el-form-item>
+        <el-select v-model="queryForm.businessEntityId" clearable filterable placeholder="业务主体" style="width: 190px;">
+          <el-option
+            v-for="item in businessEntityOptions"
+            :key="item.id"
+            :label="item.entityName"
+            :value="item.id">
+          </el-option>
+        </el-select>
+      </el-form-item>
+      <el-form-item>
+        <el-select v-model="queryForm.secondaryPartnerId" clearable filterable placeholder="二批商" style="width: 190px;">
+          <el-option
+            v-for="item in secondaryPartnerOptions"
+            :key="item.id"
+            :label="item.partnerName"
+            :value="item.id">
+          </el-option>
+        </el-select>
+      </el-form-item>
+      <el-form-item>
+        <el-select v-model="queryForm.warehouseId" clearable filterable placeholder="仓库" style="width: 190px;">
+          <el-option
+            v-for="item in warehouseOptions"
+            :key="item.id"
+            :label="item.warehouseName"
+            :value="item.id">
+          </el-option>
+        </el-select>
+      </el-form-item>
+      <el-form-item>
+        <el-date-picker
+          v-model="queryForm.contractSignDateRange"
+          type="daterange"
+          value-format="yyyy-MM-dd"
+          range-separator="至"
+          start-placeholder="签订开始日期"
+          end-placeholder="签订结束日期"
+          style="width: 260px;">
+        </el-date-picker>
+      </el-form-item>
+      <el-form-item>
         <el-button type="primary" @click="searchHandle()">查询</el-button>
         <el-button v-if="isAuth('erp:tradeorder:save')" type="success" @click="addHandle()">新增销售单</el-button>
-        <el-button type="success" plain @click="exportFuturesOrders()">导出期货单</el-button>
+        <el-button type="success" plain @click="exportSalesOrders()">导出销售数据</el-button>
       </el-form-item>
     </el-form>
 
@@ -289,8 +330,15 @@ export default {
       queryForm: {
         keyword: '',
         saleType: '',
-        status: ''
+        status: '',
+        businessEntityId: '',
+        secondaryPartnerId: '',
+        warehouseId: '',
+        contractSignDateRange: []
       },
+      businessEntityOptions: [],
+      secondaryPartnerOptions: [],
+      warehouseOptions: [],
       saleTypeOptions: [
         { value: 'FUTURES', label: '期货单' },
         { value: 'SPOT', label: '现货单' }
@@ -324,6 +372,7 @@ export default {
     }
   },
   activated () {
+    this.loadQueryOptions()
     this.getDataList()
   },
   methods: {
@@ -342,13 +391,10 @@ export default {
       this.$http({
         url: this.$http.adornUrl('/erp/saleorder/list'),
         method: 'get',
-        params: this.$http.adornParams({
+        params: this.$http.adornParams(Object.assign({
           page: this.pageIndex,
-          limit: this.pageSize,
-          keyword: this.queryForm.keyword,
-          saleType: this.queryForm.saleType,
-          status: this.queryForm.status
-        })
+          limit: this.pageSize
+        }, this.buildQueryParams()))
       }).then(({ data }) => {
         if (data && data.code === 0) {
           this.dataList = data.page.list || []
@@ -363,32 +409,69 @@ export default {
         this.dataListLoading = false
       })
     },
-    exportFuturesOrders () {
+    buildQueryParams () {
+      const range = this.queryForm.contractSignDateRange || []
+      return {
+        keyword: this.queryForm.keyword,
+        saleType: this.queryForm.saleType,
+        status: this.queryForm.status,
+        businessEntityId: this.queryForm.businessEntityId,
+        secondaryPartnerId: this.queryForm.secondaryPartnerId,
+        warehouseId: this.queryForm.warehouseId,
+        contractSignDateStart: range[0] || '',
+        contractSignDateEnd: range[1] || ''
+      }
+    },
+    loadQueryOptions () {
+      if (!this.businessEntityOptions.length) {
+        this.$http({
+          url: this.$http.adornUrl('/erp/internalentity/select'),
+          method: 'get'
+        }).then(({ data }) => {
+          this.businessEntityOptions = (data && data.list) || []
+        })
+      }
+      if (!this.secondaryPartnerOptions.length) {
+        this.$http({
+          url: this.$http.adornUrl('/erp/partner/select'),
+          method: 'get',
+          params: this.$http.adornParams({ businessRole: 'SECONDARY' })
+        }).then(({ data }) => {
+          this.secondaryPartnerOptions = (data && data.list) || []
+        })
+      }
+      if (!this.warehouseOptions.length) {
+        this.$http({
+          url: this.$http.adornUrl('/erp/warehouse/select'),
+          method: 'get'
+        }).then(({ data }) => {
+          this.warehouseOptions = (data && data.list) || []
+        })
+      }
+    },
+    exportSalesOrders () {
       const loading = this.$loading({
         lock: true,
-        text: '正在生成期货销售单，请稍候...',
+        text: '正在生成销售明细和出库明细，请稍候...',
         spinner: 'el-icon-loading',
         background: 'rgba(0, 0, 0, 0.35)'
       })
       this.$http({
-        url: this.$http.adornUrl('/erp/saleorder/futures/export'),
+        url: this.$http.adornUrl('/erp/saleorder/export'),
         method: 'get',
-        params: this.$http.adornParams({
-          keyword: this.queryForm.keyword,
-          status: this.queryForm.status
-        }),
+        params: this.$http.adornParams(this.buildQueryParams()),
         responseType: 'blob'
       }).then(({ data }) => {
         const blob = data instanceof Blob ? data : new Blob([data])
         const link = document.createElement('a')
         link.href = URL.createObjectURL(blob)
-        link.download = '期货销售单.xlsx'
+        link.download = '销售全量数据.xlsx'
         document.body.appendChild(link)
         link.click()
         document.body.removeChild(link)
         URL.revokeObjectURL(link.href)
       }).catch(() => {
-        this.$message.error('导出期货销售单失败')
+        this.$message.error('导出销售数据失败')
       }).finally(() => {
         loading.close()
       })
