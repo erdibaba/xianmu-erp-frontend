@@ -13,7 +13,7 @@
           v-model="queryForm.keyword"
           placeholder="销售单号 / 合同号 / 二批商 / 销售 / 仓库"
           clearable
-          @keyup.enter.native="getDataList()">
+          @keyup.enter.native="searchHandle()">
         </el-input>
       </el-form-item>
       <el-form-item>
@@ -37,7 +37,7 @@
         </el-select>
       </el-form-item>
       <el-form-item>
-        <el-button type="primary" @click="getDataList()">查询</el-button>
+        <el-button type="primary" @click="searchHandle()">查询</el-button>
         <el-button v-if="isAuth('erp:tradeorder:save')" type="success" @click="addHandle()">新增销售单</el-button>
         <el-button type="success" plain @click="exportFuturesOrders()">导出期货单</el-button>
       </el-form-item>
@@ -327,6 +327,10 @@ export default {
     this.getDataList()
   },
   methods: {
+    searchHandle () {
+      this.pageIndex = 1
+      this.getDataList()
+    },
     handleDialogRefresh (payload) {
       if (payload && payload.created) {
         this.pageIndex = 1
